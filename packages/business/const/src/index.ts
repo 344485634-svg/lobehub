@@ -4,7 +4,7 @@ export * from './branding';
 export * from './llm';
 export * from './url';
 
-export const ENABLE_BUSINESS_FEATURES = false;
+export const ENABLE_BUSINESS_FEATURES = process.env.ENABLE_BUSINESS_FEATURES === '1';
 
 /**
  * Master switch for the conversational agent-onboarding flow.
