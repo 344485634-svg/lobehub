@@ -2,7 +2,15 @@ import { LOBE_CHAT_CLOUD, UTM_SOURCE } from '@lobechat/business-const';
 import { isDesktop } from '@lobechat/const';
 import { Flexbox, Hotkey, Icon, Tag } from '@lobehub/ui';
 import type { ItemType } from 'antd/es/menu/interface';
-import { BrainCircuit, Cloudy, Download, HardDriveDownload, LogOut, Settings2 } from 'lucide-react';
+import {
+  BrainCircuit,
+  Cloudy,
+  Download,
+  HardDriveDownload,
+  LogOut,
+  Settings2,
+  ShieldCheck,
+} from 'lucide-react';
 import type { PropsWithChildren } from 'react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -50,9 +58,10 @@ export const useMenu = () => {
   const hasNewVersion = useNewVersion();
   const { t } = useTranslation(['common', 'setting', 'auth']);
   const { showCloudPromotion, hideDocs } = useServerConfigStore(featureFlagsSelectors);
-  const [isLogin, isLoginWithAuth] = useUserStore((s) => [
+  const [isLogin, isLoginWithAuth, isAdmin] = useUserStore((s) => [
     authSelectors.isLogin(s),
     authSelectors.isLoginWithAuth(s),
+    authSelectors.isAdmin(s),
   ]);
   const { userPanel } = useNavLayout();
   const businessMenuItems = useBusinessMenuItems(isLogin);
@@ -81,6 +90,15 @@ export const useMenu = () => {
             icon: <Icon icon={BrainCircuit} />,
             key: 'memory',
             label: <Link to="/memory">{t('tab.memory')}</Link>,
+          },
+        ]
+      : []),
+    ...(isAdmin
+      ? [
+          {
+            icon: <Icon icon={ShieldCheck} />,
+            key: 'admin',
+            label: <Link to="/admin">{t('userPanel.admin', { defaultValue: 'Admin' })}</Link>,
           },
         ]
       : []),
