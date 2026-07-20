@@ -145,8 +145,8 @@ async function pollUntilCompletion(
   modelRuntime: any,
   inferenceId: string,
 ): Promise<{ headers?: Record<string, string>; videoUrl: string } | null> {
-  const maxRetries = 120;
-  const pollingInterval = 5000;
+  const maxRetries = 180;
+  const pollingInterval = 10000;
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
@@ -166,7 +166,10 @@ async function pollUntilCompletion(
       log('Task %s still in progress', inferenceId);
       await sleep(pollingInterval);
     } catch (error) {
-      if (error instanceof Error && error.message.includes('failed')) {
+      // 仅当上游明确返回"Video generation failed:"才终止任务;
+      // 瞬时网络错误(如 "fetch failed"、超时、连接重置)改为重试——
+      // 否则一次 fetch 抖动就会把已生成成功的视频任务误标为失败。
+      if (error instanceof Error && error.message.startsWith('Video generation failed:')) {
         throw error;
       }
       log('Polling attempt %d failed for task: %s: %O', attempt + 1, inferenceId, error);

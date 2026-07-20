@@ -26,6 +26,13 @@ const seedance20Params: VideoModelParamsSchema = {
     width: { max: 6000, min: 300 },
   },
   generateAudio: { default: true },
+  imageUrl: {
+    aspectRatio: { max: 2.5, min: 0.4 },
+    default: null,
+    height: { max: 6000, min: 300 },
+    maxFileSize: 30 * 1024 * 1024,
+    width: { max: 6000, min: 300 },
+  },
   imageUrls: {
     aspectRatio: { max: 2.5, min: 0.4 },
     default: [],
@@ -33,6 +40,10 @@ const seedance20Params: VideoModelParamsSchema = {
     maxCount: 9,
     maxFileSize: 30 * 1024 * 1024,
     width: { max: 6000, min: 300 },
+  },
+  mediaUrl: {
+    default: null,
+    maxFileSize: 100 * 1024 * 1024,
   },
   prompt: { default: '' },
   resolution: {

@@ -2,7 +2,7 @@
 
 import { Flexbox } from '@lobehub/ui';
 import { createStaticStyles, cssVar } from 'antd-style';
-import { ArrowLeftRight } from 'lucide-react';
+import { ArrowLeftRight, Video } from 'lucide-react';
 import { memo, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -43,11 +43,14 @@ interface InlineVideoFramesProps {
   imageUrl?: string | null;
   imageUrls?: string[] | null;
   isSupportEndImage?: boolean;
+  isSupportMediaUrl?: boolean;
   maxCount?: number;
   maxFileSize?: number;
+  mediaUrl?: string | null;
   onEndImageChange: (data: UploadData | null) => void;
   onImageChange: (data: UploadData | null) => void;
   onImageUrlsChange?: (data: UploadData) => void;
+  onMediaUrlChange?: (data: UploadData | null) => void;
   onRemoveImageUrl?: (url: string) => void;
   /** Optional batch upload handler to enable multi-select on the add card. */
   onUploadFiles?: (files: File[]) => void | Promise<void>;
@@ -60,12 +63,15 @@ const InlineVideoFrames = memo<InlineVideoFramesProps>(
     imageUrl,
     imageUrls,
     endImageUrl,
+    mediaUrl,
     onImageChange,
     onEndImageChange,
+    onMediaUrlChange,
     onImageUrlsChange,
     onRemoveImageUrl,
     onUploadFiles,
     isSupportEndImage = true,
+    isSupportMediaUrl = false,
     maxCount = 5,
     maxFileSize,
     uploadingPreviews = [],
@@ -218,6 +224,28 @@ const InlineVideoFrames = memo<InlineVideoFramesProps>(
               label={t('config.endImageUrl.label')}
               onRemove={() => onEndImageChange(null)}
               onUpload={(data) => onEndImageChange(data)}
+            />
+          </>
+        )}
+
+        {/* Video reference (media_url) - 全能参考模式 */}
+        {isSupportMediaUrl && (
+          <>
+            <Flexbox
+              align={'center'}
+              className={styles.swapIcon}
+              justify={'center'}
+              style={{ height: UPLOAD_CARD_SIZE }}
+            >
+              <Video size={14} />
+            </Flexbox>
+
+            <UploadCard
+              accept="video/*"
+              imageUrl={mediaUrl}
+              label={t('config.mediaUrl.label', { defaultValue: '视频参考' })}
+              onRemove={() => onMediaUrlChange?.(null)}
+              onUpload={(data) => onMediaUrlChange?.(data)}
             />
           </>
         )}

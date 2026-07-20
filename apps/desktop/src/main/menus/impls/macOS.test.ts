@@ -246,30 +246,6 @@ describe('MacOSMenu', () => {
       expect(mockApp.browserManager.getMainWindow).toHaveBeenCalled();
     });
 
-    it('should handle visit website click', async () => {
-      macOSMenu.buildAndSetAppMenu();
-
-      const template = (Menu.buildFromTemplate as any).mock.calls[0][0];
-      const helpMenu = template.find((item: any) => item.label === 'Help');
-      const visitWebsiteItem = helpMenu.submenu.find((item: any) => item.label === 'Open Website');
-
-      expect(visitWebsiteItem).toBeDefined();
-      await visitWebsiteItem.click();
-      expect(shell.openExternal).toHaveBeenCalledWith('https://lobehub.com');
-    });
-
-    it('should handle github repo click', async () => {
-      macOSMenu.buildAndSetAppMenu();
-
-      const template = (Menu.buildFromTemplate as any).mock.calls[0][0];
-      const helpMenu = template.find((item: any) => item.label === 'Help');
-      const githubItem = helpMenu.submenu.find((item: any) => item.label === 'GitHub Repository');
-
-      expect(githubItem).toBeDefined();
-      await githubItem.click();
-      expect(shell.openExternal).toHaveBeenCalledWith('https://github.com/lobehub/lobe-chat');
-    });
-
     it('should handle open logs directory click', () => {
       macOSMenu.buildAndSetAppMenu();
 

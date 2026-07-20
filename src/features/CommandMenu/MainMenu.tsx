@@ -1,5 +1,5 @@
 import { SOCIAL_URL } from '@lobechat/business-const';
-import { DiscordIcon, GithubIcon } from '@lobehub/ui/icons';
+import { DiscordIcon } from '@lobehub/ui/icons';
 import { Command } from 'cmdk';
 import {
   Bot,
@@ -8,14 +8,12 @@ import {
   LibraryBig,
   MessageSquarePlusIcon,
   Monitor,
-  Star,
 } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { openFeedbackModal } from '@/components/FeedbackModal';
 import { getNavigableRoutes, getRouteById } from '@/config/routes';
-import { FEEDBACK } from '@/const/url';
 import { usePermission } from '@/hooks/usePermission';
 import { useChatStore } from '@/store/chat';
 import { topicSelectors } from '@/store/chat/selectors';
@@ -165,22 +163,6 @@ const MainMenu = memo(() => {
           }}
         >
           {t('cmdk.contactUs')}
-        </CommandItem>
-        <CommandItem
-          icon={<GithubIcon />}
-          keywords={t('cmdk.keywords.submitIssue').split(' ')}
-          value="submit-issue"
-          onSelect={() => handleExternalLink(FEEDBACK)}
-        >
-          {t('cmdk.submitIssue')}
-        </CommandItem>
-        <CommandItem
-          icon={<Star />}
-          keywords={t('cmdk.keywords.starGitHub').split(' ')}
-          value="star-github"
-          onSelect={() => handleExternalLink(SOCIAL_URL.github)}
-        >
-          {t('cmdk.starOnGitHub')}
         </CommandItem>
         <CommandItem
           icon={<DiscordIcon />}

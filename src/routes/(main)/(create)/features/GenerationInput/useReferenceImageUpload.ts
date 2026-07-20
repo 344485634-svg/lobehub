@@ -93,19 +93,23 @@ export const useReferenceImageUpload = ({
     async (files: File[]) => {
       if (!canCreate) return;
 
-      // Keep files whose type is an image OR empty: OS/browser drops of images
+      // Keep files whose type is an image OR video OR empty: OS/browser drops
       // with uncommon extensions can arrive with an empty `File.type`. Discarding
       // them here would silently drop a valid reference before the upload pipeline
-      // (which sniffs the MIME from bytes) gets a chance. Known non-image types
-      // (PDF/video/text) still carry a populated `type` and are rejected.
-      const imageFiles = files.filter((file) => file.type === '' || file.type.startsWith('image/'));
-      if (imageFiles.length === 0) return;
+      // gets a chance. Known non-media types (PDF/text) are rejected.
+      const mediaFiles = files.filter(
+        (file) =>
+          file.type === '' ||
+          file.type.startsWith('image/') ||
+          file.type.startsWith('video/'),
+      );
+      if (mediaFiles.length === 0) return;
 
       // Drop files over the model's size limit before consuming capacity, so an
       // oversized file doesn't steal a slot from a valid one later in the drop.
       const uploadableFiles = maxFileSize
-        ? imageFiles.filter((file) => file.size <= maxFileSize)
-        : imageFiles;
+        ? mediaFiles.filter((file) => file.size <= maxFileSize)
+        : mediaFiles;
       if (uploadableFiles.length === 0) return;
 
       // Account for both landed images and any in-flight uploads.

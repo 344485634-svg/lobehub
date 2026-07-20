@@ -357,7 +357,7 @@ export const createOpenAICompatibleRuntime = <T extends Record<string, any> = an
 
       if (!apiKey) throw AgentRuntimeError.createError(ErrorType?.invalidAPIKey);
 
-      const initOptions = { apiKey, baseURL, ...constructorOptions, ...res };
+      const initOptions = { apiKey, baseURL, timeout: 300000, ...constructorOptions, ...res };
 
       // if the custom client is provided, use it as client
       if (customClient?.createClient) {

@@ -687,6 +687,63 @@ describe('createOpenAICompatibleImage', () => {
     });
   });
 
+  describe('image mode - aspect ratio mapping', () => {
+    it('should map aspectRatio parameter to size', async () => {
+      const mockImageResponse = {
+        data: [
+          {
+            b64_json: 'aspectRatioResult',
+          },
+        ],
+      };
+
+      vi.mocked(mockClient.images.generate).mockResolvedValue(mockImageResponse as any);
+
+      const payload: CreateImagePayload = {
+        model: 'gpt-image-2',
+        params: {
+          prompt: 'Generate a widescreen image',
+          aspectRatio: '16:9',
+        },
+      };
+
+      const result = await createOpenAICompatibleImage(mockClient, payload, 'newapi');
+
+      expect(result.imageUrl).toBe('data:image/png;base64,aspectRatioResult');
+      expect(mockClient.images.generate).toHaveBeenCalledWith(
+        expect.objectContaining({ size: '16:9' }),
+      );
+
+      const callArgs = vi.mocked(mockClient.images.generate).mock.calls[0][0] as any;
+      expect(callArgs.aspectRatio).toBeUndefined();
+    });
+
+    it('should remove size when aspectRatio is "auto"', async () => {
+      const mockImageResponse = {
+        data: [
+          {
+            b64_json: 'autoAspectRatioResult',
+          },
+        ],
+      };
+
+      vi.mocked(mockClient.images.generate).mockResolvedValue(mockImageResponse as any);
+
+      const payload: CreateImagePayload = {
+        model: 'gpt-image-2',
+        params: {
+          prompt: 'Generate an image',
+          aspectRatio: 'auto',
+        },
+      };
+
+      await createOpenAICompatibleImage(mockClient, payload, 'newapi');
+
+      const callArgs = vi.mocked(mockClient.images.generate).mock.calls[0][0] as any;
+      expect(callArgs.size).toBeUndefined();
+    });
+  });
+
   describe('image mode - response format handling', () => {
     it('should handle URL format response instead of base64', async () => {
       const mockImageUrl = 'https://oaidalleapiprodscus.blob.core.windows.net/generated/image.png';

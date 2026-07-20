@@ -16,7 +16,8 @@ import { useNavigate } from 'react-router';
 import useBusinessMeCells from '@/business/client/features/User/useBusinessMeCells';
 import { type CellProps } from '@/components/Cell';
 import { openChangelogModal } from '@/components/ChangelogModal';
-import { DOCUMENTS, FEEDBACK } from '@/const/index';
+import { openFeedbackModal } from '@/components/FeedbackModal';
+import { DOCUMENTS } from '@/const/index';
 import { usePlatform } from '@/hooks/usePlatform';
 import { featureFlagsSelectors, useServerConfigStore } from '@/store/serverConfig';
 import { useUserStore } from '@/store/user';
@@ -86,7 +87,7 @@ export const useCategory = () => {
       icon: Feather,
       key: 'feedback',
       label: t('feedback'),
-      onClick: () => window.open(FEEDBACK, '__blank'),
+      onClick: () => openFeedbackModal(),
     },
     {
       icon: FileClockIcon,

@@ -45,9 +45,8 @@ const Nav = memo(() => {
     agentSelectors.currentAgentHeterogeneousProviderType,
   );
   const hideProfile = !isAgentEditable;
-  // Claude Code agents can use message channels; other hetero providers (e.g. codex) still hide it.
-  const hideChannel =
-    hideProfile || (!!heterogeneousProviderType && heterogeneousProviderType !== 'claude-code');
+  // 商业化白标:隐藏消息频道入口(C 端桌面产品不需要多 IM 接入)
+  const hideChannel = true;
   const switchTopic = useChatStore((s) => s.switchTopic);
   const [openNewTopicOrSaveTopic] = useChatStore((s) => [s.openNewTopicOrSaveTopic]);
   const isNewTopicSendInFlight = useChatStore(topicSelectors.isNewTopicSendInFlight);

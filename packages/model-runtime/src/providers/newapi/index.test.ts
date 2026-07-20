@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { ModelProvider } from 'model-bank';
+import { ModelProvider, gptImage2AspectRatioSchema } from 'model-bank';
 import type { Mock } from 'vitest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -861,6 +861,43 @@ describe('NewAPI Runtime - 100% Branch Coverage', () => {
         'newapi',
       );
       expect(result).toHaveLength(1);
+    });
+
+    it('should override gpt-image-2 parameters with the aspect-ratio schema instead of the pixel-resolution one', async () => {
+      const mockClient = {
+        apiKey: 'test-key',
+        baseURL: 'https://api.newapi.com/v1',
+        models: {
+          list: vi.fn().mockResolvedValue({
+            data: [
+              {
+                created: 123,
+                id: 'gpt-image-2',
+                object: 'model',
+                owned_by: 'openai',
+              },
+            ],
+          }),
+        },
+      };
+
+      mockFetch.mockResolvedValue({
+        ok: false,
+      });
+
+      mockProcessMultiProviderModelList.mockReturnValue([]);
+
+      await params.models({ client: mockClient as any });
+
+      expect(mockProcessMultiProviderModelList).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: 'gpt-image-2',
+            parameters: gptImage2AspectRatioSchema,
+          }),
+        ]),
+        'newapi',
+      );
     });
 
     it('should handle successful pricing fetch and enrich models', async () => {

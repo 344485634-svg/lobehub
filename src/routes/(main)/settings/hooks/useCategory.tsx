@@ -13,7 +13,6 @@ import {
   EllipsisIcon,
   EthernetPort,
   Gift,
-  Info,
   KeyboardIcon,
   KeyIcon,
   KeyRound,
@@ -182,11 +181,12 @@ export const useCategory = () => {
         key: SettingsTabs.APIKey,
         label: tAuth('tab.apikey'),
       },
-      {
-        icon: MessageCircleIcon,
-        key: SettingsTabs.Messenger,
-        label: t('tab.messenger'),
-      },
+      // 商业化白标:隐藏消息频道设置入口(C 端桌面产品不需要多 IM 接入)
+      // {
+      //   icon: MessageCircleIcon,
+      //   key: SettingsTabs.Messenger,
+      //   label: t('tab.messenger'),
+      // },
     ].filter(Boolean) as CategoryItem[];
 
     groups.push({
@@ -221,11 +221,6 @@ export const useCategory = () => {
         icon: EllipsisIcon,
         key: SettingsTabs.Advanced,
         label: t('tab.advanced'),
-      },
-      !hideDocs && {
-        icon: Info,
-        key: SettingsTabs.About,
-        label: t('tab.about'),
       },
     ].filter(Boolean) as CategoryItem[];
 

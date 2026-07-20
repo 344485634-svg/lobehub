@@ -157,6 +157,12 @@ import { isWorkspaceCacheFresh, upsertWorkspaceScan } from './workspaceInitCache
 
 const log = debug('lobe-server:ai-agent-service');
 
+// 商业化白标:LobeHub connected-app Skills(GitHub/Linear 等)远程 manifest 获取默认关闭。
+// execAgent 每条聊天消息都会 await marketService.getLobehubSkillManifests(),lobehub 不可达时
+// 严重拖慢对话响应;且对应决策"移除 LobeHub connected-app Skills 改走 MCP"。
+// 如需恢复(配置 MARKET_TRUSTED_CLIENT_* 后)设为 true。
+const ENABLE_LOBEHUB_SKILL = false;
+
 const createGraphAwareAgentFactory =
   (
     upstreamFactory?: AgentRuntimeServiceOptions['agentFactory'],
@@ -2397,10 +2403,14 @@ export class AiAgentService {
       };
 
       // 5c. Fetch LobeHub Skills manifests
-      try {
-        lobehubSkillManifests = await this.marketService.getLobehubSkillManifests();
-      } catch (error) {
-        log('execAgent: failed to fetch lobehub skill manifests: %O', error);
+      // 商业化白标:默认跳过 lobehub 远程获取(每条消息 await,lobehub 不可达时拖慢对话响应;
+      // 且对应决策"移除 LobeHub connected-app Skills 改走 MCP")。
+      if (ENABLE_LOBEHUB_SKILL) {
+        try {
+          lobehubSkillManifests = await this.marketService.getLobehubSkillManifests();
+        } catch (error) {
+          log('execAgent: failed to fetch lobehub skill manifests: %O', error);
+        }
       }
       log('execAgent: got %d lobehub skill manifests', lobehubSkillManifests.length);
 

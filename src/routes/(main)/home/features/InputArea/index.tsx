@@ -41,7 +41,8 @@ const InputArea = () => {
   const isStatusInit = useGlobalStore(systemStatusSelectors.isStatusInit);
   const chatInputRef = useRef<HTMLDivElement>(null);
 
-  const showMessengerBanner = isStatusInit && !isMessengerBannerDismissed;
+  // 商业化白标:隐藏消息频道推广 banner
+  const showMessengerBanner = false;
 
   // Get agent's model info for vision support check. Falls back to an empty
   // id while the agent id resolves; the selectors return DEFAULT_MODEL /

@@ -38,10 +38,13 @@ async function generateByImageMode(
 
   log('Creating image with model: %s and params: %O', requestModel, params);
 
-  // Map parameter names, mapping imageUrls to image
+  // Map parameter names, mapping imageUrls to image and aspectRatio to size
+  // (some gateways, e.g. newapi's gpt-image-2, take an aspect-ratio string like "16:9"
+  // in the same `size` field the native API uses for pixel resolutions)
   const paramsMap = new Map<RuntimeImageGenParamsValue, string>([
     ['imageUrls', 'image'],
     ['imageUrl', 'image'],
+    ['aspectRatio', 'size'],
   ]);
   const userInput: Record<string, any> = Object.fromEntries(
     Object.entries(params).map(([key, value]) => [

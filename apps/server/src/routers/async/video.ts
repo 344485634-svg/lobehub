@@ -61,8 +61,8 @@ async function pollUntilCompletion(
   inferenceId: string,
   signal: AbortSignal,
 ): Promise<{ headers?: Record<string, string>; videoUrl: string } | null> {
-  const maxRetries = 120;
-  const pollingInterval = 5000;
+  const maxRetries = 180;
+  const pollingInterval = 10000;
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     checkAbortSignal(signal);
@@ -97,7 +97,9 @@ async function pollUntilCompletion(
     } catch (error) {
       checkAbortSignal(signal);
 
-      if (error instanceof Error && error.message.includes('failed')) {
+      // 仅当上游明确返回"Video generation failed:"才终止;
+      // 瞬时网络错误(如 "fetch failed"、超时)改为重试,避免误标已成功的视频任务为失败。
+      if (error instanceof Error && error.message.startsWith('Video generation failed:')) {
         throw error;
       }
 

@@ -154,3 +154,6 @@ docs/superpowers/
 
 # Kagura agent runtime
 .kagura/
+
+# PostgreSQL deploy runtime data
+docker-compose/deploy/data/

@@ -1,6 +1,6 @@
 'use client';
 
-import { SiDiscord, SiGithub, SiRss, SiX, SiYoutube } from '@icons-pack/react-simple-icons';
+import { SiDiscord, SiRss, SiX, SiYoutube } from '@icons-pack/react-simple-icons';
 import { BRANDING_EMAIL, BRANDING_NAME, SOCIAL_URL } from '@lobechat/business-const';
 import { Flexbox, Form } from '@lobehub/ui';
 import { Divider } from 'antd';
@@ -70,12 +70,6 @@ const About = memo<{ mobile?: boolean }>(({ mobile }) => {
               icon: SiRss,
               label: t('blog'),
               value: 'blog',
-            },
-            {
-              href: SOCIAL_URL.github,
-              icon: SiGithub,
-              label: 'GitHub',
-              value: 'feedback',
             },
             {
               href: SOCIAL_URL.discord,

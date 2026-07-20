@@ -53,20 +53,21 @@ const ProviderList = (props: {
     sortType: (sortType || SortType.Default) as SortType,
   });
 
+  // 商业化白标:设置页服务商列表仅显示 newapi(LIUMA 官方 API)。只在 UI 层过滤。
   const enabledModelProviderList = useAiInfraStore(
     aiProviderSelectors.enabledAiProviderList,
     isEqual,
-  );
+  ).filter((p) => p.id === 'newapi');
 
   const disabledModelProviderList = useAiInfraStore(
     aiProviderSelectors.disabledAiProviderList,
     isEqual,
-  );
+  ).filter((p) => p.id === 'newapi');
 
   const disabledCustomProviderList = useAiInfraStore(
     aiProviderSelectors.disabledCustomAiProviderList,
     isEqual,
-  );
+  ).filter((p) => p.id === 'newapi');
 
   // Sort model providers based on sort type
   const sortedDisabledProviders = useMemo(() => {
@@ -160,6 +161,7 @@ const ProviderList = (props: {
         )}
 
         {/* Disabled Providers */}
+        {disabledModelProviderList.length > 0 && (
         <AccordionItem
           itemKey="disabled"
           paddingBlock={4}
@@ -186,6 +188,7 @@ const ProviderList = (props: {
             ))}
           </Flexbox>
         </AccordionItem>
+        )}
       </Accordion>
     </Flexbox>
   );

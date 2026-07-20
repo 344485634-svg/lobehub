@@ -603,6 +603,7 @@ export interface EnabledAiModel {
   releasedAt?: string;
   settings?: AiModelSettings;
   sort?: number;
+  source?: AiModelSourceType;
   type: AiModelType;
   visible?: boolean;
 }

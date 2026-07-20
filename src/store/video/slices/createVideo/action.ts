@@ -4,6 +4,7 @@ import { handleGenerationPromptModerationError } from '@/business/client/handleG
 import { handleLobeHubModelDeprecatedError } from '@/business/client/handleLobeHubModelDeprecatedError';
 import { message } from '@/components/AntdStaticMethods';
 import { videoService } from '@/services/video';
+import { aiProviderSelectors, getAiInfraStoreState } from '@/store/aiInfra';
 import { type StoreSetter } from '@/store/types';
 
 import { type VideoStore } from '../../store';
@@ -28,6 +29,36 @@ export class CreateVideoActionImpl {
 
   createVideo = async (): Promise<void> => {
     this.#set({ isCreating: true }, false, 'createVideo/startCreateVideo');
+
+    // Guard:若当前模型不在已启用视频模型列表(如初始化前的已下架内置默认 dreamina-seedance),
+    // 自动切到第一个启用的(如 sora-2),避免把已下架模型提交到服务端触发 LobeHubModelDeprecated。
+    // prompt/参考图由 setModelAndProviderOnSelect 内的 preserveVideoInputParams 保留。
+    const enabledVideoModelList = aiProviderSelectors.enabledVideoModelList(getAiInfraStoreState());
+    const preStore = this.#get();
+    const preProvider = videoGenerationConfigSelectors.provider(preStore);
+    const preModel = videoGenerationConfigSelectors.model(preStore);
+    const isCurrentVideoModelValid = enabledVideoModelList.some(
+      (p) => p.id === preProvider && p.children.some((m) => m.id === preModel),
+    );
+    if (!isCurrentVideoModelValid) {
+      const firstProvider = enabledVideoModelList[0];
+      const firstModel = firstProvider?.children?.[0];
+      if (!firstProvider || !firstModel) {
+        message.warning({
+          content: t('ModelSwitchPanel.emptyProvider', { ns: 'components' }),
+          duration: 3,
+        });
+        this.#set({ isCreating: false }, false, 'createVideo/noEnabledVideoModel');
+        return;
+      }
+      // 防御:自动切模型若异常,复位 isCreating 避免发送按钮卡住,再向上抛由调用方处理。
+      try {
+        this.#get().setModelAndProviderOnSelect(firstModel.id, firstProvider.id);
+      } catch (e) {
+        this.#set({ isCreating: false }, false, 'createVideo/autoSelectFailed');
+        throw e;
+      }
+    }
 
     const store = this.#get();
     const parameters = videoGenerationConfigSelectors.parameters(store);

@@ -6,7 +6,7 @@ const NewAPI: ModelProviderCard = {
   description: 'An open-source aggregation and routing platform for multiple AI services.',
   enabled: true,
   id: 'newapi',
-  name: 'New API',
+  name: 'LIUMA 官方 API',
   settings: {
     proxyUrl: {
       placeholder: 'https://your.new-api-provider.com',
@@ -15,7 +15,7 @@ const NewAPI: ModelProviderCard = {
     showModelFetcher: true,
     supportResponsesApi: true,
   },
-  url: 'https://github.com/Calcium-Ion/new-api',
+  url: '',
 };
 
 export default NewAPI;

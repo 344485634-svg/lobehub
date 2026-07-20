@@ -6,6 +6,10 @@ import { router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { DiscoverService } from '@/server/services/discover';
 
+// 商业化白标:市场搜索(lobehub 社区市场 agent/mcp/plugin)默认关闭(对应 showMarket=false)。
+// 设为 true 可恢复(如后续把 MARKET_BASE_URL 指向自有供给服务后)。
+const ENABLE_MARKET_SEARCH = false;
+
 /**
  * Calculate relevance score for marketplace items
  * 1 = exact match, 2 = prefix match, 3 = contains match
@@ -92,7 +96,7 @@ export const searchRouter = router({
       }
 
       // Marketplace searches (mcp, plugin)
-      if (!type || type === 'mcp') {
+      if (ENABLE_MARKET_SEARCH && (!type || type === 'mcp')) {
         searchPromises.push(
           ctx.discoverService
             .getMcpList({
@@ -128,7 +132,7 @@ export const searchRouter = router({
         );
       }
 
-      if (!type || type === 'plugin') {
+      if (ENABLE_MARKET_SEARCH && (!type || type === 'plugin')) {
         searchPromises.push(
           ctx.discoverService
             .getPluginList({
@@ -160,7 +164,7 @@ export const searchRouter = router({
         );
       }
 
-      if (!type || type === 'communityAgent') {
+      if (ENABLE_MARKET_SEARCH && (!type || type === 'communityAgent')) {
         searchPromises.push(
           ctx.discoverService
             .getAssistantList({

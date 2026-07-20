@@ -39,6 +39,14 @@ const ProviderItem = memo<ProviderItemProps>(
           size={22}
           style={{ borderRadius: 4 }}
         />
+      ) : id === 'newapi' ? (
+        <Avatar
+          alt={name || id}
+          avatar={'/logo.png'}
+          shape={'square'}
+          size={22}
+          style={{ borderRadius: 4 }}
+        />
       ) : isCustomBranding && id === BRANDING_PROVIDER ? (
         <ProductLogo size={24} type={'flat'} />
       ) : (

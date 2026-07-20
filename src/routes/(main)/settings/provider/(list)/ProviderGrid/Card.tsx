@@ -51,15 +51,22 @@ const ProviderCard = memo<ProviderCardProps>(
             <Flexbox gap={12} width={'100%'}>
               <Flexbox horizontal align={'center'} justify={'space-between'}>
                 {source === 'builtin' ? (
-                  <Flexbox horizontal align={'center'} gap={8}>
-                    <ProviderCombine
-                      provider={id}
-                      size={24}
-                      style={{ color: cssVar.colorText }}
-                      title={name}
-                    />
-                    {isCodingPlanProvider(id) && <Tag color={'geekblue'}>{'Coding Plan'}</Tag>}
-                  </Flexbox>
+                  id === 'newapi' ? (
+                    <Flexbox horizontal align={'center'} gap={12}>
+                      <Avatar alt={name || id} avatar={'/logo.png'} size={28} />
+                      <Text style={{ fontSize: 16, fontWeight: 'bold' }}>{name || id}</Text>
+                    </Flexbox>
+                  ) : (
+                    <Flexbox horizontal align={'center'} gap={8}>
+                      <ProviderCombine
+                        provider={id}
+                        size={24}
+                        style={{ color: cssVar.colorText }}
+                        title={name}
+                      />
+                      {isCodingPlanProvider(id) && <Tag color={'geekblue'}>{'Coding Plan'}</Tag>}
+                    </Flexbox>
+                  )
                 ) : (
                   <Flexbox horizontal align={'center'} gap={12}>
                     {logo ? (

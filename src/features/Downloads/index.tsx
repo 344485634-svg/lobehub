@@ -27,14 +27,14 @@ const CLI_HELP_COMMAND = 'lobehub --help';
 // Mirrors the public `lobehub --help` output; terminal output intentionally stays untranslated.
 const CLI_HELP_OUTPUT = `Usage: lh [options] [command]
 
-LobeHub CLI - manage and connect to LobeHub services
+LM Studio CLI - manage and connect to LM Studio services
 
 Options:
   -V, --version          output the version number
   -h, --help             display help for command
 
 Commands:
-  login [options]        Log in to LobeHub via browser (Device Code Flow) or
+  login [options]        Log in to LM Studio via browser (Device Code Flow) or
                          configure API key server
   logout                 Log out and remove stored credentials
   completion [shell]     Output shell completion script
@@ -75,7 +75,7 @@ Commands:
   eval                   Manage evaluation workflows
   migrate                Migrate data from external tools (OpenClaw, ChatGPT,
                          Claude, etc.)
-  update [options]       Update the LobeHub CLI to the latest published version
+  update [options]       Update the LM Studio CLI to the latest published version
   help [command]         display help for command`;
 const CLI_INSTALL_COMMAND = 'npm install -g @lobehub/cli';
 const CHANNEL_DOCS_URL = `${USAGE_DOCUMENTS}/channels`;

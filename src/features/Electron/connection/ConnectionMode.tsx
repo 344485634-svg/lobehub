@@ -1,7 +1,7 @@
 import { type StorageMode } from '@lobechat/electron-client-ipc';
 import { StorageModeEnum } from '@lobechat/electron-client-ipc';
 import { Button, Center, Flexbox, Input, stopPropagation } from '@lobehub/ui';
-import { LobeHub } from '@lobehub/ui/brand';
+// 品牌字标已替换为本地 LM Studio logo(见下方 Option icon)
 import { createStaticStyles } from 'antd-style';
 import { Server } from 'lucide-react';
 import { memo, useCallback, useState } from 'react';
@@ -147,7 +147,15 @@ const ConnectionMode = memo<ConnectionModeProps>(({ setWaiting }) => {
           </Flexbox>
           <Option
             description={t('sync.lobehubCloud.description')}
-            icon={LobeHub}
+            icon={() => (
+              <img
+                alt="LM Studio"
+                height={28}
+                src="/logo.png"
+                style={{ objectFit: 'contain' }}
+                width={28}
+              />
+            )}
             isSelected={selectedOption === StorageModeEnum.Cloud}
             label={t('sync.lobehubCloud.title')}
             value={StorageModeEnum.Cloud}

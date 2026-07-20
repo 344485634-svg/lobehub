@@ -8,7 +8,7 @@ LOBE_DEFAULT_MODEL_LIST.forEach((model) => {
   locales[`${model.id}.description`] = model.description;
 });
 
-// #region LobeHub online model descriptions
+// #region LM Studio online model descriptions
 const lobeHubOnlineModelLocales = {
   'claude-sonnet-5.description':
     "Claude Sonnet 5 is Anthropic's most agentic Sonnet model, built for sustained coding, tool use, and long-context workflows with Sonnet-tier speed and efficiency.",

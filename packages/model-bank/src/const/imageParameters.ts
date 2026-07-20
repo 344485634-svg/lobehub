@@ -16,6 +16,25 @@ const NANO_BANANA_ASPECT_RATIOS = [
 
 const NANO_BANANA_2_ASPECT_RATIOS = [...NANO_BANANA_ASPECT_RATIOS, '1:4', '4:1', '1:8', '8:1'];
 
+// Aspect ratios accepted by gateway/proxy backends (e.g. newapi) for gpt-image-2,
+// as opposed to the pixel resolutions the native OpenAI API expects.
+const GPT_IMAGE_2_ASPECT_RATIOS = [
+  'auto',
+  '1:1',
+  '2:1',
+  '1:2',
+  '4:3',
+  '3:4',
+  '3:2',
+  '2:3',
+  '5:4',
+  '4:5',
+  '16:9',
+  '9:16',
+  '21:9',
+  '9:21',
+];
+
 export const gptImage1Schema: ModelParamsSchema = {
   imageUrls: { default: [], maxCount: 1, maxFileSize: 5 * 1024 * 1024 },
   prompt: { default: '' },
@@ -40,6 +59,17 @@ export const gptImage2Schema: ModelParamsSchema = {
       '3840x2160',
       '2160x3840',
     ],
+  },
+};
+
+// gpt-image-2 as served through an OpenAI-compatible gateway/proxy (e.g. newapi),
+// which expects an aspect-ratio string rather than the native API's pixel resolutions.
+export const gptImage2AspectRatioSchema: ModelParamsSchema = {
+  imageUrls: { default: [], maxCount: 1, maxFileSize: 5 * 1024 * 1024 },
+  prompt: { default: '' },
+  aspectRatio: {
+    default: 'auto',
+    enum: GPT_IMAGE_2_ASPECT_RATIOS,
   },
 };
 

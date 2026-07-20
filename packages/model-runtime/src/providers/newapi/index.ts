@@ -1,4 +1,4 @@
-import { LOBE_DEFAULT_MODEL_LIST, ModelProvider } from 'model-bank';
+import { LOBE_DEFAULT_MODEL_LIST, ModelProvider, gptImage2AspectRatioSchema } from 'model-bank';
 import urlJoin from 'url-join';
 
 import { createRouterRuntime } from '../../core/RouterRuntime';
@@ -25,9 +25,37 @@ export interface NewAPIPricing {
   /** 0: Pay-per-token, 1: Pay-per-call */
   quota_type: number;
   supported_endpoint_types?: string[];
+  /** 网关模型标签:视频生成/图片生成/文本生成/文本生成/文本向量 */
+  tags?: string | null;
 }
 
 const isBrowser = () => typeof window !== 'undefined' && typeof document !== 'undefined';
+
+// newapi is an OpenAI-compatible gateway whose gpt-image-2 takes an aspect-ratio
+// string (e.g. "16:9") rather than the pixel resolutions the native OpenAI API
+// expects. Without this, model-list sync would detect "gpt-image-2" as an OpenAI
+// model and silently overwrite this schema with the pixel-resolution one.
+const MODEL_PARAMETERS_OVERRIDES: Record<string, object> = {
+  'gpt-image-2': gptImage2AspectRatioSchema,
+};
+
+// 网关拉取的模型若 ID 含这些关键词,自动识别为视频模型(type='video')。
+// 避免 enrichment 未匹配 model-bank 卡片时默认设为 chat,导致视频模型不出现在选择器。
+const VIDEO_MODEL_KEYWORDS = [
+  'seedance',
+  'sora',
+  'veo',
+  'grok-imagine',
+  'kling',
+  'hailuo',
+  'cogvideo',
+  'vidu',
+  'wan2',
+  'minimax-video',
+  'duckscreen',
+  'ltx-video',
+  'pyramid',
+];
 
 const fetchPricing = async (
   pricingUrl: string,
@@ -187,7 +215,32 @@ export const params = {
       }
     });
 
-    return processMultiProviderModelList([...enrichedModelList, ...additionalModels], 'newapi');
+// 网关 pricing API 返回的 tags → LobeChat type 映射(网关自己的分类,100% 准确)
+const PRICING_TAG_TO_TYPE: Record<string, string> = {
+  视频生成: 'video',
+  图片生成: 'image',
+  文本生成: 'chat',
+  文本向量: 'embedding',
+};
+
+const combinedModelList = [...enrichedModelList, ...additionalModels].map((model) => {
+  const parametersOverride = MODEL_PARAMETERS_OVERRIDES[model.id];
+  const pricing = pricingMap.get(model.id);
+  // 优先用网关 pricing tags 做类型分类(网关自己的标签,最准确)
+  const typeFromPricingTag = pricing?.tags ? PRICING_TAG_TO_TYPE[pricing.tags] : undefined;
+  // 关键词兜底(pricing 没覆盖的模型)
+  const isVideoByKeyword = VIDEO_MODEL_KEYWORDS.some((kw) =>
+    model.id?.toLowerCase().includes(kw),
+  );
+  return {
+    ...model,
+    ...(isVideoByKeyword && { type: 'video' }), // 关键词先设(低优先级)
+    ...(typeFromPricingTag && { type: typeFromPricingTag }), // 网关 tags 覆盖(高优先级)
+    ...(parametersOverride && { parameters: parametersOverride }),
+  };
+});
+
+    return processMultiProviderModelList(combinedModelList, 'newapi');
   },
   routers: (options, runtimeContext?: { model?: string }) => {
     const userBaseURL = options.baseURL?.replace(/\/v\d+[a-z]*\/?$/, '') || '';
@@ -195,9 +248,10 @@ export const params = {
     return [
       {
         apiType: 'anthropic',
-        models: LOBE_DEFAULT_MODEL_LIST.map((m) => m.id).filter(
-          (id) => detectModelProvider(id) === 'anthropic',
-        ),
+        // newapi 是 OpenAI-compatible 网关,video 走 openai 子路由(/videos),不进 anthropic 原生
+        models: LOBE_DEFAULT_MODEL_LIST.filter(
+          (m) => detectModelProvider(m.id) === 'anthropic' && m.type !== 'video',
+        ).map((m) => m.id),
         options: {
           ...options,
           baseURL: userBaseURL,
@@ -205,9 +259,9 @@ export const params = {
       },
       {
         apiType: 'google',
-        models: LOBE_DEFAULT_MODEL_LIST.map((m) => m.id).filter(
-          (id) => detectModelProvider(id) === 'google',
-        ),
+        models: LOBE_DEFAULT_MODEL_LIST.filter(
+          (m) => detectModelProvider(m.id) === 'google' && m.type !== 'video',
+        ).map((m) => m.id),
         options: {
           ...options,
           baseURL: userBaseURL,
@@ -215,9 +269,9 @@ export const params = {
       },
       {
         apiType: 'xai',
-        models: LOBE_DEFAULT_MODEL_LIST.map((m) => m.id).filter(
-          (id) => detectModelProvider(id) === 'xai',
-        ),
+        models: LOBE_DEFAULT_MODEL_LIST.filter(
+          (m) => detectModelProvider(m.id) === 'xai' && m.type !== 'video',
+        ).map((m) => m.id),
         options: {
           ...options,
           baseURL: urlJoin(userBaseURL, '/v1'),

@@ -69,6 +69,16 @@ export const VideoModelParamsMetaSchema = z.object({
     })
     .optional(),
 
+  mediaUrl: z
+    .object({
+      /** 视频参考(全能参考模式):上传视频作为参考素材 */
+      default: z.string().nullish(),
+      description: z.string().optional(),
+      maxFileSize: z.number().optional(),
+      type: z.tuple([z.literal('string'), z.literal('null')]).optional(),
+    })
+    .optional(),
+
   aspectRatio: z
     .object({
       default: z.string(),

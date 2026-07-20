@@ -12,7 +12,7 @@ import type {
   ModelParamsSchema,
   Pricing,
 } from 'model-bank';
-import { isAiModelVisible } from 'model-bank';
+import { AiModelSourceEnum, isAiModelVisible } from 'model-bank';
 import { type SWRResponse } from 'swr';
 
 import { mutate, useClientDataSWR } from '@/libs/swr';
@@ -554,6 +554,25 @@ export class AiProviderActionImpl {
             );
           });
 
+          // 商业化白标:模型选择 UI 只显示用户后台配置的模型(source !== builtin,
+          // 即从网关拉取/自定义的),隐藏 model-bank 内置目录模型。
+          // enabledAiModels state 保持全量,供 chat 能力检测 / tryMatchingProviderFrom 等运行时使用。
+          const userConfiguredAiModels = data.enabledAiModels.filter(
+            (model) => model.source !== AiModelSourceEnum.Builtin,
+          );
+          const userChatProviders = data.enabledChatAiProviders.filter((p) =>
+            userConfiguredAiModels.some((m) => m.providerId === p.id && m.type === 'chat'),
+          );
+          const userImageProviders = data.enabledImageAiProviders.filter((p) =>
+            userConfiguredAiModels.some((m) => m.providerId === p.id && m.type === 'image'),
+          );
+          const userVideoProviders = data.enabledVideoAiProviders.filter((p) =>
+            userConfiguredAiModels.some((m) => m.providerId === p.id && m.type === 'video'),
+          );
+          const userEmbeddingProviders = enabledEmbeddingAiProviders.filter((p) =>
+            userConfiguredAiModels.some((m) => m.providerId === p.id && m.type === 'embedding'),
+          );
+
           // Build model lists with proper async handling
           const [
             enabledChatModelList,
@@ -561,10 +580,10 @@ export class AiProviderActionImpl {
             enabledImageModelList,
             enabledVideoModelList,
           ] = await Promise.all([
-            buildChatProviderModelLists(data.enabledChatAiProviders, data.enabledAiModels),
-            buildEmbeddingProviderModelLists(enabledEmbeddingAiProviders, data.enabledAiModels),
-            buildImageProviderModelLists(data.enabledImageAiProviders, data.enabledAiModels),
-            buildVideoProviderModelLists(data.enabledVideoAiProviders, data.enabledAiModels),
+            buildChatProviderModelLists(userChatProviders, userConfiguredAiModels),
+            buildEmbeddingProviderModelLists(userEmbeddingProviders, userConfiguredAiModels),
+            buildImageProviderModelLists(userImageProviders, userConfiguredAiModels),
+            buildVideoProviderModelLists(userVideoProviders, userConfiguredAiModels),
           ]);
 
           return {

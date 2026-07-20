@@ -301,6 +301,8 @@ const PromptInput = ({ showTitle = false }: PromptInputProps) => {
   const { maxFileSize: imageUrlMaxFileSize } = useVideoGenerationConfigParam('imageUrl');
   const { value: endImageUrl, setValue: setEndImageUrl } =
     useVideoGenerationConfigParam('endImageUrl');
+  const { value: mediaUrl, setValue: setMediaUrl } =
+    useVideoGenerationConfigParam('mediaUrl');
   const isCreating = useVideoStore(createVideoSelectors.isCreating);
   const createVideo = useVideoStore((s) => s.createVideo);
   const setModelAndProviderOnSelect = useVideoStore((s) => s.setModelAndProviderOnSelect);
@@ -323,6 +325,7 @@ const PromptInput = ({ showTitle = false }: PromptInputProps) => {
   const isSupportImageUrl = useVideoStore(isSupportedParamSelector('imageUrl'));
   const isSupportImageUrls = useVideoStore(isSupportedParamSelector('imageUrls'));
   const isSupportEndImageUrl = useVideoStore(isSupportedParamSelector('endImageUrl'));
+  const isSupportMediaUrl = useVideoStore(isSupportedParamSelector('mediaUrl'));
   const isSupportAspectRatio = useVideoStore(isSupportedParamSelector('aspectRatio'));
   const isSupportResolution = useVideoStore(isSupportedParamSelector('resolution'));
   const isSupportSize = useVideoStore(isSupportedParamSelector('size'));
@@ -393,7 +396,7 @@ const PromptInput = ({ showTitle = false }: PromptInputProps) => {
     }
   }, [promptParam, isLogin, canCreate, setValue, setPromptParam, createVideo]);
 
-  const showInlineFrames = isSupportImageUrl || isSupportImageUrls || isSupportEndImageUrl;
+  const showInlineFrames = isSupportImageUrl || isSupportImageUrls || isSupportEndImageUrl || isSupportMediaUrl;
   const framePreviewUrls = useMemo(
     () => [imageUrl, ...(imageUrls ?? [])].filter(Boolean) as string[],
     [imageUrl, imageUrls],
@@ -470,6 +473,19 @@ const PromptInput = ({ showTitle = false }: PromptInputProps) => {
     [canCreate, setEndImageUrl],
   );
 
+  const handleMediaUrlChange = useCallback(
+    (data: string | { dimensions?: { height: number; width: number }; url: string } | null) => {
+      if (!canCreate) return;
+      if (data === null) {
+        setMediaUrl(null as any);
+        return;
+      }
+      const url = typeof data === 'string' ? data : data?.url;
+      setMediaUrl((url ?? null) as any);
+    },
+    [canCreate, setMediaUrl],
+  );
+
   return (
     <Flexbox gap={32} width={'100%'}>
       {showTitle && <PromptTitle />}
@@ -489,11 +505,14 @@ const PromptInput = ({ showTitle = false }: PromptInputProps) => {
                 imageUrl={imageUrl}
                 imageUrls={imageUrls}
                 isSupportEndImage={isSupportEndImageUrl}
+                isSupportMediaUrl={isSupportMediaUrl}
                 maxCount={maxCount}
                 maxFileSize={imageUrlsMaxFileSize ?? imageUrlMaxFileSize}
+                mediaUrl={mediaUrl}
                 uploadingPreviews={uploadingPreviews}
                 onEndImageChange={handleEndImageChange}
                 onImageUrlsChange={handleAddImage}
+                onMediaUrlChange={handleMediaUrlChange}
                 onRemoveImageUrl={handleRemoveImage}
                 onUploadFiles={handleUploadFiles}
                 onImageChange={(data) => {

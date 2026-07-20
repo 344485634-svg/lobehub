@@ -4,7 +4,7 @@ import { type ComponentType, type CSSProperties } from 'react';
 import { useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
-import { MORE_FILE_PREVIEW_REQUEST_URL } from '@/const/url';
+import { openFeedbackModal } from '@/components/FeedbackModal';
 import { downloadFile } from '@/utils/client/downloadFile';
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
@@ -39,9 +39,9 @@ const NotSupport: ComponentType<NotSupportProps> = ({ fileName, url, style }) =>
               此文件格式暂不支持在线预览，如有预览诉求，欢迎
               <a
                 aria-label={'todo'}
-                href={MORE_FILE_PREVIEW_REQUEST_URL}
-                rel="noreferrer"
-                target="_blank"
+                onClick={() => {
+                  openFeedbackModal();
+                }}
               >
                 反馈给我们
               </a>

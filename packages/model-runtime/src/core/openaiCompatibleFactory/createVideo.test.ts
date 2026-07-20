@@ -56,6 +56,7 @@ describe('createOpenAICompatibleVideo', () => {
           model: 'sora-2.0',
           prompt: 'A beautiful sunset over the ocean',
         }),
+        signal: expect.any(AbortSignal),
       });
 
       expect(result).toEqual({ inferenceId: 'video-task-123' });
@@ -121,24 +122,41 @@ describe('createOpenAICompatibleVideo', () => {
       expect(body.input_reference).toEqual({ image_url: 'https://example.com/image.jpg' });
     });
 
-    it('should preserve string input_reference for non-OpenAI compatible providers', async () => {
-      global.fetch = vi.fn().mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ id: 'video-task-vllm-img' }),
-      });
+    it('should send reference_contents with structured refs for non-OpenAI compatible providers', async () => {
+      // 非OpenAI网关:用 reference_contents 数组,type=image/video,name=人物/动作
+      const imgBuf = new Uint8Array([1, 2, 3]);
+      global.fetch = vi
+        .fn()
+        .mockResolvedValueOnce({
+          // 1st call: fetchImageAsDataUrl 取回图片
+          arrayBuffer: async () => imgBuf.buffer,
+          headers: { get: () => 'image/jpeg' },
+          ok: true,
+        })
+        .mockResolvedValueOnce({
+          // 2nd call: video POST
+          json: async () => ({ id: 'video-task-vllm-img' }),
+          ok: true,
+        });
 
       const payload: CreateVideoPayload = {
         model: 'vllm-omni',
         params: {
-          prompt: 'Continue this scene',
           imageUrl: 'https://example.com/image.jpg',
+          prompt: 'Continue this scene',
         },
       };
 
       await createOpenAICompatibleVideo(payload, mockVllmOptions);
 
-      const body = JSON.parse((global.fetch as any).mock.calls[0][1].body);
-      expect(body.input_reference).toBe('https://example.com/image.jpg');
+      const body = JSON.parse((global.fetch as any).mock.calls[1][1].body);
+      expect(body.input_reference).toBeUndefined();
+      expect(body.first_frame).toBeUndefined();
+      expect(body.images).toBeUndefined();
+      expect(body.reference_contents).toBeInstanceOf(Array);
+      expect(body.reference_contents[0].type).toBe('image');
+      expect(body.reference_contents[0].name).toBe('人物');
+      expect(body.reference_contents[0].media_url).toMatch(/^data:image\/jpeg;base64,/);
     });
   });
 

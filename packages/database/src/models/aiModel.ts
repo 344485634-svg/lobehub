@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, isNull, not, sql } from 'drizzle-orm';
 import type {
   AiModelSortMap,
   AiProviderModelListItem,
@@ -293,7 +293,7 @@ export class AiModelModel {
       return record;
     });
 
-    return this.db
+    const result = await this.db
       .insert(aiModels)
       .values(records)
       .onConflictDoUpdate({
@@ -355,6 +355,31 @@ export class AiModelModel {
         ...this.conflictTarget(),
       })
       .returning();
+
+    // Auto-disable stale remote models: models in DB for this provider that are
+    // source='remote' and enabled=true but NOT in the current fetch list — they've
+    // been removed from the gateway. Only disable (not delete) in case the model
+    // returns later. Preserves manually-added 'custom'/'builtin' models.
+    const fetchedIds = models.map((m) => m.id);
+    if (fetchedIds.length > 0) {
+      await this.db
+        .update(aiModels)
+        .set({ enabled: false, updatedAt: new Date() })
+        .where(
+          and(
+            eq(aiModels.providerId, providerId),
+            eq(aiModels.userId, this.userId),
+            this.workspaceId
+              ? eq(aiModels.workspaceId, this.workspaceId)
+              : isNull(aiModels.workspaceId),
+            eq(aiModels.source, AiModelSourceEnum.Remote),
+            eq(aiModels.enabled, true),
+            not(inArray(aiModels.id, fetchedIds)),
+          ),
+        );
+    }
+
+    return result;
   };
 
   batchToggleAiModels = async (providerId: string, models: string[], enabled: boolean) => {

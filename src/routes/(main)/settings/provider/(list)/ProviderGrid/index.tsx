@@ -21,12 +21,18 @@ type ListProps = {
 const List = memo((props: ListProps) => {
   const { onProviderSelect } = props;
   const { t } = useTranslation('modelProvider');
-  const enabledList = useAiInfraStore(aiProviderSelectors.enabledAiProviderList, isEqual);
-  const disabledList = useAiInfraStore(aiProviderSelectors.disabledAiProviderList, isEqual);
+  // 商业化白标:设置页服务商列表仅显示 newapi(LIUMA 官方 API)。
+  // 只在 UI 层过滤,不动 selectors,以免影响模型选择器等其它处的已启用模型调用。
+  const enabledList = useAiInfraStore(aiProviderSelectors.enabledAiProviderList, isEqual).filter(
+    (p) => p.id === 'newapi',
+  );
+  const disabledList = useAiInfraStore(aiProviderSelectors.disabledAiProviderList, isEqual).filter(
+    (p) => p.id === 'newapi',
+  );
   const disabledCustomList = useAiInfraStore(
     aiProviderSelectors.disabledCustomAiProviderList,
     isEqual,
-  );
+  ).filter((p) => p.id === 'newapi');
   const [initAiProviderList] = useAiInfraStore((s) => [s.initAiProviderList]);
   // Own the same list fetch (SWR-deduped with ProviderMenu) so a failed load
   // shows error + Retry here too, instead of a permanent skeleton grid
@@ -93,19 +99,21 @@ const List = memo((props: ListProps) => {
           </Grid>
         </Flexbox>
       )}
-      <Flexbox gap={24}>
-        <Flexbox horizontal align={'center'} gap={8}>
-          <Text strong style={{ fontSize: 18 }}>
-            {t('list.title.disabled')}
-          </Text>
-          <Tag>{disabledList.length}</Tag>
+      {disabledList.length > 0 && (
+        <Flexbox gap={24}>
+          <Flexbox horizontal align={'center'} gap={8}>
+            <Text strong style={{ fontSize: 18 }}>
+              {t('list.title.disabled')}
+            </Text>
+            <Tag>{disabledList.length}</Tag>
+          </Flexbox>
+          <Grid gap={16} rows={3}>
+            {disabledList.map((item) => (
+              <Card {...item} key={item.id} onProviderSelect={onProviderSelect} />
+            ))}
+          </Grid>
         </Flexbox>
-        <Grid gap={16} rows={3}>
-          {disabledList.map((item) => (
-            <Card {...item} key={item.id} onProviderSelect={onProviderSelect} />
-          ))}
-        </Grid>
-      </Flexbox>
+      )}
     </AsyncBoundary>
   );
 });

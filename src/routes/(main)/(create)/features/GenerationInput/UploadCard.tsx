@@ -130,6 +130,7 @@ export const uploadCardStyles = createStaticStyles(({ css }) => ({
 }));
 
 interface UploadCardProps {
+  accept?: string;
   className?: string;
   closeClassName?: string;
   imageUrl?: string | null;
@@ -161,6 +162,7 @@ const UploadCard = memo<UploadCardProps>(
     onRemove,
     maxFileSize,
     multiple = false,
+    accept = 'image/*',
     className,
     closeClassName,
     style,
@@ -225,7 +227,7 @@ const UploadCard = memo<UploadCardProps>(
 
     const fileInput = (
       <input
-        accept="image/*"
+        accept={accept}
         multiple={multiple}
         ref={inputRef}
         style={{ display: 'none' }}

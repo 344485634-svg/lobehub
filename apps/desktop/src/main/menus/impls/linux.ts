@@ -196,19 +196,6 @@ export class LinuxMenu extends BaseMenuPlatform implements IMenuPlatform {
         label: t('help.title'),
         submenu: [
           {
-            click: async () => {
-              await shell.openExternal('https://lobehub.com');
-            },
-            label: t('help.visitWebsite'),
-          },
-          {
-            click: async () => {
-              await shell.openExternal('https://github.com/lobehub/lobe-chat');
-            },
-            label: t('help.githubRepo'),
-          },
-          { type: 'separator' },
-          {
             click: () => {
               const heteroAgentPath = path.join(this.app.appStoragePath, HETERO_AGENT_DIR);
               console.info(`[Menu] Opening HeteroAgent directory: ${heteroAgentPath}`);

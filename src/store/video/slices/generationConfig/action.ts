@@ -18,6 +18,7 @@ import {
   preserveSupportedParams,
 } from '../../../utils/preserveSupportedParams';
 import type { VideoStore } from '../../store';
+import { DEFAULT_VIDEO_GENERATION_PARAMETERS, initialGenerationConfigState } from './initialState';
 
 export function getVideoModelAndDefaults(model: string, provider: string) {
   const enabledVideoModelList = aiProviderSelectors.enabledVideoModelList(getAiInfraStoreState());
@@ -38,8 +39,18 @@ export function getVideoModelAndDefaults(model: string, provider: string) {
     );
   }
 
-  const parametersSchema = activeModel.parameters as VideoModelParamsSchema;
-  const defaultValues = extractVideoDefaultValues(parametersSchema);
+  // 模型可能缺少有效视频参数 schema(如从网关拉取、DB parameters 为空 {} 的 sora-2),
+  // 此时 extractVideoDefaultValues 会因 VideoModelParamsMetaSchema 必填 prompt 而抛错,
+  // 导致选模型/生成都失败。回退到默认视频 schema,使选择与生成可用(封闭产品只走自有网关模型)。
+  let parametersSchema: VideoModelParamsSchema;
+  let defaultValues: RuntimeVideoGenParams;
+  try {
+    parametersSchema = (activeModel.parameters ?? undefined) as VideoModelParamsSchema;
+    defaultValues = extractVideoDefaultValues(parametersSchema);
+  } catch {
+    parametersSchema = initialGenerationConfigState.parametersSchema;
+    defaultValues = DEFAULT_VIDEO_GENERATION_PARAMETERS;
+  }
 
   return { activeModel, defaultValues, parametersSchema };
 }

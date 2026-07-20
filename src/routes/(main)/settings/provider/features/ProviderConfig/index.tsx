@@ -466,7 +466,13 @@ const ProviderConfig = memo<ProviderConfigProps>(
           </Flexbox>
         ) : (
           <>
-            {title ?? <ProviderCombine provider={id} size={24} />}
+            {id === 'newapi' ? (
+              <>
+                <Avatar avatar={'/logo.png'} shape={'circle'} size={32} title={name || id} /> {name}
+              </>
+            ) : (
+              title ?? <ProviderCombine provider={id} size={24} />
+            )}
             <Tooltip title={t('providerModels.config.helpDoc')}>
               <a
                 href={urlJoin(BASE_PROVIDER_DOC_URL, id)}

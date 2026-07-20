@@ -31,6 +31,7 @@ export const useVideoReferenceUpload = () => {
   const isSupportImageUrl = useVideoStore(isSupportedParamSelector('imageUrl'));
   const isSupportImageUrls = useVideoStore(isSupportedParamSelector('imageUrls'));
   const isSupportEndImageUrl = useVideoStore(isSupportedParamSelector('endImageUrl'));
+  const isSupportMediaUrl = useVideoStore(isSupportedParamSelector('mediaUrl'));
 
   const {
     value: imageUrl,
@@ -48,6 +49,11 @@ export const useVideoReferenceUpload = () => {
     setValue: setEndImageUrl,
     maxFileSize: endImageUrlMaxFileSize,
   } = useVideoGenerationConfigParam('endImageUrl');
+  const {
+    value: mediaUrl,
+    setValue: setMediaUrl,
+    maxFileSize: mediaUrlMaxFileSize,
+  } = useVideoGenerationConfigParam('mediaUrl');
 
   const uploadingPreviews = useVideoStore(videoGenerationConfigSelectors.uploadingImagePreviews);
   const addUploadingImagePreviews = useVideoStore((s) => s.addUploadingImagePreviews);
@@ -89,18 +95,32 @@ export const useVideoReferenceUpload = () => {
         values: endImageUrl ? [endImageUrl] : [],
       });
     }
+    if (isSupportMediaUrl) {
+      list.push({
+        capacity: 1,
+        getCurrentValues: () => {
+          const v = readParams()?.mediaUrl;
+          return v ? [v] : [];
+        },
+        set: (urls) => setMediaUrl((urls[0] ?? null) as any),
+        values: mediaUrl ? [mediaUrl] : [],
+      });
+    }
     return list;
   }, [
     isSupportImageUrl,
     isSupportImageUrls,
     isSupportEndImageUrl,
+    isSupportMediaUrl,
     imageUrl,
     imageUrls,
     endImageUrl,
+    mediaUrl,
     imageUrlsMaxCount,
     setImageUrl,
     setImageUrls,
     setEndImageUrl,
+    setMediaUrl,
   ]);
 
   const onLimitExceeded = useCallback(
@@ -113,7 +133,7 @@ export const useVideoReferenceUpload = () => {
   const { canDropImage, handleUploadFiles, maxCount, maxFileSize } = useReferenceImageUpload({
     addUploadingPreviews: addUploadingImagePreviews,
     canCreate,
-    maxFileSize: imageUrlsMaxFileSize ?? imageUrlMaxFileSize ?? endImageUrlMaxFileSize,
+    maxFileSize: mediaUrlMaxFileSize ?? imageUrlsMaxFileSize ?? imageUrlMaxFileSize ?? endImageUrlMaxFileSize,
     onLimitExceeded,
     removeUploadingPreviews: removeUploadingImagePreviews,
     slots,

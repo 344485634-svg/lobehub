@@ -1,5 +1,4 @@
 import createDebug from 'debug';
-import { ModelProvider } from 'model-bank';
 
 import type {
   CreateVideoPayload,
@@ -10,6 +9,23 @@ import { resolveMappedModelId } from '../../utils/modelIdMapping';
 import type { CreateVideoOptions } from '../openaiCompatibleFactory';
 
 const log = createDebug('lobe-video:openai-compatible');
+
+/**
+ * 将图片 URL 取回并转为 base64 data URL。
+ * 用于"本地数据 + 远程云 API"架构(如桌面端):参考图在本地(localhost S3),
+ * 远程网关无法通过 http URL 下载本机图片,故内联 base64 发送,网关免下载。
+ */
+async function fetchImageAsDataUrl(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const buf = Buffer.from(await res.arrayBuffer());
+    const mime = res.headers.get('content-type') || 'image/png';
+    return `data:${mime};base64,${buf.toString('base64')}`;
+  } catch {
+    return null;
+  }
+}
 
 interface OpenAIVideoStatusResponse {
   completed_at?: number;
@@ -129,7 +145,7 @@ export async function createOpenAICompatibleVideo(
 ): Promise<CreateVideoResponse> {
   const { model, params } = payload;
   const requestModel = resolveMappedModelId(model, options);
-  const { prompt, imageUrl, size, duration } = params;
+  const { prompt, imageUrl, imageUrls, endImageUrl, mediaUrl, size, duration, aspectRatio } = params;
 
   log('Creating video with OpenAI-compatible API - model: %s, params: %O', requestModel, params);
 
@@ -151,12 +167,57 @@ export async function createOpenAICompatibleVideo(
     body['size'] = size;
   }
 
-  // Image-to-video support
-  if (imageUrl) {
-    // OpenAI JSON requests reject bare strings, for example:
-    // `input_reference: "https://example.com/image.jpg"`.
-    body['input_reference'] =
-      options.provider === ModelProvider.OpenAI ? { image_url: imageUrl } : imageUrl;
+  // Image-to-video support: 全能参考模式
+  // imageUrl → first_frame(首帧), imageUrls → images(多参考图), endImageUrl → last_frame(尾帧)
+  const referenceImage = imageUrl || imageUrls?.[0];
+  const isRealOpenAIVideoAPI = options.baseURL?.includes('api.openai.com');
+
+  if (isRealOpenAIVideoAPI) {
+    // 真·OpenAI Sora API:input_reference 对象
+    if (referenceImage) {
+      body['input_reference'] = { image_url: referenceImage };
+    }
+    if (endImageUrl) {
+      body['last_frame'] = { image_url: endImageUrl };
+    }
+  } else {
+    // OpenAI-compatible 网关(如 newapi/api.liuma.ai 远程):
+    // 参考图常在本地(localhost S3),远程网关无法下载 → 转 base64 data URL 内联发送。
+    // 网关用 reference_contents 数组接收参考素材(每项含 type/media_url/name)。
+    // type=image(图片参考), type=video(视频参考)。
+    const referenceContents: Array<{
+      media_url: string;
+      name: string;
+      type: string;
+    }> = [];
+
+    // 首帧图片 → reference_contents type=image name=人物
+    if (imageUrl) {
+      const dataUrl = await fetchImageAsDataUrl(imageUrl);
+      if (dataUrl) referenceContents.push({ media_url: dataUrl, name: '人物', type: 'image' });
+    }
+    // 多参考图 → reference_contents type=image name=参考图N
+    for (const url of imageUrls ?? []) {
+      const dataUrl = await fetchImageAsDataUrl(url);
+      if (dataUrl)
+        referenceContents.push({ media_url: dataUrl, name: '参考图', type: 'image' });
+    }
+    // 尾帧图片 → reference_contents type=image name=尾帧
+    if (endImageUrl) {
+      const dataUrl = await fetchImageAsDataUrl(endImageUrl);
+      if (dataUrl) referenceContents.push({ media_url: dataUrl, name: '尾帧', type: 'image' });
+    }
+    // 视频参考 → reference_contents type=video name=动作
+    // 网关对 video 类型只接受 URL(不支持 base64 data URL),直接发原始 URL
+    if (mediaUrl) {
+      referenceContents.push({ media_url: mediaUrl, name: '动作', type: 'video' });
+    }
+
+    if (referenceContents.length > 0) body['reference_contents'] = referenceContents;
+
+    // 网关用 aspect_ratio(非 size)和 duration(数字,非 seconds 字符串)
+    if (aspectRatio) body['aspect_ratio'] = aspectRatio;
+    if (duration !== undefined && duration !== null) body['duration'] = duration;
   }
 
   log('OpenAI-compatible video API request body: %O', body);
@@ -168,6 +229,7 @@ export async function createOpenAICompatibleVideo(
       'Content-Type': 'application/json',
     },
     method: 'POST',
+    signal: AbortSignal.timeout(300000), // 5 分钟超时(视频生成提交可能较慢)
   });
 
   if (!response.ok) {
