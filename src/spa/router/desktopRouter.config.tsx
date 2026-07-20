@@ -532,6 +532,39 @@ export const sharedMainAreaChildren: RouteObject[] = [
     path: 'memory',
   },
 
+  // Admin routes
+  {
+    children: [
+      {
+        element: dynamicElement(
+          () => import('@/routes/(main)/admin'),
+          'Desktop > Admin > Dashboard',
+        ),
+        index: true,
+      },
+      {
+        element: dynamicElement(
+          () => import('@/routes/(main)/admin/users'),
+          'Desktop > Admin > Users',
+        ),
+        path: 'users',
+      },
+      {
+        element: dynamicElement(
+          () => import('@/routes/(main)/admin/users/[id]'),
+          'Desktop > Admin > User Detail',
+        ),
+        path: 'users/:id',
+      },
+    ],
+    element: dynamicLayout(
+      () => import('@/routes/(main)/admin/_layout'),
+      'Desktop > Admin > Layout',
+    ),
+    errorElement: <ErrorBoundary />,
+    path: 'admin',
+  },
+
   // Video routes
   {
     children: [

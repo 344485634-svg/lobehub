@@ -50,6 +50,10 @@ import WorkspaceSlugSettingsSkillPage from '@/routes/(main)/[workspaceSlug]/sett
 import WorkspaceSlugSettingsStatsPage from '@/routes/(main)/[workspaceSlug]/settings/stats';
 import WorkspaceSlugSettingsStoragePage from '@/routes/(main)/[workspaceSlug]/settings/storage';
 import WorkspaceSlugSettingsUsagePage from '@/routes/(main)/[workspaceSlug]/settings/usage';
+import AdminDashboardPage from '@/routes/(main)/admin';
+import DesktopAdminLayout from '@/routes/(main)/admin/_layout';
+import AdminUsersPage from '@/routes/(main)/admin/users';
+import AdminUserDetailPage from '@/routes/(main)/admin/users/[id]';
 // Pages — sync import
 import AgentPage from '@/routes/(main)/agent';
 import DesktopChatLayout from '@/routes/(main)/agent/_layout';
@@ -481,6 +485,27 @@ export const sharedMainAreaChildren: RouteObject[] = [
     element: <DesktopMemoryLayout />,
     errorElement: <ErrorBoundary />,
     path: 'memory',
+  },
+
+  // Admin routes
+  {
+    children: [
+      {
+        element: <AdminDashboardPage />,
+        index: true,
+      },
+      {
+        element: <AdminUsersPage />,
+        path: 'users',
+      },
+      {
+        element: <AdminUserDetailPage />,
+        path: 'users/:id',
+      },
+    ],
+    element: <DesktopAdminLayout />,
+    errorElement: <ErrorBoundary />,
+    path: 'admin',
   },
 
   // Video routes
