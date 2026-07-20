@@ -24,15 +24,23 @@ const AdminUsersPage: FC = () => {
   const ban = async (userId: string) => {
     const reason = window.prompt(t('admin.banReasonPrompt', { defaultValue: 'Ban reason:' }));
     if (reason === null) return;
-    await lambdaClient.admin.banUser.mutate({ reason: reason || 'N/A', userId });
-    message.success(t('admin.banned', { defaultValue: 'User banned' }));
-    mutate();
+    try {
+      await lambdaClient.admin.banUser.mutate({ reason: reason || 'N/A', userId });
+      message.success(t('admin.banned', { defaultValue: 'User banned' }));
+      mutate();
+    } catch (e: any) {
+      message.error(e?.message ?? t('admin.actionFailed', { defaultValue: 'Action failed' }));
+    }
   };
 
   const unban = async (userId: string) => {
-    await lambdaClient.admin.unbanUser.mutate({ userId });
-    message.success(t('admin.unbanned', { defaultValue: 'User unbanned' }));
-    mutate();
+    try {
+      await lambdaClient.admin.unbanUser.mutate({ userId });
+      message.success(t('admin.unbanned', { defaultValue: 'User unbanned' }));
+      mutate();
+    } catch (e: any) {
+      message.error(e?.message ?? t('admin.actionFailed', { defaultValue: 'Action failed' }));
+    }
   };
 
   const toggleRole = async (userId: string, current: string | null) => {
@@ -40,9 +48,13 @@ const AdminUsersPage: FC = () => {
     modal.confirm({
       content: t('admin.confirmRole', { defaultValue: `Set role to ${role}?`, role }),
       onOk: async () => {
-        await lambdaClient.admin.updateUserRole.mutate({ role, userId });
-        message.success(t('admin.roleUpdated', { defaultValue: 'Role updated' }));
-        mutate();
+        try {
+          await lambdaClient.admin.updateUserRole.mutate({ role, userId });
+          message.success(t('admin.roleUpdated', { defaultValue: 'Role updated' }));
+          mutate();
+        } catch (e: any) {
+          message.error(e?.message ?? t('admin.actionFailed', { defaultValue: 'Action failed' }));
+        }
       },
     });
   };

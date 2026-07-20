@@ -14,11 +14,17 @@ const AdminUserDetailPage: FC = () => {
   const { t } = useTranslation('common');
   const { id } = useParams<{ id: string }>();
 
-  const { data, isLoading } = useSWR(id ? ['admin-user', id] : null, () =>
+  const { data, isLoading, error } = useSWR(id ? ['admin-user', id] : null, () =>
     lambdaClient.admin.getUserDetail.query({ userId: id! }),
   );
 
-  if (isLoading || !data) return <Loading debugId="AdminUserDetail" />;
+  if (isLoading) return <Loading debugId="AdminUserDetail" />;
+  if (error || !data)
+    return (
+      <Flexbox padding={24}>
+        {error?.message ?? t('admin.userNotFound', { defaultValue: 'User not found' })}
+      </Flexbox>
+    );
 
   return (
     <Flexbox padding={24}>
