@@ -8,7 +8,7 @@ import type {
 } from '@lobechat/types';
 import { TRPCError } from '@trpc/server';
 import dayjs from 'dayjs';
-import { and, asc, eq, gt, inArray, max, or, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gt, ilike, inArray, max, or, sql } from 'drizzle-orm';
 import type { PartialDeep } from 'type-fest';
 
 import { merge } from '@/utils/merge';
@@ -485,5 +485,70 @@ export class UserModel {
       responseLanguage: general?.responseLanguage || 'en-US',
       userName: user?.fullName || user?.firstName || 'User',
     };
+  };
+
+  static listUsers = async (
+    db: LobeChatDatabase,
+    params: { bannedOnly?: boolean; page: number; pageSize: number; search?: string },
+  ) => {
+    const { page, pageSize, search, bannedOnly } = params;
+
+    const conditions = [];
+    if (search) {
+      conditions.push(or(ilike(users.email, `%${search}%`), ilike(users.username, `%${search}%`)));
+    }
+    if (bannedOnly) {
+      conditions.push(eq(users.banned, true));
+    }
+    const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const [{ total }] = await db
+      .select({ total: count() })
+      .from(users)
+      .where(where);
+
+    const rows = await db
+      .select({
+        banExpires: users.banExpires,
+        banReason: users.banReason,
+        banned: users.banned,
+        createdAt: users.createdAt,
+        email: users.email,
+        emailVerified: users.emailVerified,
+        fullName: users.fullName,
+        id: users.id,
+        lastActiveAt: users.lastActiveAt,
+        role: users.role,
+        username: users.username,
+      })
+      .from(users)
+      .where(where)
+      .orderBy(desc(users.createdAt))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize);
+
+    return { total: Number(total), users: rows };
+  };
+
+  static getUserDetailById = async (db: LobeChatDatabase, id: string) => {
+    const [row] = await db
+      .select({
+        banExpires: users.banExpires,
+        banReason: users.banReason,
+        banned: users.banned,
+        createdAt: users.createdAt,
+        email: users.email,
+        emailVerified: users.emailVerified,
+        fullName: users.fullName,
+        id: users.id,
+        lastActiveAt: users.lastActiveAt,
+        role: users.role,
+        username: users.username,
+      })
+      .from(users)
+      .where(eq(users.id, id))
+      .limit(1);
+
+    return row;
   };
 }
