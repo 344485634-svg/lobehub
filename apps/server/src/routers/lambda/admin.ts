@@ -12,7 +12,7 @@ const adminProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) =>
   if (!currentUser || currentUser.role !== 'admin') {
     throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin access required' });
   }
-  return opts.next({ ctx: { userModel: new UserModel(ctx.serverDB, ctx.userId) } });
+  return opts.next();
 });
 
 const assertNotSelf = (targetUserId: string, currentUserId: string) => {
