@@ -57,7 +57,12 @@ export async function fetchImageFromUrl(
     // are read and returned, other responses leak status/statusText for blind probing.
     // ssrfSafeFetch blocks private/link-local IPs at connect time and on every redirect hop.
     // See GHSA-53h9-fmjf-frwr / #16536.
-    const response = await ssrfSafeFetch(url, { headers: fetchHeaders });
+    const response = await ssrfSafeFetch(url, {
+      // 30 s hard cap: CDN DNS round-robin can land on a dead node;
+      // without a timeout Node.js hangs until OS-level ETIMEDOUT (~minutes).
+      headers: fetchHeaders,
+      signal: AbortSignal.timeout(30_000),
+    });
     if (!response.ok) {
       throw new Error(
         `Failed to fetch image from ${url}: ${response.status} ${response.statusText}`,

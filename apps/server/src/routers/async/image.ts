@@ -202,44 +202,109 @@ export const imageRouter = router({
             }
           }
 
-          const { image, thumbnailImage } = await generationService.transformImageForGeneration(
-            imageUrl,
-            authHeaders,
-          );
+          // Download the generated image from the CDN and upload to local storage.
+          // CDN uses DNS round-robin; a dead node causes ETIMEDOUT. We add a 30 s
+          // timeout in fetchImageFromUrl, then fall back to storing the original
+          // CDN URL directly so the task succeeds even when a node is unreachable.
+          let uploadedImageUrl: string;
+          let thumbnailImageUrl: string;
+          let assetHeight: number;
+          let assetWidth: number;
+          let fileHash: string | undefined;
+          let fileType: string;
+          let fileSize = 0;
+          let fileExtension = 'png';
+          let assetMetaHeight = 0;
+          let assetMetaWidth = 0;
 
-          // Check if operation has been cancelled
-          checkAbortSignal(signal);
+          try {
+            const { image, thumbnailImage } = await generationService.transformImageForGeneration(
+              imageUrl,
+              authHeaders,
+            );
 
-          log('Uploading image for generation');
-          const { imageUrl: uploadedImageUrl, thumbnailImageUrl } =
-            await generationService.uploadImageForGeneration(image, thumbnailImage);
+            checkAbortSignal(signal);
 
-          // Check if operation has been cancelled
+            log('Uploading image for generation');
+            const uploadResult = await generationService.uploadImageForGeneration(
+              image,
+              thumbnailImage,
+            );
+            uploadedImageUrl = uploadResult.imageUrl;
+            thumbnailImageUrl = uploadResult.thumbnailImageUrl;
+
+            assetHeight = height ?? image.height;
+            assetWidth = width ?? image.width;
+            assetMetaHeight = image.height;
+            assetMetaWidth = image.width;
+            fileHash = image.hash;
+            fileType = image.mime;
+            fileSize = image.size;
+            fileExtension = image.extension;
+          } catch (downloadError: any) {
+            // Treat any network-level fetch failure as a transient CDN error.
+            // Abort signals (user cancellation) are re-thrown as-is.
+            const isAbortError =
+              downloadError?.name === 'AbortError' ||
+              downloadError?.name === 'TimeoutError' ||
+              abortController.signal.aborted;
+
+            const isFetchError =
+              !isAbortError &&
+              !imageUrl.startsWith('data:') &&
+              (downloadError?.message?.toLowerCase().includes('fetch failed') ||
+                downloadError?.cause?.code === 'ETIMEDOUT' ||
+                downloadError?.cause?.code === 'ECONNREFUSED' ||
+                downloadError?.cause?.code === 'ENOTFOUND' ||
+                downloadError?.name === 'TimeoutError');
+
+            if (!isFetchError) throw downloadError;
+
+            log(
+              'CDN fetch failed (%s), storing original URL as fallback: %s',
+              downloadError.message,
+              imageUrl,
+            );
+            // Use the CDN URL directly; no local copy or thumbnail this time.
+            uploadedImageUrl = imageUrl;
+            thumbnailImageUrl = imageUrl;
+            // Infer extension from URL path (e.g. ".png" → "png")
+            const urlExt = imageUrl.split('?')[0].split('.').pop();
+            if (urlExt && /^[a-z0-9]{2,5}$/.test(urlExt)) fileExtension = urlExt;
+            fileType =
+              fileExtension === 'jpg' || fileExtension === 'jpeg'
+                ? 'image/jpeg'
+                : fileExtension === 'webp'
+                  ? 'image/webp'
+                  : 'image/png';
+            assetHeight = height ?? 0;
+            assetWidth = width ?? 0;
+          }
+
           checkAbortSignal(signal);
 
           log('Updating generation asset and file');
           await generationModel.createAssetAndFile(
             generationId,
             {
-              height: height ?? image.height,
-              // If imageUrl is base64 data, use uploadedImageUrl instead to avoid storing large base64 in DB
+              height: assetHeight,
               originalUrl: imageUrl.startsWith('data:') ? uploadedImageUrl : imageUrl,
               thumbnailUrl: thumbnailImageUrl,
               type: 'image',
               url: uploadedImageUrl,
-              width: width ?? image.width,
+              width: assetWidth,
             },
             {
-              fileHash: image.hash,
-              fileType: image.mime,
+              fileHash,
+              fileType,
               metadata: {
                 generationId,
-                height: image.height,
+                height: assetMetaHeight,
                 path: uploadedImageUrl,
-                width: image.width,
+                width: assetMetaWidth,
               },
-              name: `${sanitizeFileName(params.prompt, generationId)}.${image.extension}`,
-              size: image.size,
+              name: `${sanitizeFileName(params.prompt, generationId)}.${fileExtension}`,
+              size: fileSize,
               url: uploadedImageUrl,
             },
           );
