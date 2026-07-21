@@ -11,6 +11,8 @@ import { lambdaClient } from '@/libs/trpc/client';
 const AdminProvidersPage: FC = () => {
   const { message } = App.useApp();
   const [editId, setEditId] = useState<string | null>(null);
+  const [modelsProviderId, setModelsProviderId] = useState<string | null>(null);
+  const [fetching, setFetching] = useState(false);
   const [form] = Form.useForm();
 
   const { data, isLoading, mutate } = useSWR('admin-providers', () =>
@@ -20,6 +22,14 @@ const AdminProvidersPage: FC = () => {
   const { data: detail, isLoading: detailLoading } = useSWR(
     editId ? ['admin-provider', editId] : null,
     () => lambdaClient.admin.getProvider.query({ id: editId! }),
+  );
+
+  const {
+    data: models,
+    isLoading: modelsLoading,
+    mutate: mutateModels,
+  } = useSWR(modelsProviderId ? ['admin-provider-models', modelsProviderId] : null, () =>
+    lambdaClient.admin.listProviderModels.query({ providerId: modelsProviderId! }),
   );
 
   useEffect(() => {
@@ -66,7 +76,53 @@ const AdminProvidersPage: FC = () => {
     }
   };
 
-  const columns = [
+  const handleFetchModels = async () => {
+    if (!modelsProviderId) return;
+    setFetching(true);
+    try {
+      const res = await lambdaClient.admin.fetchProviderModels.mutate({
+        providerId: modelsProviderId,
+      });
+      message.success(`已拉取 ${res.count} 个模型`);
+      mutateModels();
+    } catch (e: any) {
+      message.error(e?.message ?? '拉取模型失败，请先检查 Base URL 和 API Key');
+    } finally {
+      setFetching(false);
+    }
+  };
+
+  const handleToggleModel = async (modelId: string, enabled: boolean, type?: string) => {
+    if (!modelsProviderId) return;
+    try {
+      await lambdaClient.admin.toggleProviderModel.mutate({
+        enabled: !enabled,
+        modelId,
+        providerId: modelsProviderId,
+        type,
+      });
+      mutateModels();
+    } catch (e: any) {
+      message.error(e?.message ?? '操作失败');
+    }
+  };
+
+  const handleBatchEnable = async (enabled: boolean) => {
+    if (!modelsProviderId || !models?.length) return;
+    try {
+      await lambdaClient.admin.batchToggleProviderModels.mutate({
+        enabled,
+        modelIds: models.map((m: any) => m.id),
+        providerId: modelsProviderId,
+      });
+      message.success(enabled ? '已全部启用' : '已全部禁用');
+      mutateModels();
+    } catch (e: any) {
+      message.error(e?.message ?? '操作失败');
+    }
+  };
+
+  const providerColumns = [
     {
       dataIndex: 'id',
       key: 'id',
@@ -97,11 +153,71 @@ const AdminProvidersPage: FC = () => {
     {
       key: 'actions',
       render: (_: unknown, row: any) => (
-        <Button size="small" onClick={() => setEditId(row.id)}>
-          配置
-        </Button>
+        <Flexbox horizontal gap={8}>
+          <Button size="small" onClick={() => setEditId(row.id)}>
+            配置
+          </Button>
+          <Button size="small" type="primary" onClick={() => setModelsProviderId(row.id)}>
+            模型列表
+          </Button>
+        </Flexbox>
       ),
       title: '操作',
+    },
+  ];
+
+  const modelColumns = [
+    {
+      dataIndex: 'id',
+      key: 'id',
+      render: (id: string) => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{id}</span>,
+      title: '模型 ID',
+    },
+    {
+      dataIndex: 'displayName',
+      key: 'displayName',
+      render: (name: string, row: any) => name || row.id,
+      title: '显示名称',
+    },
+    {
+      dataIndex: 'type',
+      key: 'type',
+      render: (type: string) => {
+        const map: Record<string, string> = {
+          chat: '对话',
+          embedding: '向量',
+          image: '图片',
+          tts: '语音',
+          video: '视频',
+        };
+        return <Tag>{map[type] || type || '对话'}</Tag>;
+      },
+      title: '类型',
+      width: 90,
+    },
+    {
+      dataIndex: 'source',
+      key: 'source',
+      render: (source: string) => (
+        <Tag color={source === 'remote' ? 'green' : 'default'}>
+          {source === 'remote' ? '上游' : source === 'builtin' ? '内置' : source || '-'}
+        </Tag>
+      ),
+      title: '来源',
+      width: 80,
+    },
+    {
+      dataIndex: 'enabled',
+      key: 'enabled',
+      render: (enabled: boolean, row: any) => (
+        <Switch
+          checked={!!enabled}
+          size="small"
+          onChange={() => handleToggleModel(row.id, !!enabled, row.type)}
+        />
+      ),
+      title: '对用户开放',
+      width: 110,
     },
   ];
 
@@ -109,18 +225,20 @@ const AdminProvidersPage: FC = () => {
     <Flexbox gap={16} padding={24}>
       <Flexbox>
         <div style={{ color: 'var(--lobe-color-text-secondary)', fontSize: 13 }}>
-          配置平台级模型服务商密钥。用户订阅套餐后即可使用，无需自行填写 API Key。
+          1）配置平台级服务商密钥 → 2）拉取上游模型 →
+          3）开启需要开放的模型。用户订阅后可直接调用已开启模型。
         </div>
       </Flexbox>
 
       <Table
-        columns={columns}
+        columns={providerColumns}
         dataSource={data ?? []}
         loading={isLoading}
         pagination={false}
         rowKey="id"
       />
 
+      {/* Provider config modal */}
       <Modal
         destroyOnClose
         confirmLoading={detailLoading}
@@ -160,10 +278,53 @@ const AdminProvidersPage: FC = () => {
               }
             />
           </Form.Item>
-          <Form.Item label="启用" name="enabled" valuePropName="checked">
+          <Form.Item label="启用服务商" name="enabled" valuePropName="checked">
             <Switch />
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* Models management modal */}
+      <Modal
+        destroyOnClose
+        footer={null}
+        open={!!modelsProviderId}
+        title={`模型列表：${modelsProviderId || ''}`}
+        width={900}
+        onCancel={() => setModelsProviderId(null)}
+      >
+        <Flexbox gap={12} style={{ marginTop: 8 }}>
+          <Flexbox horizontal gap={8}>
+            <Button loading={fetching} type="primary" onClick={handleFetchModels}>
+              {fetching ? '拉取中…' : '从上游拉取模型'}
+            </Button>
+            <Button disabled={!models?.length} onClick={() => handleBatchEnable(true)}>
+              全部启用
+            </Button>
+            <Button disabled={!models?.length} onClick={() => handleBatchEnable(false)}>
+              全部禁用
+            </Button>
+            <span
+              style={{
+                color: 'var(--lobe-color-text-secondary)',
+                fontSize: 12,
+                lineHeight: '32px',
+              }}
+            >
+              共 {models?.length ?? 0} 个，已启用{' '}
+              {models?.filter((m: any) => m.enabled).length ?? 0} 个
+            </span>
+          </Flexbox>
+
+          <Table
+            columns={modelColumns}
+            dataSource={models ?? []}
+            loading={modelsLoading || fetching}
+            pagination={{ pageSize: 20 }}
+            rowKey="id"
+            size="small"
+          />
+        </Flexbox>
       </Modal>
     </Flexbox>
   );

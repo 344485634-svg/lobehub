@@ -263,25 +263,91 @@ export class AiInfraRepos {
   getAiProviderRuntimeState = async (
     decryptor?: DecryptUserKeyVaults,
   ): Promise<AiProviderRuntimeState> => {
-    const [result, enabledAiProviders, allModels] = await Promise.all([
+    // Closed product: if current user has no usable credentials, merge admin
+    // platform provider config + models so subscribers can use admin-enabled models.
+    const { eq } = await import('drizzle-orm');
+    const { users } = await import('../../schemas/user');
+
+    const [userRuntimeConfig, userEnabledProviders, userAllModels] = await Promise.all([
       this.aiProviderModel.getAiProviderRuntimeConfig(decryptor),
       this.getUserEnabledProviderList(),
       this.getEnabledModels(false),
     ]);
 
-    const runtimeConfig = result;
-    Object.entries(result).forEach(([key, value]) => {
+    const runtimeConfig = { ...userRuntimeConfig };
+    let enabledAiProviders = userEnabledProviders;
+    let allModels = userAllModels;
+
+    const hasUsableKey = Object.values(userRuntimeConfig).some((cfg) => {
+      const kv = cfg?.keyVaults || {};
+      return Boolean(kv.apiKey || kv.baseURL || kv.endpoint);
+    });
+
+    if (!hasUsableKey) {
+      const admins = await this.db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.role, 'admin'))
+        .limit(5);
+
+      for (const admin of admins) {
+        if (admin.id === this.userId) continue;
+        const adminProviderModel = new AiProviderModel(this.db, admin.id);
+        const adminModelModel = new AiModelModel(this.db, admin.id);
+        const adminRepo = new AiInfraRepos(this.db, admin.id, this.providerConfigs);
+
+        const [adminRuntimeConfig, adminEnabledProviders, adminModels] = await Promise.all([
+          adminProviderModel.getAiProviderRuntimeConfig(decryptor),
+          adminRepo.getUserEnabledProviderList(),
+          adminModelModel.getAllModels(),
+        ]);
+
+        // Prefer admin runtime credentials for providers the user lacks
+        for (const [providerId, cfg] of Object.entries(adminRuntimeConfig)) {
+          const adminKv = cfg?.keyVaults || {};
+          if (!(adminKv.apiKey || adminKv.baseURL || adminKv.endpoint)) continue;
+          const userKv = runtimeConfig[providerId]?.keyVaults || {};
+          if (userKv.apiKey || userKv.baseURL || userKv.endpoint) continue;
+          runtimeConfig[providerId] = merge(runtimeConfig[providerId] || {}, cfg);
+        }
+
+        // Use admin enabled providers if user has none
+        if (enabledAiProviders.length === 0 && adminEnabledProviders.length > 0) {
+          enabledAiProviders = adminEnabledProviders;
+        }
+
+        // Use admin models (including enabled flags) when user has no models
+        if (allModels.length === 0 && adminModels.length > 0) {
+          allModels = adminModels.map((m) => ({
+            ...m,
+            abilities: m.abilities || {},
+            providerId: m.providerId,
+          })) as EnabledAiModel[];
+        }
+
+        if (enabledAiProviders.length > 0 || allModels.length > 0) break;
+      }
+    }
+
+    Object.entries(runtimeConfig).forEach(([key, value]) => {
       runtimeConfig[key] = merge(this.providerConfigs[key] || {}, value);
     });
+
     const enabledAiModels = allModels.filter((model) => model.enabled);
     const enabledChatAiProviders = enabledAiProviders.filter((provider) => {
-      return allModels.some((model) => model.providerId === provider.id && model.type === 'chat');
+      return enabledAiModels.some(
+        (model) => model.providerId === provider.id && model.type === 'chat',
+      );
     });
     const enabledImageAiProviders = enabledAiProviders.filter((provider) => {
-      return allModels.some((model) => model.providerId === provider.id && model.type === 'image');
+      return enabledAiModels.some(
+        (model) => model.providerId === provider.id && model.type === 'image',
+      );
     });
     const enabledVideoAiProviders = enabledAiProviders.filter((provider) => {
-      return allModels.some((model) => model.providerId === provider.id && model.type === 'video');
+      return enabledAiModels.some(
+        (model) => model.providerId === provider.id && model.type === 'video',
+      );
     });
 
     return {

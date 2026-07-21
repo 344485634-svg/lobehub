@@ -3,14 +3,17 @@ import { z } from 'zod';
 
 import { wsCompatProcedure } from '@/business/server/trpc-middlewares/workspaceAuth';
 import { AgentSkillModel } from '@/database/models/agentSkill';
+import { AiModelModel } from '@/database/models/aiModel';
 import { AiProviderModel } from '@/database/models/aiProvider';
 import { ApiKeyModel } from '@/database/models/apiKey';
 import { PlanModel } from '@/database/models/plan';
 import { SubscriptionModel } from '@/database/models/subscription';
 import { UserModel } from '@/database/models/user';
+import { AiInfraRepos } from '@/database/repositories/aiInfra';
 import { router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { KeyVaultsGateKeeper } from '@/server/modules/KeyVaultsEncrypt';
+import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
 import { SkillImporter } from '@/server/services/skill';
 
 const adminProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) => {
@@ -358,6 +361,99 @@ export const adminRouter = router({
     .mutation(async ({ ctx, input }) => {
       const model = new AiProviderModel(ctx.serverDB, ctx.userId);
       await model.toggleProviderEnabled(input.id, input.enabled);
+      return { success: true as const };
+    }),
+
+  // ===== Platform Models (fetch from upstream + enable/disable) =====
+  listProviderModels: adminProcedure
+    .input(z.object({ providerId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const { getServerGlobalConfig } = await import('@/server/globalConfig');
+      const { aiProvider } = await getServerGlobalConfig();
+      const repo = new AiInfraRepos(ctx.serverDB, ctx.userId, aiProvider as any);
+      return repo.getAiProviderModelList(input.providerId);
+    }),
+
+  fetchProviderModels: adminProcedure
+    .input(z.object({ providerId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const runtime = await initModelRuntimeFromDB(ctx.serverDB, ctx.userId, input.providerId);
+      const remoteList = (await runtime.models()) || [];
+
+      const aiModelModel = new AiModelModel(ctx.serverDB, ctx.userId);
+      const existing = await aiModelModel.getModelListByProviderId(input.providerId);
+      const enabledMap = new Map(existing.map((m) => [m.id, m.enabled]));
+
+      const models = remoteList.map((model: any) => {
+        const result: any = {
+          ...model,
+          enabled: enabledMap.get(model.id) ?? model.enabled ?? false,
+          source: 'remote',
+        };
+
+        const hasAnyAbility =
+          model.files ||
+          model.functionCall ||
+          model.imageOutput ||
+          model.reasoning ||
+          model.search ||
+          model.video ||
+          model.vision;
+
+        if (hasAnyAbility) {
+          result.abilities = {
+            files: model.files,
+            functionCall: model.functionCall,
+            imageOutput: model.imageOutput,
+            reasoning: model.reasoning,
+            search: model.search,
+            video: model.video,
+            vision: model.vision,
+          };
+        }
+
+        if (model.type) result.type = model.type;
+        return result;
+      });
+
+      await aiModelModel.batchUpdateAiModels(input.providerId, models);
+      return {
+        count: models.length,
+        models: await aiModelModel.getModelListByProviderId(input.providerId),
+      };
+    }),
+
+  toggleProviderModel: adminProcedure
+    .input(
+      z.object({
+        enabled: z.boolean(),
+        modelId: z.string(),
+        providerId: z.string(),
+        type: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const aiModelModel = new AiModelModel(ctx.serverDB, ctx.userId);
+      await aiModelModel.toggleModelEnabled({
+        enabled: input.enabled,
+        id: input.modelId,
+        providerId: input.providerId,
+        type: input.type as any,
+      });
+      return { success: true as const };
+    }),
+
+  batchToggleProviderModels: adminProcedure
+    .input(
+      z.object({
+        enabled: z.boolean(),
+        modelIds: z.array(z.string()),
+        providerId: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const aiModelModel = new AiModelModel(ctx.serverDB, ctx.userId);
+      await aiModelModel.batchToggleAiModels(input.providerId, input.modelIds, input.enabled);
       return { success: true as const };
     }),
 
