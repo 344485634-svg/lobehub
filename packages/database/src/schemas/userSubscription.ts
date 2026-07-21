@@ -9,7 +9,7 @@ export const userSubscriptions = pgTable(
   'user_subscriptions',
   {
     id: varchar('id', { length: 255 })
-      .$defaultFn(() => idGenerator('subs'))
+      .$defaultFn(() => idGenerator('subscriptions'))
       .primaryKey(),
 
     userId: varchar('user_id', { length: 255 })

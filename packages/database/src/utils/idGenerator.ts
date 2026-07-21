@@ -31,6 +31,8 @@ const prefixes = {
   plugins: 'plg',
   sessionGroups: 'sg',
   sessions: 'ssn',
+  subscriptionPlans: 'plan',
+  subscriptions: 'sub',
   threads: 'thd',
   topics: 'tpc',
   user: 'user',

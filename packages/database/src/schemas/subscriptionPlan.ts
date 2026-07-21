@@ -5,7 +5,7 @@ import { timestamps } from './_helpers';
 
 export const subscriptionPlans = pgTable('subscription_plans', {
   id: varchar('id', { length: 255 })
-    .$defaultFn(() => idGenerator('plans'))
+    .$defaultFn(() => idGenerator('subscriptionPlans'))
     .primaryKey(),
 
   name: varchar('name', { length: 255 }).notNull(),
