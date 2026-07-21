@@ -65,7 +65,8 @@ export const evaluateFeatureFlag = (
 };
 
 export const DEFAULT_FEATURE_FLAGS: IFeatureFlags = {
-  provider_settings: true,
+  // Closed product: providers are managed only in admin console.
+  provider_settings: false,
 
   openai_api_key: true,
   openai_proxy_url: true,
