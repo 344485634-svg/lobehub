@@ -1,6 +1,6 @@
 import type { SkillItem, SkillListItem } from '@lobechat/types';
 import { merge } from '@lobechat/utils';
-import { and, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
+import { and, count, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 
 import type { NewAgentSkill } from '../schemas';
 import { agentSkills } from '../schemas';
@@ -35,6 +35,48 @@ const skillListColumns = {
 };
 
 export class AgentSkillModel {
+  static adminListAll = async (
+    db: LobeChatDatabase,
+    opts: {
+      page: number;
+      pageSize: number;
+      search?: string;
+      source?: 'builtin' | 'market' | 'user';
+      userId?: string;
+    },
+  ): Promise<{ data: Array<SkillListItem & { userId: string }>; total: number }> => {
+    const { page, pageSize, search, source, userId } = opts;
+    const offset = (page - 1) * pageSize;
+
+    const where = and(
+      userId ? eq(agentSkills.userId, userId) : undefined,
+      source ? eq(agentSkills.source, source) : undefined,
+      search
+        ? or(ilike(agentSkills.name, `%${search}%`), ilike(agentSkills.description, `%${search}%`))
+        : undefined,
+    );
+
+    const adminColumns = { ...skillListColumns, userId: agentSkills.userId };
+
+    const [data, totalResult] = await Promise.all([
+      db
+        .select(adminColumns)
+        .from(agentSkills)
+        .where(where)
+        .orderBy(desc(agentSkills.updatedAt))
+        .limit(pageSize)
+        .offset(offset),
+      db.select({ value: count() }).from(agentSkills).where(where),
+    ]);
+
+    return { data, total: totalResult[0].value };
+  };
+
+  static adminDelete = async (db: LobeChatDatabase, id: string): Promise<{ success: boolean }> => {
+    const result = await db.delete(agentSkills).where(eq(agentSkills.id, id));
+    return { success: (result.rowCount ?? 0) > 0 };
+  };
+
   private userId: string;
   private workspaceId?: string;
   private db: LobeChatDatabase;
