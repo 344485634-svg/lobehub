@@ -52,6 +52,10 @@ import WorkspaceSlugSettingsStoragePage from '@/routes/(main)/[workspaceSlug]/se
 import WorkspaceSlugSettingsUsagePage from '@/routes/(main)/[workspaceSlug]/settings/usage';
 import AdminDashboardPage from '@/routes/(main)/admin';
 import DesktopAdminLayout from '@/routes/(main)/admin/_layout';
+import AdminPlansPage from '@/routes/(main)/admin/plans';
+import AdminPlanEditPage from '@/routes/(main)/admin/plans/[id]/edit';
+import AdminPlanCreatePage from '@/routes/(main)/admin/plans/create';
+import AdminSubscriptionsPage from '@/routes/(main)/admin/subscriptions';
 import AdminUsersPage from '@/routes/(main)/admin/users';
 import AdminUserDetailPage from '@/routes/(main)/admin/users/[id]';
 // Pages — sync import
@@ -501,6 +505,22 @@ export const sharedMainAreaChildren: RouteObject[] = [
       {
         element: <AdminUserDetailPage />,
         path: 'users/:id',
+      },
+      {
+        element: <AdminPlansPage />,
+        path: 'plans',
+      },
+      {
+        element: <AdminPlanCreatePage />,
+        path: 'plans/create',
+      },
+      {
+        element: <AdminPlanEditPage />,
+        path: 'plans/:id/edit',
+      },
+      {
+        element: <AdminSubscriptionsPage />,
+        path: 'subscriptions',
       },
     ],
     element: <DesktopAdminLayout />,

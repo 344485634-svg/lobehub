@@ -1,7 +1,7 @@
 'use client';
 
 import { Flexbox, Icon } from '@lobehub/ui';
-import { Key, LayoutDashboard, Users, Zap } from 'lucide-react';
+import { CreditCard, Key, LayoutDashboard, Package, Users, Zap } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router';
@@ -17,6 +17,12 @@ const Sidebar = memo(() => {
       label: t('admin.dashboard', { defaultValue: 'Dashboard' }),
     },
     { icon: Users, key: '/admin/users', label: t('admin.users', { defaultValue: 'Users' }) },
+    { icon: Package, key: '/admin/plans', label: t('admin.plans', { defaultValue: 'Plans' }) },
+    {
+      icon: CreditCard,
+      key: '/admin/subscriptions',
+      label: t('admin.subscriptions', { defaultValue: 'Subscriptions' }),
+    },
     { icon: Key, key: '/admin/api-keys', label: t('admin.apiKeys', { defaultValue: 'API Keys' }) },
     { icon: Zap, key: '/admin/skills', label: t('admin.skills', { defaultValue: 'Skills' }) },
   ];

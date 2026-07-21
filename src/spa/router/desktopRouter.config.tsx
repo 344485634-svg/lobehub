@@ -556,6 +556,34 @@ export const sharedMainAreaChildren: RouteObject[] = [
         ),
         path: 'users/:id',
       },
+      {
+        element: dynamicElement(
+          () => import('@/routes/(main)/admin/plans'),
+          'Desktop > Admin > Plans',
+        ),
+        path: 'plans',
+      },
+      {
+        element: dynamicElement(
+          () => import('@/routes/(main)/admin/plans/create'),
+          'Desktop > Admin > Create Plan',
+        ),
+        path: 'plans/create',
+      },
+      {
+        element: dynamicElement(
+          () => import('@/routes/(main)/admin/plans/[id]/edit'),
+          'Desktop > Admin > Edit Plan',
+        ),
+        path: 'plans/:id/edit',
+      },
+      {
+        element: dynamicElement(
+          () => import('@/routes/(main)/admin/subscriptions'),
+          'Desktop > Admin > Subscriptions',
+        ),
+        path: 'subscriptions',
+      },
     ],
     element: dynamicLayout(
       () => import('@/routes/(main)/admin/_layout'),
