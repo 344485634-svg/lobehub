@@ -1,13 +1,11 @@
 import { and, count, desc, eq, sql } from 'drizzle-orm';
 
 import type { LobeChatDatabase } from '@/core/db/client';
-import {
-  type SubscriptionPlanItem,
-  subscriptionPlans,
-  users,
-  type UserSubscriptionItem,
-  userSubscriptions,
-} from '@/schemas';
+import type { SubscriptionPlanItem } from '@/schemas/subscriptionPlan';
+import { subscriptionPlans } from '@/schemas/subscriptionPlan';
+import { users } from '@/schemas/user';
+import type { UserSubscriptionItem } from '@/schemas/userSubscription';
+import { userSubscriptions } from '@/schemas/userSubscription';
 
 export interface SubscriptionWithDetails extends UserSubscriptionItem {
   plan: SubscriptionPlanItem;
