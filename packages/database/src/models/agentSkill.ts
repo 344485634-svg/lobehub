@@ -103,10 +103,26 @@ export class AgentSkillModel {
   // ========== Read ==========
 
   findById = async (id: string): Promise<SkillItem | undefined> => {
+    // Allow reading own skills OR platform skills published by admins
+    const { users } = await import('../schemas/user');
+    const adminRows = await this.db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.role, 'admin'))
+      .limit(20);
+    const adminIds = adminRows.map((r) => r.id);
+
     const [result] = await this.db
       .select(skillItemColumns)
       .from(agentSkills)
-      .where(and(eq(agentSkills.id, id), this.scopeWhere()))
+      .where(
+        and(
+          eq(agentSkills.id, id),
+          adminIds.length
+            ? or(this.scopeWhere(), inArray(agentSkills.userId, adminIds))
+            : this.scopeWhere(),
+        ),
+      )
       .limit(1);
     return result;
   };
@@ -130,10 +146,24 @@ export class AgentSkillModel {
   };
 
   findAll = async (): Promise<{ data: SkillListItem[]; total: number }> => {
+    // Closed product: users can also see platform skills published by admins
+    // (source=user rows owned by admin accounts), not only their own rows.
+    const { users } = await import('../schemas/user');
+    const adminRows = await this.db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.role, 'admin'))
+      .limit(20);
+    const adminIds = adminRows.map((r) => r.id);
+
+    const platformOrSelf = adminIds.length
+      ? or(this.scopeWhere(), inArray(agentSkills.userId, adminIds))
+      : this.scopeWhere();
+
     const data = await this.db
       .select(skillListColumns)
       .from(agentSkills)
-      .where(this.scopeWhere())
+      .where(platformOrSelf)
       .orderBy(desc(agentSkills.updatedAt));
 
     return { data, total: data.length };

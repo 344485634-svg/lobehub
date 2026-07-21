@@ -13,8 +13,8 @@ const Sidebar = memo(() => {
     { icon: Users, key: '/admin/users', label: '用户' },
     { icon: Package, key: '/admin/plans', label: '套餐' },
     { icon: CreditCard, key: '/admin/subscriptions', label: '订阅' },
-    { icon: Key, key: '/admin/api-keys', label: 'API 密钥' },
-    { icon: Zap, key: '/admin/skills', label: '技能' },
+    { icon: Key, key: '/admin/api-keys', label: '模型服务商' },
+    { icon: Zap, key: '/admin/skills', label: '技能管理' },
   ];
 
   return (

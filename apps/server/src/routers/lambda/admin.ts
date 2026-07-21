@@ -3,12 +3,15 @@ import { z } from 'zod';
 
 import { wsCompatProcedure } from '@/business/server/trpc-middlewares/workspaceAuth';
 import { AgentSkillModel } from '@/database/models/agentSkill';
+import { AiProviderModel } from '@/database/models/aiProvider';
 import { ApiKeyModel } from '@/database/models/apiKey';
 import { PlanModel } from '@/database/models/plan';
 import { SubscriptionModel } from '@/database/models/subscription';
 import { UserModel } from '@/database/models/user';
 import { router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
+import { KeyVaultsGateKeeper } from '@/server/modules/KeyVaultsEncrypt';
+import { SkillImporter } from '@/server/services/skill';
 
 const adminProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
@@ -267,5 +270,143 @@ export const adminRouter = router({
     .mutation(async ({ ctx, input }) => {
       await SubscriptionModel.adminRenew(ctx.serverDB, input.id, new Date(input.expiresAt));
       return { success: true as const };
+    }),
+
+  // ===== Platform Model Providers (admin-managed keys for closed product) =====
+  listProviders: adminProcedure.query(async ({ ctx }) => {
+    const model = new AiProviderModel(ctx.serverDB, ctx.userId);
+    const list = await model.getAiProviderList();
+    // Ensure newapi exists for closed product
+    if (!list.some((p) => p.id === 'newapi')) {
+      await model.create({
+        id: 'newapi',
+        name: 'LIUMA 官方 API',
+        source: 'builtin',
+      });
+      return model.getAiProviderList();
+    }
+    return list;
+  }),
+
+  getProvider: adminProcedure.input(z.object({ id: z.string() })).query(async ({ ctx, input }) => {
+    const model = new AiProviderModel(ctx.serverDB, ctx.userId);
+    const detail = await model.getAiProviderById(input.id, KeyVaultsGateKeeper.getUserKeyVaults);
+    if (!detail) throw new TRPCError({ code: 'NOT_FOUND', message: 'Provider not found' });
+    // Mask API key for UI display
+    const keyVaults = { ...detail.keyVaults } as Record<string, any>;
+    if (typeof keyVaults.apiKey === 'string' && keyVaults.apiKey.length > 8) {
+      keyVaults.apiKeyMasked = keyVaults.apiKey.slice(0, 4) + '••••' + keyVaults.apiKey.slice(-4);
+      keyVaults.hasApiKey = true;
+      delete keyVaults.apiKey;
+    } else {
+      keyVaults.hasApiKey = Boolean(keyVaults.apiKey);
+      delete keyVaults.apiKey;
+    }
+    return { ...detail, keyVaults };
+  }),
+
+  updateProviderConfig: adminProcedure
+    .input(
+      z.object({
+        enabled: z.boolean().optional(),
+        id: z.string(),
+        keyVaults: z
+          .object({
+            apiKey: z.string().optional(),
+            baseURL: z.string().optional(),
+          })
+          .optional(),
+        name: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const model = new AiProviderModel(ctx.serverDB, ctx.userId);
+      const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
+
+      if (input.name !== undefined || input.enabled !== undefined) {
+        await model.update(input.id, {
+          ...(input.enabled !== undefined ? { enabled: input.enabled } : {}),
+          ...(input.name !== undefined ? { name: input.name } : {}),
+        });
+      }
+
+      if (input.keyVaults) {
+        // Skip empty apiKey so we don't wipe existing secret when user only changes baseURL
+        const keyVaults: Record<string, string> = {};
+        if (input.keyVaults.baseURL !== undefined) keyVaults.baseURL = input.keyVaults.baseURL;
+        if (input.keyVaults.apiKey) keyVaults.apiKey = input.keyVaults.apiKey;
+
+        if (Object.keys(keyVaults).length > 0) {
+          await model.updateConfig(
+            input.id,
+            { keyVaults },
+            (s) => gateKeeper.encrypt(s),
+            KeyVaultsGateKeeper.getUserKeyVaults,
+          );
+        }
+      }
+
+      if (input.enabled !== undefined) {
+        await model.toggleProviderEnabled(input.id, input.enabled);
+      }
+
+      return { success: true as const };
+    }),
+
+  toggleProviderEnabled: adminProcedure
+    .input(z.object({ enabled: z.boolean(), id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const model = new AiProviderModel(ctx.serverDB, ctx.userId);
+      await model.toggleProviderEnabled(input.id, input.enabled);
+      return { success: true as const };
+    }),
+
+  // ===== Platform Skills (admin upload, users can consume) =====
+  createSkill: adminProcedure
+    .input(
+      z.object({
+        content: z.string().min(1),
+        description: z.string().min(1),
+        name: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const importer = new SkillImporter(ctx.serverDB, ctx.userId);
+      try {
+        return await importer.createUserSkill(input);
+      } catch (error: any) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: error?.message || 'Failed to create skill',
+        });
+      }
+    }),
+
+  importSkillFromZip: adminProcedure
+    .input(z.object({ zipFileId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const importer = new SkillImporter(ctx.serverDB, ctx.userId);
+      try {
+        return await importer.importFromZip(input);
+      } catch (error: any) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: error?.message || 'Failed to import skill',
+        });
+      }
+    }),
+
+  importSkillFromUrl: adminProcedure
+    .input(z.object({ url: z.string().url() }))
+    .mutation(async ({ ctx, input }) => {
+      const importer = new SkillImporter(ctx.serverDB, ctx.userId);
+      try {
+        return await importer.importFromUrl(input);
+      } catch (error: any) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: error?.message || 'Failed to import skill from URL',
+        });
+      }
     }),
 });

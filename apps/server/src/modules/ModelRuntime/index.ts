@@ -410,19 +410,65 @@ export const initModelRuntimeWithUserPayload = (
  * const response = await modelRuntime.chat({ messages, model });
  * ```
  */
+/**
+ * Closed-product fallback: if the calling user has no usable provider credentials,
+ * reuse the first admin-owned enabled provider config for the same provider id.
+ * Admin configures platform keys once; subscribed users consume without self-service keys.
+ */
+const resolveProviderConfigWithPlatformFallback = async (
+  db: LobeChatDatabase,
+  userId: string,
+  provider: string,
+  workspaceId?: string,
+) => {
+  const { eq } = await import('drizzle-orm');
+  const { users } = await import('@/database/schemas');
+  const userProviderModel = new AiProviderModel(db, userId, workspaceId);
+  const userConfig = await userProviderModel.getAiProviderById(
+    provider,
+    KeyVaultsGateKeeper.getUserKeyVaults,
+  );
+
+  const userKeyVaults = (userConfig?.keyVaults || {}) as ProviderKeyVaults;
+  if (userKeyVaults.apiKey || userKeyVaults.baseURL || userKeyVaults.endpoint) {
+    return userConfig;
+  }
+
+  const admins = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.role, 'admin'))
+    .limit(5);
+
+  for (const admin of admins) {
+    if (admin.id === userId) continue;
+    const adminProviderModel = new AiProviderModel(db, admin.id);
+    const adminConfig = await adminProviderModel.getAiProviderById(
+      provider,
+      KeyVaultsGateKeeper.getUserKeyVaults,
+    );
+    const adminKeyVaults = (adminConfig?.keyVaults || {}) as ProviderKeyVaults;
+    if (adminKeyVaults.apiKey || adminKeyVaults.baseURL || adminKeyVaults.endpoint) {
+      return adminConfig;
+    }
+  }
+
+  // If current user is themselves an admin with empty keyVaults, keep original config
+  return userConfig;
+};
+
 export const initModelRuntimeFromDB = async (
   db: LobeChatDatabase,
   userId: string,
   provider: string,
   workspaceId?: string,
 ): Promise<ModelRuntime> => {
-  // 1. Get user's provider configuration from database
-  const aiProviderModel = new AiProviderModel(db, userId, workspaceId);
-
-  // Use getAiProviderById with KeyVaultsGateKeeper.getUserKeyVaults as decryptor
-  const providerConfig = await aiProviderModel.getAiProviderById(
+  // 1. Get provider configuration (user first, then admin platform fallback)
+  const providerConfig = await resolveProviderConfigWithPlatformFallback(
+    db,
+    userId,
     provider,
-    KeyVaultsGateKeeper.getUserKeyVaults,
+    workspaceId,
   );
 
   // 2. Resolve the runtime provider for custom providers
