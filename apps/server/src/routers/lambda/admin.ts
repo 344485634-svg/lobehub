@@ -2,6 +2,7 @@ import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
 import { wsCompatProcedure } from '@/business/server/trpc-middlewares/workspaceAuth';
+import { AgentSkillModel } from '@/database/models/agentSkill';
 import { ApiKeyModel } from '@/database/models/apiKey';
 import { UserModel } from '@/database/models/user';
 import { router } from '@/libs/trpc/lambda';
@@ -43,6 +44,12 @@ export const adminRouter = router({
       return { success: true as const };
     }),
 
+  deleteSkill: adminProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      return AgentSkillModel.adminDelete(ctx.serverDB, input.id);
+    }),
+
   getUserDetail: adminProcedure
     .input(z.object({ userId: z.string() }))
     .query(async ({ ctx, input }) => {
@@ -75,6 +82,20 @@ export const adminRouter = router({
     )
     .query(async ({ ctx, input }) => {
       return ApiKeyModel.adminListAll(ctx.serverDB, input);
+    }),
+
+  listAllSkills: adminProcedure
+    .input(
+      z.object({
+        page: z.number().min(1).default(1),
+        pageSize: z.number().min(1).max(100).default(20),
+        search: z.string().optional(),
+        source: z.enum(['builtin', 'market', 'user']).optional(),
+        userId: z.string().optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      return AgentSkillModel.adminListAll(ctx.serverDB, input);
     }),
 
   unbanUser: adminProcedure
