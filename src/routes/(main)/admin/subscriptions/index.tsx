@@ -1,6 +1,6 @@
 'use client';
 
-import { Flexbox, Input } from '@lobehub/ui';
+import { Flexbox, TextArea } from '@lobehub/ui';
 import { Button, Modal, Select } from '@lobehub/ui/base-ui';
 import { App, DatePicker, Form, Table, Tag } from 'antd';
 import dayjs from 'dayjs';
@@ -31,11 +31,19 @@ const AdminSubscriptionsPage: FC = () => {
     }),
   );
 
-  const { data: plansData } = useSWR('admin-plans-all', () =>
+  const {
+    data: plansData,
+    error: plansError,
+    isLoading: plansLoading,
+  } = useSWR(assignModalOpen ? 'admin-plans-all' : null, () =>
     lambdaClient.admin.listPlans.query({ page: 1, pageSize: 100 }),
   );
 
-  const { data: usersData } = useSWR('admin-users-all', () =>
+  const {
+    data: usersData,
+    error: usersError,
+    isLoading: usersLoading,
+  } = useSWR(assignModalOpen ? 'admin-users-all' : null, () =>
     lambdaClient.admin.listUsers.query({ page: 1, pageSize: 100 }),
   );
 
@@ -107,7 +115,7 @@ const AdminSubscriptionsPage: FC = () => {
       renewForm.resetFields();
       mutate();
     } catch (e: any) {
-      if (e?.errorFields) return; // form validation error
+      if (e?.errorFields) return;
       message.error(e?.message ?? '操作失败');
     }
   };
@@ -117,7 +125,7 @@ const AdminSubscriptionsPage: FC = () => {
       dataIndex: ['user', 'email'],
       key: 'user',
       render: (email: string, row: any) => (
-        <Link to={`/admin/users/${row.userId}`}>{email || row.user.username || row.userId}</Link>
+        <Link to={`/admin/users/${row.userId}`}>{email || row.user?.username || row.userId}</Link>
       ),
       title: '用户',
     },
@@ -252,11 +260,36 @@ const AdminSubscriptionsPage: FC = () => {
       >
         <Form form={form} layout="vertical" onFinish={handleAssign}>
           <Form.Item label="用户" name="userId" rules={[{ message: '必填', required: true }]}>
-            <Select showSearch options={userOptions} placeholder="选择用户" />
+            <Select
+              showSearch
+              loading={usersLoading}
+              options={userOptions}
+              placeholder={
+                usersError
+                  ? '加载用户失败'
+                  : usersLoading
+                    ? '加载用户中...'
+                    : userOptions.length === 0
+                      ? '暂无用户'
+                      : '选择用户'
+              }
+            />
           </Form.Item>
 
           <Form.Item label="套餐" name="planId" rules={[{ message: '必填', required: true }]}>
-            <Select options={planOptions} placeholder="选择套餐" />
+            <Select
+              loading={plansLoading}
+              options={planOptions}
+              placeholder={
+                plansError
+                  ? '加载套餐失败'
+                  : plansLoading
+                    ? '加载套餐中...'
+                    : planOptions.length === 0
+                      ? '暂无可用套餐'
+                      : '选择套餐'
+              }
+            />
           </Form.Item>
 
           <Form.Item label="到期日期" name="expiresAt" tooltip="留空表示终身有效">
@@ -264,7 +297,7 @@ const AdminSubscriptionsPage: FC = () => {
           </Form.Item>
 
           <Form.Item label="备注" name="notes">
-            <Input.TextArea rows={3} />
+            <TextArea placeholder="可选备注" rows={3} />
           </Form.Item>
         </Form>
       </Modal>
