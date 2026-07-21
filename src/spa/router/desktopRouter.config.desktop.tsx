@@ -52,9 +52,11 @@ import WorkspaceSlugSettingsStoragePage from '@/routes/(main)/[workspaceSlug]/se
 import WorkspaceSlugSettingsUsagePage from '@/routes/(main)/[workspaceSlug]/settings/usage';
 import AdminDashboardPage from '@/routes/(main)/admin';
 import DesktopAdminLayout from '@/routes/(main)/admin/_layout';
+import AdminApiKeysPage from '@/routes/(main)/admin/api-keys';
 import AdminPlansPage from '@/routes/(main)/admin/plans';
 import AdminPlanEditPage from '@/routes/(main)/admin/plans/[id]/edit';
 import AdminPlanCreatePage from '@/routes/(main)/admin/plans/create';
+import AdminSkillsPage from '@/routes/(main)/admin/skills';
 import AdminSubscriptionsPage from '@/routes/(main)/admin/subscriptions';
 import AdminUsersPage from '@/routes/(main)/admin/users';
 import AdminUserDetailPage from '@/routes/(main)/admin/users/[id]';
@@ -521,6 +523,14 @@ export const sharedMainAreaChildren: RouteObject[] = [
       {
         element: <AdminSubscriptionsPage />,
         path: 'subscriptions',
+      },
+      {
+        element: <AdminApiKeysPage />,
+        path: 'api-keys',
+      },
+      {
+        element: <AdminSkillsPage />,
+        path: 'skills',
       },
     ],
     element: <DesktopAdminLayout />,

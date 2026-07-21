@@ -584,6 +584,20 @@ export const sharedMainAreaChildren: RouteObject[] = [
         ),
         path: 'subscriptions',
       },
+      {
+        element: dynamicElement(
+          () => import('@/routes/(main)/admin/api-keys'),
+          'Desktop > Admin > API Keys',
+        ),
+        path: 'api-keys',
+      },
+      {
+        element: dynamicElement(
+          () => import('@/routes/(main)/admin/skills'),
+          'Desktop > Admin > Skills',
+        ),
+        path: 'skills',
+      },
     ],
     element: dynamicLayout(
       () => import('@/routes/(main)/admin/_layout'),
