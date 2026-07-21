@@ -4,7 +4,7 @@ import { Flexbox, Input } from '@lobehub/ui';
 import { Button, Modal, Select } from '@lobehub/ui/base-ui';
 import { App, DatePicker, Form, Table, Tag } from 'antd';
 import dayjs from 'dayjs';
-import { type FC, useState } from 'react';
+import { type FC, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import useSWR from 'swr';
 
@@ -20,6 +20,7 @@ const AdminSubscriptionsPage: FC = () => {
     id: string;
   } | null>(null);
   const [form] = Form.useForm();
+  const [renewForm] = Form.useForm();
   const pageSize = 20;
 
   const { data, isLoading, mutate } = useSWR(['admin-subscriptions', page, statusFilter], () =>
@@ -36,6 +37,28 @@ const AdminSubscriptionsPage: FC = () => {
 
   const { data: usersData } = useSWR('admin-users-all', () =>
     lambdaClient.admin.listUsers.query({ page: 1, pageSize: 100 }),
+  );
+
+  const userOptions = useMemo(
+    () =>
+      (usersData?.users ?? []).map((u) => ({
+        label: u.email || u.username || u.id,
+        value: u.id,
+      })),
+    [usersData?.users],
+  );
+
+  const planOptions = useMemo(
+    () =>
+      (plansData?.plans ?? [])
+        .filter((p) => p.active)
+        .map((p) => ({
+          label: `${p.displayName} (¥${p.price}/${
+            p.billingCycle === 'monthly' ? '月' : p.billingCycle === 'yearly' ? '年' : '终身'
+          })`,
+          value: p.id,
+        })),
+    [plansData?.plans],
   );
 
   const handleAssign = async (values: any) => {
@@ -74,16 +97,17 @@ const AdminSubscriptionsPage: FC = () => {
   const handleRenew = async () => {
     if (!renewModalData) return;
     try {
-      const values = await form.validateFields();
+      const values = await renewForm.validateFields();
       await lambdaClient.admin.renewSubscription.mutate({
         expiresAt: dayjs(values.newExpiresAt).toISOString(),
         id: renewModalData.id,
       });
       message.success('订阅已续期');
       setRenewModalData(null);
-      form.resetFields();
+      renewForm.resetFields();
       mutate();
     } catch (e: any) {
+      if (e?.errorFields) return; // form validation error
       message.error(e?.message ?? '操作失败');
     }
   };
@@ -160,7 +184,12 @@ const AdminSubscriptionsPage: FC = () => {
             <>
               <Button
                 size="small"
-                onClick={() => setRenewModalData({ expiresAt: row.expiresAt, id: row.id })}
+                onClick={() => {
+                  setRenewModalData({ expiresAt: row.expiresAt, id: row.id });
+                  renewForm.setFieldsValue({
+                    newExpiresAt: row.expiresAt ? dayjs(row.expiresAt) : undefined,
+                  });
+                }}
               >
                 续期
               </Button>
@@ -183,16 +212,17 @@ const AdminSubscriptionsPage: FC = () => {
           placeholder="按状态筛选"
           style={{ width: 200 }}
           value={statusFilter}
+          options={[
+            { label: '激活', value: 'active' },
+            { label: '已取消', value: 'cancelled' },
+            { label: '已过期', value: 'expired' },
+            { label: '试用', value: 'trial' },
+          ]}
           onChange={(val) => {
-            setStatusFilter(val);
+            setStatusFilter((val as string | null) ?? undefined);
             setPage(1);
           }}
-        >
-          <Select.Option value="active">激活</Select.Option>
-          <Select.Option value="cancelled">已取消</Select.Option>
-          <Select.Option value="expired">已过期</Select.Option>
-          <Select.Option value="trial">试用</Select.Option>
-        </Select>
+        />
         <Button type="primary" onClick={() => setAssignModalOpen(true)}>
           分配订阅
         </Button>
@@ -211,7 +241,6 @@ const AdminSubscriptionsPage: FC = () => {
         }}
       />
 
-      {/* Assign Subscription Modal */}
       <Modal
         open={assignModalOpen}
         title="分配订阅"
@@ -223,37 +252,11 @@ const AdminSubscriptionsPage: FC = () => {
       >
         <Form form={form} layout="vertical" onFinish={handleAssign}>
           <Form.Item label="用户" name="userId" rules={[{ message: '必填', required: true }]}>
-            <Select
-              showSearch
-              placeholder="选择用户"
-              filterOption={(input, option) =>
-                (option?.children as string)?.toLowerCase().includes(input.toLowerCase())
-              }
-            >
-              {usersData?.users.map((u) => (
-                <Select.Option key={u.id} value={u.id}>
-                  {u.email || u.username || u.id}
-                </Select.Option>
-              ))}
-            </Select>
+            <Select showSearch options={userOptions} placeholder="选择用户" />
           </Form.Item>
 
           <Form.Item label="套餐" name="planId" rules={[{ message: '必填', required: true }]}>
-            <Select placeholder="选择套餐">
-              {plansData?.plans
-                .filter((p) => p.active)
-                .map((p) => (
-                  <Select.Option key={p.id} value={p.id}>
-                    {p.displayName} (¥{p.price}/
-                    {p.billingCycle === 'monthly'
-                      ? '月'
-                      : p.billingCycle === 'yearly'
-                        ? '年'
-                        : '终身'}
-                    )
-                  </Select.Option>
-                ))}
-            </Select>
+            <Select options={planOptions} placeholder="选择套餐" />
           </Form.Item>
 
           <Form.Item label="到期日期" name="expiresAt" tooltip="留空表示终身有效">
@@ -266,19 +269,17 @@ const AdminSubscriptionsPage: FC = () => {
         </Form>
       </Modal>
 
-      {/* Renew Subscription Modal */}
       <Modal
         open={!!renewModalData}
         title="续期订阅"
         onOk={handleRenew}
         onCancel={() => {
           setRenewModalData(null);
-          form.resetFields();
+          renewForm.resetFields();
         }}
       >
-        <Form form={form} layout="vertical">
+        <Form form={renewForm} layout="vertical">
           <Form.Item
-            initialValue={renewModalData?.expiresAt ? dayjs(renewModalData.expiresAt) : undefined}
             label="新到期日期"
             name="newExpiresAt"
             rules={[{ message: '必填', required: true }]}

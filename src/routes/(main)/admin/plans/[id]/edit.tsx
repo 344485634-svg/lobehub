@@ -116,11 +116,13 @@ const AdminPlanEditPage: FC = () => {
           </Form.Item>
 
           <Form.Item required label="计费周期" name="billingCycle">
-            <Select>
-              <Select.Option value="monthly">月付</Select.Option>
-              <Select.Option value="yearly">年付</Select.Option>
-              <Select.Option value="lifetime">终身</Select.Option>
-            </Select>
+            <Select
+              options={[
+                { label: '月付', value: 'monthly' },
+                { label: '年付', value: 'yearly' },
+                { label: '终身', value: 'lifetime' },
+              ]}
+            />
           </Form.Item>
 
           <Card size="small" style={{ marginBottom: 24 }} title="配额设置" type="inner">
