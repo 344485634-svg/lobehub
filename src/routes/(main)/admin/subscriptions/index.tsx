@@ -5,14 +5,12 @@ import { Button, Modal, Select } from '@lobehub/ui/base-ui';
 import { App, DatePicker, Form, Table, Tag } from 'antd';
 import dayjs from 'dayjs';
 import { type FC, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import useSWR from 'swr';
 
 import { lambdaClient } from '@/libs/trpc/client';
 
 const AdminSubscriptionsPage: FC = () => {
-  const { t } = useTranslation('common');
   const { message, modal } = App.useApp();
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
@@ -48,32 +46,28 @@ const AdminSubscriptionsPage: FC = () => {
         planId: values.planId,
         userId: values.userId,
       });
-      message.success(t('admin.subscriptionAssigned', { defaultValue: 'Subscription assigned' }));
+      message.success('订阅已分配');
       setAssignModalOpen(false);
       form.resetFields();
       mutate();
     } catch (e: any) {
-      message.error(e?.message ?? t('admin.actionFailed', { defaultValue: 'Action failed' }));
+      message.error(e?.message ?? '操作失败');
     }
   };
 
   const handleCancel = async (id: string) => {
     modal.confirm({
-      content: t('admin.confirmCancelSubscription', {
-        defaultValue: 'Cancel this subscription? User will lose access after expiry.',
-      }),
+      content: '取消此订阅？用户将在到期后失去访问权限。',
       onOk: async () => {
         try {
           await lambdaClient.admin.cancelSubscription.mutate({ id });
-          message.success(
-            t('admin.subscriptionCancelled', { defaultValue: 'Subscription cancelled' }),
-          );
+          message.success('订阅已取消');
           mutate();
         } catch (e: any) {
-          message.error(e?.message ?? t('admin.actionFailed', { defaultValue: 'Action failed' }));
+          message.error(e?.message ?? '操作失败');
         }
       },
-      title: t('admin.cancelSubscription', { defaultValue: 'Cancel Subscription' }),
+      title: '取消订阅',
     });
   };
 
@@ -85,12 +79,12 @@ const AdminSubscriptionsPage: FC = () => {
         expiresAt: dayjs(values.newExpiresAt).toISOString(),
         id: renewModalData.id,
       });
-      message.success(t('admin.subscriptionRenewed', { defaultValue: 'Subscription renewed' }));
+      message.success('订阅已续期');
       setRenewModalData(null);
       form.resetFields();
       mutate();
     } catch (e: any) {
-      message.error(e?.message ?? t('admin.actionFailed', { defaultValue: 'Action failed' }));
+      message.error(e?.message ?? '操作失败');
     }
   };
 
@@ -101,12 +95,12 @@ const AdminSubscriptionsPage: FC = () => {
       render: (email: string, row: any) => (
         <Link to={`/admin/users/${row.userId}`}>{email || row.user.username || row.userId}</Link>
       ),
-      title: t('admin.user', { defaultValue: 'User' }),
+      title: '用户',
     },
     {
       dataIndex: ['plan', 'displayName'],
       key: 'plan',
-      title: t('admin.plan', { defaultValue: 'Plan' }),
+      title: '套餐',
     },
     {
       dataIndex: 'status',
@@ -120,21 +114,29 @@ const AdminSubscriptionsPage: FC = () => {
               : status === 'expired'
                 ? 'red'
                 : 'blue';
-        return <Tag color={color}>{status}</Tag>;
+        const text =
+          status === 'active'
+            ? '激活'
+            : status === 'cancelled'
+              ? '已取消'
+              : status === 'expired'
+                ? '已过期'
+                : '试用';
+        return <Tag color={color}>{text}</Tag>;
       },
-      title: t('admin.status', { defaultValue: 'Status' }),
+      title: '状态',
     },
     {
       dataIndex: 'startedAt',
       key: 'startedAt',
       render: (date: string) => dayjs(date).format('YYYY-MM-DD'),
-      title: t('admin.startedAt', { defaultValue: 'Started' }),
+      title: '开始日期',
     },
     {
       dataIndex: 'expiresAt',
       key: 'expiresAt',
       render: (date: string | null) => {
-        if (!date) return t('admin.lifetime', { defaultValue: 'Lifetime' });
+        if (!date) return '终身';
         const d = dayjs(date);
         const daysLeft = d.diff(dayjs(), 'day');
         return (
@@ -142,13 +144,13 @@ const AdminSubscriptionsPage: FC = () => {
             {d.format('YYYY-MM-DD')}
             {daysLeft >= 0 && daysLeft <= 30 && (
               <Tag color="orange" style={{ marginLeft: 8 }}>
-                {daysLeft}d left
+                剩余{daysLeft}天
               </Tag>
             )}
           </span>
         );
       },
-      title: t('admin.expiresAt', { defaultValue: 'Expires' }),
+      title: '到期日期',
     },
     {
       key: 'actions',
@@ -160,16 +162,16 @@ const AdminSubscriptionsPage: FC = () => {
                 size="small"
                 onClick={() => setRenewModalData({ expiresAt: row.expiresAt, id: row.id })}
               >
-                {t('admin.renew', { defaultValue: 'Renew' })}
+                续期
               </Button>
               <Button danger size="small" onClick={() => handleCancel(row.id)}>
-                {t('admin.cancel', { defaultValue: 'Cancel' })}
+                取消
               </Button>
             </>
           )}
         </Flexbox>
       ),
-      title: t('admin.actions', { defaultValue: 'Actions' }),
+      title: '操作',
     },
   ];
 
@@ -178,7 +180,7 @@ const AdminSubscriptionsPage: FC = () => {
       <Flexbox horizontal gap={12}>
         <Select
           allowClear
-          placeholder={t('admin.filterByStatus', { defaultValue: 'Filter by status' })}
+          placeholder="按状态筛选"
           style={{ width: 200 }}
           value={statusFilter}
           onChange={(val) => {
@@ -186,19 +188,13 @@ const AdminSubscriptionsPage: FC = () => {
             setPage(1);
           }}
         >
-          <Select.Option value="active">
-            {t('admin.active', { defaultValue: 'Active' })}
-          </Select.Option>
-          <Select.Option value="cancelled">
-            {t('admin.cancelled', { defaultValue: 'Cancelled' })}
-          </Select.Option>
-          <Select.Option value="expired">
-            {t('admin.expired', { defaultValue: 'Expired' })}
-          </Select.Option>
-          <Select.Option value="trial">{t('admin.trial', { defaultValue: 'Trial' })}</Select.Option>
+          <Select.Option value="active">激活</Select.Option>
+          <Select.Option value="cancelled">已取消</Select.Option>
+          <Select.Option value="expired">已过期</Select.Option>
+          <Select.Option value="trial">试用</Select.Option>
         </Select>
         <Button type="primary" onClick={() => setAssignModalOpen(true)}>
-          {t('admin.assignSubscription', { defaultValue: 'Assign Subscription' })}
+          分配订阅
         </Button>
       </Flexbox>
 
@@ -218,7 +214,7 @@ const AdminSubscriptionsPage: FC = () => {
       {/* Assign Subscription Modal */}
       <Modal
         open={assignModalOpen}
-        title={t('admin.assignSubscription', { defaultValue: 'Assign Subscription' })}
+        title="分配订阅"
         onOk={() => form.submit()}
         onCancel={() => {
           setAssignModalOpen(false);
@@ -226,14 +222,10 @@ const AdminSubscriptionsPage: FC = () => {
         }}
       >
         <Form form={form} layout="vertical" onFinish={handleAssign}>
-          <Form.Item
-            label={t('admin.user', { defaultValue: 'User' })}
-            name="userId"
-            rules={[{ message: 'Required', required: true }]}
-          >
+          <Form.Item label="用户" name="userId" rules={[{ message: '必填', required: true }]}>
             <Select
               showSearch
-              placeholder={t('admin.selectUser', { defaultValue: 'Select user' })}
+              placeholder="选择用户"
               filterOption={(input, option) =>
                 (option?.children as string)?.toLowerCase().includes(input.toLowerCase())
               }
@@ -246,31 +238,29 @@ const AdminSubscriptionsPage: FC = () => {
             </Select>
           </Form.Item>
 
-          <Form.Item
-            label={t('admin.plan', { defaultValue: 'Plan' })}
-            name="planId"
-            rules={[{ message: 'Required', required: true }]}
-          >
-            <Select placeholder={t('admin.selectPlan', { defaultValue: 'Select plan' })}>
+          <Form.Item label="套餐" name="planId" rules={[{ message: '必填', required: true }]}>
+            <Select placeholder="选择套餐">
               {plansData?.plans
                 .filter((p) => p.active)
                 .map((p) => (
                   <Select.Option key={p.id} value={p.id}>
-                    {p.displayName} (¥{p.price}/{p.billingCycle})
+                    {p.displayName} (¥{p.price}/
+                    {p.billingCycle === 'monthly'
+                      ? '月'
+                      : p.billingCycle === 'yearly'
+                        ? '年'
+                        : '终身'}
+                    )
                   </Select.Option>
                 ))}
             </Select>
           </Form.Item>
 
-          <Form.Item
-            label={t('admin.expiresAt', { defaultValue: 'Expires At' })}
-            name="expiresAt"
-            tooltip={t('admin.leaveEmptyForLifetime', { defaultValue: 'Leave empty for lifetime' })}
-          >
+          <Form.Item label="到期日期" name="expiresAt" tooltip="留空表示终身有效">
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
 
-          <Form.Item label={t('admin.notes', { defaultValue: 'Notes' })} name="notes">
+          <Form.Item label="备注" name="notes">
             <Input.TextArea rows={3} />
           </Form.Item>
         </Form>
@@ -279,7 +269,7 @@ const AdminSubscriptionsPage: FC = () => {
       {/* Renew Subscription Modal */}
       <Modal
         open={!!renewModalData}
-        title={t('admin.renewSubscription', { defaultValue: 'Renew Subscription' })}
+        title="续期订阅"
         onOk={handleRenew}
         onCancel={() => {
           setRenewModalData(null);
@@ -289,9 +279,9 @@ const AdminSubscriptionsPage: FC = () => {
         <Form form={form} layout="vertical">
           <Form.Item
             initialValue={renewModalData?.expiresAt ? dayjs(renewModalData.expiresAt) : undefined}
-            label={t('admin.newExpiresAt', { defaultValue: 'New Expiry Date' })}
+            label="新到期日期"
             name="newExpiresAt"
-            rules={[{ message: 'Required', required: true }]}
+            rules={[{ message: '必填', required: true }]}
           >
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>

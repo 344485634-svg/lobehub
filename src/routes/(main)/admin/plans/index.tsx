@@ -4,14 +4,12 @@ import { Flexbox, Input } from '@lobehub/ui';
 import { Button } from '@lobehub/ui/base-ui';
 import { App, Switch, Table, Tag } from 'antd';
 import { type FC, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import useSWR from 'swr';
 
 import { lambdaClient } from '@/libs/trpc/client';
 
 const AdminPlansPage: FC = () => {
-  const { t } = useTranslation('common');
   const { message, modal } = App.useApp();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -23,32 +21,27 @@ const AdminPlansPage: FC = () => {
 
   const handleDelete = async (id: string, name: string) => {
     modal.confirm({
-      content: t('admin.confirmDeletePlan', {
-        defaultValue: `Delete plan "${name}"? Users with active subscriptions will be unaffected.`,
-        name,
-      }),
+      content: `删除套餐"${name}"？已使用此套餐的用户不受影响。`,
       onOk: async () => {
         try {
           await lambdaClient.admin.deletePlan.mutate({ id });
-          message.success(t('admin.planDeleted', { defaultValue: 'Plan deleted' }));
+          message.success('套餐已删除');
           mutate();
         } catch (e: any) {
-          message.error(e?.message ?? t('admin.actionFailed', { defaultValue: 'Action failed' }));
+          message.error(e?.message ?? '操作失败');
         }
       },
-      title: t('admin.deletePlan', { defaultValue: 'Delete Plan' }),
+      title: '删除套餐',
     });
   };
 
   const handleToggleActive = async (id: string, currentActive: boolean) => {
     try {
       await lambdaClient.admin.updatePlan.mutate({ active: !currentActive, id });
-      message.success(
-        t('admin.planUpdated', { defaultValue: currentActive ? 'Plan disabled' : 'Plan enabled' }),
-      );
+      message.success(currentActive ? '套餐已禁用' : '套餐已启用');
       mutate();
     } catch (e: any) {
-      message.error(e?.message ?? t('admin.actionFailed', { defaultValue: 'Action failed' }));
+      message.error(e?.message ?? '操作失败');
     }
   };
 
@@ -61,12 +54,12 @@ const AdminPlansPage: FC = () => {
           <strong>{name}</strong>
         </Link>
       ),
-      title: t('admin.planName', { defaultValue: 'Plan Name' }),
+      title: '套餐标识',
     },
     {
       dataIndex: 'displayName',
       key: 'displayName',
-      title: t('admin.displayName', { defaultValue: 'Display Name' }),
+      title: '显示名称',
     },
     {
       dataIndex: 'price',
@@ -74,27 +67,21 @@ const AdminPlansPage: FC = () => {
       render: (price: string, row: any) => {
         const cycle =
           row.billingCycle === 'monthly'
-            ? '/mo'
+            ? '/月'
             : row.billingCycle === 'yearly'
-              ? '/yr'
-              : ' (lifetime)';
+              ? '/年'
+              : '（终身）';
         return `¥${price}${cycle}`;
       },
-      title: t('admin.price', { defaultValue: 'Price' }),
+      title: '价格',
     },
     {
       dataIndex: 'billingCycle',
       key: 'billingCycle',
       render: (cycle: string) => (
-        <Tag>
-          {cycle === 'monthly'
-            ? t('admin.monthly', { defaultValue: 'Monthly' })
-            : cycle === 'yearly'
-              ? t('admin.yearly', { defaultValue: 'Yearly' })
-              : t('admin.lifetime', { defaultValue: 'Lifetime' })}
-        </Tag>
+        <Tag>{cycle === 'monthly' ? '月付' : cycle === 'yearly' ? '年付' : '终身'}</Tag>
       ),
-      title: t('admin.billingCycle', { defaultValue: 'Billing Cycle' }),
+      title: '计费周期',
     },
     {
       dataIndex: 'quotas',
@@ -109,7 +96,7 @@ const AdminPlansPage: FC = () => {
           </span>
         );
       },
-      title: t('admin.quotas', { defaultValue: 'Quotas' }),
+      title: '配额',
       width: 200,
     },
     {
@@ -118,12 +105,12 @@ const AdminPlansPage: FC = () => {
       render: (active: boolean, row: any) => (
         <Switch checked={active} size="small" onChange={() => handleToggleActive(row.id, active)} />
       ),
-      title: t('admin.active', { defaultValue: 'Active' }),
+      title: '启用',
     },
     {
       dataIndex: 'sortOrder',
       key: 'sortOrder',
-      title: t('admin.sortOrder', { defaultValue: 'Sort' }),
+      title: '排序',
       width: 80,
     },
     {
@@ -131,14 +118,14 @@ const AdminPlansPage: FC = () => {
       render: (_: unknown, row: any) => (
         <Flexbox horizontal gap={8}>
           <Link to={`/admin/plans/${row.id}/edit`}>
-            <Button size="small">{t('admin.edit', { defaultValue: 'Edit' })}</Button>
+            <Button size="small">编辑</Button>
           </Link>
           <Button danger size="small" onClick={() => handleDelete(row.id, row.name)}>
-            {t('admin.delete', { defaultValue: 'Delete' })}
+            删除
           </Button>
         </Flexbox>
       ),
-      title: t('admin.actions', { defaultValue: 'Actions' }),
+      title: '操作',
     },
   ];
 
@@ -146,9 +133,7 @@ const AdminPlansPage: FC = () => {
     <Flexbox gap={16} padding={24}>
       <Flexbox horizontal gap={12}>
         <Input
-          placeholder={t('admin.searchPlans', {
-            defaultValue: 'Search plans by name or description',
-          })}
+          placeholder="按名称或描述搜索套餐"
           style={{ maxWidth: 320 }}
           value={search}
           onChange={(e) => {
@@ -157,7 +142,7 @@ const AdminPlansPage: FC = () => {
           }}
         />
         <Link to="/admin/plans/create">
-          <Button type="primary">{t('admin.createPlan', { defaultValue: 'Create Plan' })}</Button>
+          <Button type="primary">创建套餐</Button>
         </Link>
       </Flexbox>
       <Table

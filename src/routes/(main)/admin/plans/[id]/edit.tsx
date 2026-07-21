@@ -4,7 +4,6 @@ import { Flexbox } from '@lobehub/ui';
 import { Button, Select } from '@lobehub/ui/base-ui';
 import { App, Card, Form, Input, InputNumber, Switch } from 'antd';
 import { type FC, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router';
 import useSWR from 'swr';
 
@@ -14,7 +13,6 @@ import { lambdaClient } from '@/libs/trpc/client';
 const { TextArea } = Input;
 
 const AdminPlanEditPage: FC = () => {
-  const { t } = useTranslation('common');
   const { message } = App.useApp();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -22,8 +20,8 @@ const AdminPlanEditPage: FC = () => {
 
   const {
     data: plan,
-    isLoading,
     error,
+    isLoading,
   } = useSWR(id ? ['admin-plan', id] : null, () => lambdaClient.admin.getPlan.query({ id: id! }));
 
   useEffect(() => {
@@ -72,146 +70,99 @@ const AdminPlanEditPage: FC = () => {
         sortOrder: values.sortOrder,
       });
 
-      message.success(t('admin.planUpdated', { defaultValue: 'Plan updated successfully' }));
+      message.success('套餐更新成功');
       navigate('/admin/plans');
     } catch (e: any) {
-      message.error(e?.message ?? t('admin.actionFailed', { defaultValue: 'Action failed' }));
+      message.error(e?.message ?? '操作失败');
     }
   };
 
   if (isLoading) return <Loading debugId="AdminPlanEdit" />;
-  if (error || !plan)
-    return (
-      <Flexbox padding={24}>
-        {error?.message ?? t('admin.planNotFound', { defaultValue: 'Plan not found' })}
-      </Flexbox>
-    );
+  if (error || !plan) return <Flexbox padding={24}>{error?.message ?? '套餐未找到'}</Flexbox>;
 
   return (
     <Flexbox padding={24}>
-      <Card title={t('admin.editPlan', { defaultValue: 'Edit Plan' })}>
+      <Card title="编辑套餐">
         <Form form={form} labelCol={{ span: 6 }} wrapperCol={{ span: 14 }} onFinish={handleSubmit}>
           <Form.Item
             required
-            label={t('admin.planName', { defaultValue: 'Plan Name' })}
+            label="套餐标识"
             name="name"
-            rules={[{ message: 'Required', required: true }]}
+            rules={[{ message: '必填', required: true }]}
           >
             <Input />
           </Form.Item>
 
           <Form.Item
             required
-            label={t('admin.displayName', { defaultValue: 'Display Name' })}
+            label="显示名称"
             name="displayName"
-            rules={[{ message: 'Required', required: true }]}
+            rules={[{ message: '必填', required: true }]}
           >
             <Input />
           </Form.Item>
 
-          <Form.Item
-            label={t('admin.description', { defaultValue: 'Description' })}
-            name="description"
-          >
+          <Form.Item label="描述" name="description">
             <TextArea rows={3} />
           </Form.Item>
 
           <Form.Item
             required
-            label={t('admin.price', { defaultValue: 'Price' })}
+            label="价格"
             name="price"
-            rules={[{ message: 'Required', required: true }]}
+            rules={[{ message: '必填', required: true }]}
           >
             <InputNumber min={0} step={0.01} style={{ width: '100%' }} />
           </Form.Item>
 
-          <Form.Item
-            required
-            label={t('admin.billingCycle', { defaultValue: 'Billing Cycle' })}
-            name="billingCycle"
-          >
+          <Form.Item required label="计费周期" name="billingCycle">
             <Select>
-              <Select.Option value="monthly">
-                {t('admin.monthly', { defaultValue: 'Monthly' })}
-              </Select.Option>
-              <Select.Option value="yearly">
-                {t('admin.yearly', { defaultValue: 'Yearly' })}
-              </Select.Option>
-              <Select.Option value="lifetime">
-                {t('admin.lifetime', { defaultValue: 'Lifetime' })}
-              </Select.Option>
+              <Select.Option value="monthly">月付</Select.Option>
+              <Select.Option value="yearly">年付</Select.Option>
+              <Select.Option value="lifetime">终身</Select.Option>
             </Select>
           </Form.Item>
 
-          <Card
-            size="small"
-            style={{ marginBottom: 24 }}
-            title={t('admin.quotaSettings', { defaultValue: 'Quota Settings' })}
-            type="inner"
-          >
-            <Form.Item
-              label={t('admin.chatMessages', { defaultValue: 'Chat Messages/Month' })}
-              name="chatMessages"
-            >
+          <Card size="small" style={{ marginBottom: 24 }} title="配额设置" type="inner">
+            <Form.Item label="聊天消息数/月" name="chatMessages">
               <InputNumber min={0} style={{ width: '100%' }} />
             </Form.Item>
 
-            <Form.Item
-              label={t('admin.imageGenerations', { defaultValue: 'Image Generations/Month' })}
-              name="imageGenerations"
-            >
+            <Form.Item label="图片生成数/月" name="imageGenerations">
               <InputNumber min={0} style={{ width: '100%' }} />
             </Form.Item>
 
-            <Form.Item
-              label={t('admin.videoGenerations', { defaultValue: 'Video Generations/Month' })}
-              name="videoGenerations"
-            >
+            <Form.Item label="视频生成数/月" name="videoGenerations">
               <InputNumber min={0} style={{ width: '100%' }} />
             </Form.Item>
 
-            <Form.Item
-              label={t('admin.fileStorage', { defaultValue: 'File Storage (GB)' })}
-              name="fileStorage"
-            >
+            <Form.Item label="文件存储上限（GB）" name="fileStorage">
               <InputNumber min={0} step={0.1} style={{ width: '100%' }} />
             </Form.Item>
 
-            <Form.Item
-              label={t('admin.apiCalls', { defaultValue: 'API Calls/Month' })}
-              name="apiCalls"
-            >
+            <Form.Item label="API调用数/月" name="apiCalls">
               <InputNumber min={0} style={{ width: '100%' }} />
             </Form.Item>
 
-            <Form.Item
-              label={t('admin.maxApiKeys', { defaultValue: 'Max API Keys' })}
-              name="maxApiKeys"
-            >
+            <Form.Item label="最大API Key数" name="maxApiKeys">
               <InputNumber min={0} style={{ width: '100%' }} />
             </Form.Item>
           </Card>
 
-          <Form.Item
-            label={t('admin.active', { defaultValue: 'Active' })}
-            name="active"
-            valuePropName="checked"
-          >
+          <Form.Item label="启用" name="active" valuePropName="checked">
             <Switch />
           </Form.Item>
 
-          <Form.Item label={t('admin.sortOrder', { defaultValue: 'Sort Order' })} name="sortOrder">
+          <Form.Item label="排序" name="sortOrder">
             <InputNumber min={0} style={{ width: '100%' }} />
           </Form.Item>
 
           <Form.Item wrapperCol={{ offset: 6, span: 14 }}>
             <Flexbox horizontal gap={12}>
               <Button htmlType="submit" type="primary">
-                {t('admin.save', { defaultValue: 'Save' })}
+                保存
               </Button>
-              <Button onClick={() => navigate('/admin/plans')}>
-                {t('admin.cancel', { defaultValue: 'Cancel' })}
-              </Button>
+              <Button onClick={() => navigate('/admin/plans')}>取消</Button>
             </Flexbox>
           </Form.Item>
         </Form>
