@@ -2,6 +2,7 @@ import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
 import { wsCompatProcedure } from '@/business/server/trpc-middlewares/workspaceAuth';
+import { ApiKeyModel } from '@/database/models/apiKey';
 import { UserModel } from '@/database/models/user';
 import { router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
@@ -35,6 +36,13 @@ export const adminRouter = router({
       return { success: true as const };
     }),
 
+  deleteApiKey: adminProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      await ApiKeyModel.adminDelete(ctx.serverDB, input.id);
+      return { success: true as const };
+    }),
+
   getUserDetail: adminProcedure
     .input(z.object({ userId: z.string() }))
     .query(async ({ ctx, input }) => {
@@ -56,6 +64,19 @@ export const adminRouter = router({
       return UserModel.listUsers(ctx.serverDB, input);
     }),
 
+  listAllApiKeys: adminProcedure
+    .input(
+      z.object({
+        page: z.number().min(1).default(1),
+        pageSize: z.number().min(1).max(100).default(20),
+        search: z.string().optional(),
+        userId: z.string().optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      return ApiKeyModel.adminListAll(ctx.serverDB, input);
+    }),
+
   unbanUser: adminProcedure
     .input(z.object({ userId: z.string() }))
     .mutation(async ({ ctx, input }) => {
@@ -71,6 +92,22 @@ export const adminRouter = router({
       assertNotSelf(input.userId, ctx.userId);
       const target = new UserModel(ctx.serverDB, input.userId);
       await target.updateUser({ role: input.role });
+      return { success: true as const };
+    }),
+
+  updateApiKey: adminProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        value: z.object({
+          enabled: z.boolean().optional(),
+          expiresAt: z.date().nullish(),
+          name: z.string().optional(),
+        }),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await ApiKeyModel.adminUpdate(ctx.serverDB, input.id, input.value);
       return { success: true as const };
     }),
 });
