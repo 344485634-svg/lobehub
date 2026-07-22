@@ -1,10 +1,6 @@
-import { Block, Flexbox, Icon } from '@lobehub/ui';
+import { Flexbox } from '@lobehub/ui';
 import { cssVar } from 'antd-style';
-import { LucideArrowRight, LucideBolt } from 'lucide-react';
 import { type FC } from 'react';
-import { useTranslation } from 'react-i18next';
-
-import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 
 import { styles } from '../styles';
 
@@ -12,30 +8,22 @@ interface FooterProps {
   onClose: () => void;
 }
 
-export const Footer: FC<FooterProps> = ({ onClose }) => {
-  const { t } = useTranslation('components');
-  const navigate = useWorkspaceAwareNavigate();
-
+/**
+ * Closed product: non-admin users cannot manage providers.
+ * Hide the previous "manage provider / go to settings" footer entry.
+ */
+export const Footer: FC<FooterProps> = () => {
   return (
     <Flexbox className={styles.footer} padding={4}>
-      <Block
-        clickable
+      <Flexbox
         horizontal
         gap={8}
         paddingBlock={8}
         paddingInline={12}
-        variant={'borderless'}
-        onClick={() => {
-          onClose();
-          navigate('/settings/provider/all');
-        }}
+        style={{ color: cssVar.colorTextTertiary, fontSize: 12 }}
       >
-        <Flexbox horizontal align={'center'} gap={8} style={{ flex: 1 }}>
-          <Icon icon={LucideBolt} size={'small'} />
-          {t('ModelSwitchPanel.manageProvider')}
-        </Flexbox>
-        <Icon color={cssVar.colorTextDescription} icon={LucideArrowRight} size={'small'} />
-      </Block>
+        模型由管理员统一配置，如需开通请联系管理员
+      </Flexbox>
     </Flexbox>
   );
 };
