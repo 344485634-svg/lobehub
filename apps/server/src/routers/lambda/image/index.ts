@@ -69,6 +69,16 @@ export const imageRouter = router({
   createImage: imageCreateProcedure
     .input(createImageInputSchema)
     .mutation(async ({ input, ctx }) => {
+      const { getSubscriptionPlan } = await import('@/business/server/user');
+      const { Plans } = await import('@lobechat/types');
+      const plan = await getSubscriptionPlan(ctx.userId);
+      if (!plan || plan === Plans.Free) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: '当前账号未订阅套餐，暂无法使用图片生成。请先订阅套餐，或联系管理员开通。',
+        });
+      }
+
       const { userId, serverDB, asyncTaskModel, fileService, generationTopicModel } = ctx;
       const wsId = ctx.workspaceId ?? undefined;
       const { generationTopicId, provider, model, imageNum, params } = input;

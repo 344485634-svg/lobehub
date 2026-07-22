@@ -1,12 +1,10 @@
 import type { SelectProps } from '@lobehub/ui';
-import { ActionIcon, Flexbox, Icon, Select } from '@lobehub/ui';
+import { Flexbox, Select } from '@lobehub/ui';
 import { createStaticStyles, cssVar } from 'antd-style';
-import { LucideArrowRight, LucideBolt } from 'lucide-react';
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ProviderItemRender } from '@/components/ModelSelect';
-import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import { useAiInfraStore } from '@/store/aiInfra';
 import { aiProviderSelectors } from '@/store/aiInfra/slices/aiProvider/selectors';
 import { useVideoStore } from '@/store/video';
@@ -43,8 +41,6 @@ interface ModelOption {
 
 const ModelSelect = memo(() => {
   const { t } = useTranslation('components');
-  const navigate = useWorkspaceAwareNavigate();
-
   const [currentModel, currentProvider] = useVideoStore((s) => [
     videoGenerationConfigSelectors.model(s),
     videoGenerationConfigSelectors.provider(s),
@@ -67,13 +63,9 @@ const ModelSelect = memo(() => {
             disabled: true,
             label: (
               <Flexbox horizontal gap={8} style={{ color: cssVar.colorTextTertiary }}>
-                {t('ModelSwitchPanel.emptyModel')}
-                <Icon icon={LucideArrowRight} />
+                该服务商暂无可用模型，请联系管理员开启
               </Flexbox>
             ),
-            onClick: () => {
-              navigate(`/settings/provider/${provider.id}`);
-            },
             value: `${provider.id}/empty`,
           },
         ];
@@ -88,13 +80,9 @@ const ModelSelect = memo(() => {
           disabled: true,
           label: (
             <Flexbox horizontal gap={8} style={{ color: cssVar.colorTextTertiary }}>
-              {t('ModelSwitchPanel.emptyProvider')}
-              <Icon icon={LucideArrowRight} />
+              暂无可用视频模型，请联系管理员在后台开启
             </Flexbox>
           ),
-          onClick: () => {
-            navigate('/settings/provider/all');
-          },
           value: 'no-provider',
         },
       ];
@@ -114,20 +102,11 @@ const ModelSelect = memo(() => {
             provider={provider.id}
             source={provider.source}
           />
-          <ActionIcon
-            icon={LucideBolt}
-            size={'small'}
-            title={t('ModelSwitchPanel.goToSettings')}
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(`/settings/provider/${provider.id}`);
-            }}
-          />
         </Flexbox>
       ),
       options: getVideoModels(provider),
     }));
-  }, [enabledVideoModelList, t, navigate]);
+  }, [enabledVideoModelList, t]);
 
   const labelRender: SelectProps['labelRender'] = (props) => {
     const modelInfo = enabledVideoModelList

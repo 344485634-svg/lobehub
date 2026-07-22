@@ -5,7 +5,6 @@ import { Button } from '@lobehub/ui';
 import { ModelProvider } from 'model-bank';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
-import urlJoin from 'url-join';
 
 import BaseErrorForm from '@/features/Conversation/Error/BaseErrorForm';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
@@ -30,11 +29,11 @@ const GenerationInvalidAPIKey = memo<GenerationInvalidAPIKeyProps>(({ provider, 
         <Button
           type={'primary'}
           onClick={() => {
-            navigate(urlJoin('/settings/provider', provider || 'all'));
+            navigate('/settings/plans');
             onNavigate?.();
           }}
         >
-          {t('unlock.goToSettings', { ns: 'error' })}
+          '查看订阅套餐'
         </Button>
       }
       desc={

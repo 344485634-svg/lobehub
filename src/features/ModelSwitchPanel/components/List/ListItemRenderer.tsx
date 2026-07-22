@@ -1,5 +1,4 @@
 import {
-  ActionIcon,
   Block,
   DropdownMenuPopup,
   DropdownMenuPortal,
@@ -7,19 +6,13 @@ import {
   DropdownMenuSubmenuRoot,
   DropdownMenuSubmenuTrigger,
   Flexbox,
-  Icon,
   menuSharedStyles,
 } from '@lobehub/ui';
 import { cssVar, cx } from 'antd-style';
-import { LucideArrowRight, LucideBolt } from 'lucide-react';
 import { memo, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import urlJoin from 'url-join';
 
-import { useActiveWorkspaceSlug } from '@/business/client/hooks/useActiveWorkspaceSlug';
 import { ModelItemRender, ProviderItemRender } from '@/components/ModelSelect';
-import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
-import { buildWorkspaceAwarePath } from '@/features/Workspace/workspaceAwarePath';
 import { useUserStore } from '@/store/user';
 import { userGeneralSettingsSelectors } from '@/store/user/selectors';
 
@@ -55,8 +48,6 @@ export const ListItemRenderer = memo<ListItemRendererProps>(
     subscribeScroll,
   }) => {
     const { t } = useTranslation('components');
-    const navigate = useWorkspaceAwareNavigate();
-    const activeSlug = useActiveWorkspaceSlug();
     const isDevMode = useUserStore((s) => userGeneralSettingsSelectors.config(s).isDevMode);
     const [detailOpen, setDetailOpen] = useState(false);
 
@@ -68,20 +59,14 @@ export const ListItemRenderer = memo<ListItemRendererProps>(
       case 'no-provider': {
         return (
           <Block
-            clickable
             horizontal
             className={styles.menuItem}
             gap={8}
             key="no-provider"
-            style={{ color: cssVar.colorTextTertiary }}
+            style={{ color: cssVar.colorTextTertiary, cursor: 'default' }}
             variant={'borderless'}
-            onClick={() => {
-              onClose();
-              navigate('/settings/provider/all');
-            }}
           >
-            {t('ModelSwitchPanel.emptyProvider')}
-            <Icon icon={LucideArrowRight} />
+            暂无可用模型，请联系管理员在后台开启
           </Block>
         );
       }
@@ -102,23 +87,6 @@ export const ListItemRenderer = memo<ListItemRendererProps>(
               provider={item.provider.id}
               source={item.provider.source}
             />
-            <ActionIcon
-              className="settings-icon"
-              icon={LucideBolt}
-              size="small"
-              title={t('ModelSwitchPanel.goToSettings')}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const url = urlJoin('/settings/provider', item.provider.id || 'all');
-                if (e.ctrlKey || e.metaKey) {
-                  window.open(buildWorkspaceAwarePath(url, activeSlug), '_blank');
-                } else {
-                  navigate(url);
-                }
-                onClose();
-              }}
-            />
           </Flexbox>
         );
       }
@@ -130,14 +98,9 @@ export const ListItemRenderer = memo<ListItemRendererProps>(
             className={styles.menuItem}
             gap={8}
             key={`empty-${item.provider.id}`}
-            style={{ color: cssVar.colorTextTertiary }}
-            onClick={() => {
-              onClose();
-              navigate(`/settings/provider/${item.provider.id}`);
-            }}
+            style={{ color: cssVar.colorTextTertiary, cursor: 'default' }}
           >
-            {t('ModelSwitchPanel.emptyModel')}
-            <Icon icon={LucideArrowRight} />
+            该服务商暂无可用模型，请联系管理员开启
           </Flexbox>
         );
       }

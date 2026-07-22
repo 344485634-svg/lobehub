@@ -25,7 +25,7 @@
       "@/libs/trpc/*": ["./packages/trpc/src/*", "./src/libs/trpc/*"],
       "@/config/*": ["./packages/app-config/src/*", "./src/config/*"],
       "@/locales/*": ["./packages/locales/src/*", "./src/locales/*"],
-      "@/business/server/*": ["./packages/business-server/src/*", "./src/business/server/*"],
+      "@/business/server/*": ["./src/business/server/*", "./packages/business-server/src/*"],
       "@/server/*": ["./apps/server/src/*", "./src/server/*"],
       "@/*": ["./src/*"],
       "~test-utils": ["./tests/utils.tsx"]

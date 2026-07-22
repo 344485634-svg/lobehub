@@ -77,14 +77,14 @@ export const DEFAULT_FEATURE_FLAGS: IFeatureFlags = {
   ai_image: true,
 
   check_updates: true,
-  welcome_suggest: true,
+  welcome_suggest: false,
   token_counter: true,
 
   knowledge_base: true,
   rag_eval: false,
 
   agent_self_iteration: isDev,
-  agent_onboarding: isDev,
+  agent_onboarding: false,
   auth_captcha: true,
   cloud_promotion: false,
   storage_overage: true,

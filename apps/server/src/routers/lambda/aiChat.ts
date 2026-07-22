@@ -166,6 +166,17 @@ export const aiChatRouter = router({
   sendMessageInServer: aiChatWriteProcedure
     .input(AiSendMessageServerSchema)
     .mutation(async ({ input, ctx }) => {
+      // Closed product: require active subscription before model chat
+      const { getSubscriptionPlan } = await import('@/business/server/user');
+      const { Plans } = await import('@lobechat/types');
+      const plan = await getSubscriptionPlan(ctx.userId);
+      if (!plan || plan === Plans.Free) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: '当前账号未订阅套餐，暂无法使用大模型。请先订阅套餐，或联系管理员开通。',
+        });
+      }
+
       const timingContext =
         input.newAssistantMessage.provider === 'lobehub'
           ? { requestId: createTimingRequestId(), startedAt: Date.now() }

@@ -7,11 +7,9 @@ import { memo, useCallback, useEffect, useRef } from 'react';
 import { Navigate, useSearchParams } from 'react-router';
 
 import Loading from '@/components/Loading/BrandTextLoading';
-import { useOnboardingAgentTemplates } from '@/hooks/useOnboardingAgentTemplates';
 import OnboardingContainer from '@/routes/onboarding/_layout';
 import { deriveOnboardingBranchPath } from '@/routes/onboarding/branch';
 import ResponseLanguageStep from '@/routes/onboarding/features/ResponseLanguageStep';
-import TelemetryStep from '@/routes/onboarding/features/TelemetryStep';
 import {
   trackOnboardingStepCompleted,
   trackOnboardingStepViewed,
@@ -26,11 +24,6 @@ import { clearStaleOnboardingCallbackUrl, isSafeRedirectPath } from '@/utils/onb
  * (1=Telemetry, 2=FullName, 3=Interests, 4=Language, 5=ProSettings) onto
  * the current classic flow (1=FullName, 2=Interests, 3=ProSettings,
  * 4=AgentPicker).
- *
- * Telemetry/Language are extracted into the shared prefix, so an in-progress
- * legacy user must skip those positions when resuming classic. Legacy
- * Language/ProSettings (raw >= 4) resume at the new ProSettings step
- * (MAX_ONBOARDING_STEPS - 1) — never the trailing agent-picker step.
  */
 const remapLegacyClassicStep = (raw: number): number => {
   if (raw <= 2) return 1;
@@ -59,17 +52,17 @@ const CommonOnboardingPage = memo(() => {
   const serverConfigInit = useServerConfigStore((s) => s.serverConfigInit);
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const step: 1 | 2 = searchParams.get('step') === '2' ? 2 : 1;
   const hasStepParam = searchParams.has('step');
   const viewedStepKeysRef = useRef<Set<string>>(new Set());
+  const autoSkippedTelemetryRef = useRef(false);
 
-  useOnboardingAgentTemplates(isUserStateInit && (!commonStepsCompleted || hasStepParam));
+  // Closed product: permanently disable anonymous telemetry collection.
+  useEffect(() => {
+    if (!isUserStateInit) return;
+    useUserStore.getState().updateGeneralConfig({ telemetry: false });
+  }, [isUserStateInit]);
 
-  // One-time legacy migration: when the user lands on the shared prefix, if
-  // their persisted `currentStep` was authored under the old 5-step schema,
-  // remap it onto the new 3-step schema before classic ever mounts. Gated by
-  // `isUserStateInit` so we don't act on an empty initial slice. Skips when
-  // onboarding is already finished or unset — mid-flow legacy users only.
+  // One-time legacy migration
   const remappedRef = useRef(false);
   useEffect(() => {
     if (!isUserStateInit || remappedRef.current) return;
@@ -86,42 +79,31 @@ const CommonOnboardingPage = memo(() => {
     remappedRef.current = true;
   }, [isUserStateInit]);
 
-  // This component only mounts on top-level entries to `/onboarding` (fresh
-  // signup landings and `?step` re-entries from the branch's back button), so
-  // mount is the one safe point to drop a stale callback stashed by a
-  // previously abandoned attempt — later search changes are internal step
-  // navigations that must keep the stash.
   useEffect(() => {
     clearStaleOnboardingCallbackUrl(window.location.pathname, window.location.search);
   }, []);
 
+  // Closed product: auto-skip telemetry/privacy step and go straight to language,
+  // then finish common prefix so classic flow starts without agent marketplace.
   useEffect(() => {
-    if (__TEST__) return;
-    void import('@/routes/onboarding/agent');
-    void import('@/routes/onboarding/classic');
-  }, []);
+    if (!isUserStateInit || autoSkippedTelemetryRef.current) return;
+    if (commonStepsCompleted && !hasStepParam) return;
 
-  useEffect(() => {
-    if (!isUserStateInit || (commonStepsCompleted && !hasStepParam)) return;
-
-    const payload = COMMON_STEP_TRACKING[step];
-    if (viewedStepKeysRef.current.has(payload.step)) return;
-
-    viewedStepKeysRef.current.add(payload.step);
-    trackOnboardingStepViewed(payload);
-  }, [commonStepsCompleted, hasStepParam, isUserStateInit, step]);
-
-  const goNextFromTelemetry = useCallback(() => {
-    trackOnboardingStepCompleted(COMMON_STEP_TRACKING[1]);
-    setSearchParams({ step: '2' }, { replace: true });
-  }, [setSearchParams]);
-
-  const goBackFromLanguage = useCallback(() => {
-    setSearchParams({ step: '1' }, { replace: true });
-  }, [setSearchParams]);
+    autoSkippedTelemetryRef.current = true;
+    trackOnboardingStepViewed(COMMON_STEP_TRACKING[1]);
+    trackOnboardingStepCompleted({
+      ...COMMON_STEP_TRACKING[1],
+      action: 'auto_skip',
+      skipped: true,
+    });
+    trackOnboardingStepViewed(COMMON_STEP_TRACKING[2]);
+  }, [commonStepsCompleted, hasStepParam, isUserStateInit]);
 
   const finishCommon = useCallback(() => {
-    trackOnboardingStepCompleted(COMMON_STEP_TRACKING[2]);
+    if (!viewedStepKeysRef.current.has('response_language_done')) {
+      viewedStepKeysRef.current.add('response_language_done');
+      trackOnboardingStepCompleted(COMMON_STEP_TRACKING[2]);
+    }
     setSearchParams({}, { replace: true });
   }, [setSearchParams]);
 
@@ -129,14 +111,13 @@ const CommonOnboardingPage = memo(() => {
     return <Loading debugId="CommonOnboarding/userState" />;
   }
 
-  // With the prefix complete, a bare `/onboarding` resumes the branch — but an
-  // explicit `?step` (FullNameStep's back button) re-enters the shared prefix.
   if (commonStepsCompleted && !hasStepParam) {
     if (!serverConfigInit) {
       return <Loading debugId="CommonOnboarding/serverConfig" />;
     }
+    // Force classic branch; never agent marketplace in closed product.
     const branchPath = deriveOnboardingBranchPath({
-      enableAgentOnboarding: !!enableAgentOnboarding,
+      enableAgentOnboarding: false,
       isDesktop,
     });
     return <Navigate replace to={appendCallbackUrl(branchPath, searchParams)} />;
@@ -145,11 +126,7 @@ const CommonOnboardingPage = memo(() => {
   return (
     <OnboardingContainer>
       <Flexbox gap={24} style={{ maxWidth: 600, width: '100%' }}>
-        {step === 1 ? (
-          <TelemetryStep onNext={goNextFromTelemetry} />
-        ) : (
-          <ResponseLanguageStep onBack={goBackFromLanguage} onNext={finishCommon} />
-        )}
+        <ResponseLanguageStep onBack={() => undefined} onNext={finishCommon} />
       </Flexbox>
     </OnboardingContainer>
   );

@@ -13,6 +13,7 @@ export async function getReferralStatus(userId: string): Promise<ReferralStatusS
   return undefined;
 }
 
+// Fallback stub; apps resolve to src/business/server/user.ts first via tsconfig path.
 export async function getSubscriptionPlan(userId: string): Promise<Plans> {
   return Plans.Free;
 }
