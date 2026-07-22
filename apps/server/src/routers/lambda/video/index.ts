@@ -134,33 +134,81 @@ export const videoRouter = router({
         }
       }
 
-      // In development, convert localhost proxy URLs to S3 URLs for API access
+      // Process multi reference images / mediaUrl if present
+      if (Array.isArray((params as any).imageUrls) && (params as any).imageUrls.length > 0) {
+        try {
+          const keys = await Promise.all(
+            ((params as any).imageUrls as string[]).map(async (url) => {
+              try {
+                return (await fileService.getKeyFromFullUrl(url)) || url;
+              } catch {
+                return url;
+              }
+            }),
+          );
+          configForDatabase = { ...configForDatabase, imageUrls: keys };
+        } catch (error) {
+          console.error('Error converting imageUrls to keys: %O', error);
+        }
+      }
+      if (typeof (params as any).mediaUrl === 'string' && (params as any).mediaUrl) {
+        try {
+          const key = await fileService.getKeyFromFullUrl((params as any).mediaUrl);
+          if (key) {
+            configForDatabase = { ...configForDatabase, mediaUrl: key };
+          }
+        } catch (error) {
+          console.error('Error converting mediaUrl to key: %O', error);
+        }
+      }
+
+      // Convert stored keys / proxy URLs to full URLs the model gateway can fetch.
+      // Remote gateways (api.liuma.ai) require media_url to be valid HTTP(S).
+      // Always resolve through fileService so localhost proxy URLs become S3/public URLs
+      // when available (not only in development).
       let generationParams = params;
-      if (process.env.NODE_ENV === 'development') {
+      {
         const updates: Record<string, unknown> = {};
+        const resolvePublic = async (value: unknown): Promise<string | undefined> => {
+          if (typeof value !== 'string' || !value) return undefined;
+          // Already a public http(s) URL that is not localhost/proxy — keep
+          if (/^https?:\/\//i.test(value) && !/localhost|127\.0\.0\.1/.test(value)) {
+            return value;
+          }
+          try {
+            const full = await fileService.getFullFileUrl(value);
+            return full || undefined;
+          } catch {
+            return undefined;
+          }
+        };
 
         if (typeof params.imageUrl === 'string' && params.imageUrl) {
-          const s3Url = await fileService.getFullFileUrl(configForDatabase.imageUrl as string);
-          if (s3Url) {
-            log('Dev: converted imageUrl proxy URL to S3 URL: %s -> %s', params.imageUrl, s3Url);
-            updates.imageUrl = s3Url;
-          }
+          const url = await resolvePublic(configForDatabase.imageUrl ?? params.imageUrl);
+          if (url) updates.imageUrl = url;
         }
-
         if (typeof params.endImageUrl === 'string' && params.endImageUrl) {
-          const s3Url = await fileService.getFullFileUrl(configForDatabase.endImageUrl as string);
-          if (s3Url) {
-            log(
-              'Dev: converted endImageUrl proxy URL to S3 URL: %s -> %s',
-              params.endImageUrl,
-              s3Url,
-            );
-            updates.endImageUrl = s3Url;
-          }
+          const url = await resolvePublic(configForDatabase.endImageUrl ?? params.endImageUrl);
+          if (url) updates.endImageUrl = url;
+        }
+        if (Array.isArray((params as any).imageUrls) && (params as any).imageUrls.length > 0) {
+          const src = ((configForDatabase as any).imageUrls ??
+            (params as any).imageUrls) as string[];
+          const urls = (
+            await Promise.all(src.map(async (v) => (await resolvePublic(v)) || v))
+          ).filter(Boolean);
+          if (urls.length) updates.imageUrls = urls;
+        }
+        if (typeof (params as any).mediaUrl === 'string' && (params as any).mediaUrl) {
+          const url = await resolvePublic(
+            (configForDatabase as any).mediaUrl ?? (params as any).mediaUrl,
+          );
+          if (url) updates.mediaUrl = url;
         }
 
         if (Object.keys(updates).length > 0) {
           generationParams = { ...params, ...updates };
+          log('Resolved media URLs for gateway: %O', updates);
         }
       }
 

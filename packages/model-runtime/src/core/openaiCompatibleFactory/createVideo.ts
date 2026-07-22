@@ -12,8 +12,7 @@ const log = createDebug('lobe-video:openai-compatible');
 
 /**
  * 将图片 URL 取回并转为 base64 data URL。
- * 用于"本地数据 + 远程云 API"架构(如桌面端):参考图在本地(localhost S3),
- * 远程网关无法通过 http URL 下载本机图片,故内联 base64 发送,网关免下载。
+ * 仅作兜底:部分本地网关仍接受 data URL;远程网关(api.liuma.ai)要求 media_url 必须是 HTTP(S)。
  */
 async function fetchImageAsDataUrl(url: string): Promise<string | null> {
   try {
@@ -25,6 +24,59 @@ async function fetchImageAsDataUrl(url: string): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+/** 是否为远程网关可直接拉取的 HTTP(S) URL */
+function isPublicHttpUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
+    const host = u.hostname.toLowerCase();
+    // 本地/内网地址远程网关拉不到
+    if (
+      host === 'localhost' ||
+      host === '127.0.0.1' ||
+      host === '0.0.0.0' ||
+      host === '::1' ||
+      host.endsWith('.local') ||
+      host.startsWith('10.') ||
+      host.startsWith('192.168.') ||
+      /^172\.(?:1[6-9]|2\d|3[01])\./.test(host)
+    ) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 解析参考素材最终 media_url:
+ * - 已是公网 HTTP(S) → 原样使用(远程网关可下载)
+ * - 本地/内网/相对路径 → 尝试内联 base64(仅图片类型部分网关接受)
+ * - 无法解析 → 跳过该项
+ */
+async function resolveMediaUrl(url: string, kind: 'image' | 'video'): Promise<string | null> {
+  if (!url) return null;
+  if (isPublicHttpUrl(url)) return url;
+
+  // 视频参考:网关强制 HTTP(S) URL,本地地址无法内联
+  if (kind === 'video') {
+    log(
+      'Skip video reference: media_url is not a public HTTP(S) URL (got %s). Upload to public storage or use a reachable URL.',
+      url.slice(0, 80),
+    );
+    return null;
+  }
+
+  // 图片:本地地址尝试 base64 兜底(部分兼容网关仍接受)
+  if (url.startsWith('data:')) return url;
+  const dataUrl = await fetchImageAsDataUrl(url);
+  if (dataUrl) return dataUrl;
+
+  log('Failed to resolve image reference URL: %s', url.slice(0, 80));
+  return null;
 }
 
 interface OpenAIVideoStatusResponse {
@@ -145,7 +197,8 @@ export async function createOpenAICompatibleVideo(
 ): Promise<CreateVideoResponse> {
   const { model, params } = payload;
   const requestModel = resolveMappedModelId(model, options);
-  const { prompt, imageUrl, imageUrls, endImageUrl, mediaUrl, size, duration, aspectRatio } = params;
+  const { prompt, imageUrl, imageUrls, endImageUrl, mediaUrl, size, duration, aspectRatio } =
+    params;
 
   log('Creating video with OpenAI-compatible API - model: %s, params: %O', requestModel, params);
 
@@ -181,37 +234,46 @@ export async function createOpenAICompatibleVideo(
       body['last_frame'] = { image_url: endImageUrl };
     }
   } else {
-    // OpenAI-compatible 网关(如 newapi/api.liuma.ai 远程):
-    // 参考图常在本地(localhost S3),远程网关无法下载 → 转 base64 data URL 内联发送。
-    // 网关用 reference_contents 数组接收参考素材(每项含 type/media_url/name)。
-    // type=image(图片参考), type=video(视频参考)。
+    // OpenAI-compatible 网关(如 newapi / api.liuma.ai):
+    // 官方要求 reference_contents[].media_url 必须是有效 HTTP(S) URL。
+    // - 公网 URL:直接传
+    // - 本地/内网图片:尽量转 data URL 兜底(部分网关不接受时会由上游再报错)
+    // - 本地视频:无法内联,跳过并记录日志
     const referenceContents: Array<{
       media_url: string;
       name: string;
       type: string;
     }> = [];
 
-    // 首帧图片 → reference_contents type=image name=人物
-    if (imageUrl) {
-      const dataUrl = await fetchImageAsDataUrl(imageUrl);
-      if (dataUrl) referenceContents.push({ media_url: dataUrl, name: '人物', type: 'image' });
+    const seen = new Set<string>();
+    const pushRef = async (
+      url: string | null | undefined,
+      name: string,
+      type: 'image' | 'video',
+    ) => {
+      if (!url || seen.has(url)) return;
+      seen.add(url);
+      const media = await resolveMediaUrl(url, type);
+      if (!media) return;
+      // 远程网关不接受 data: 时,仅在图片且为 data 时仍发送(兼容旧网关);
+      // 若是 video 且非 http, resolveMediaUrl 已返回 null。
+      if (type === 'image' && media.startsWith('data:') && !isPublicHttpUrl(url)) {
+        // api.liuma.ai 明确要求 HTTP(S),data URL 会被拒。本地图无法被远程拉时跳过并提示。
+        log(
+          'Skip local image reference for remote gateway (media_url must be HTTP(S)): %s',
+          url.slice(0, 80),
+        );
+        return;
+      }
+      referenceContents.push({ media_url: media, name, type });
+    };
+
+    await pushRef(imageUrl, '人物', 'image');
+    for (const [idx, url] of (imageUrls ?? []).entries()) {
+      await pushRef(url, `参考图${idx + 1}`, 'image');
     }
-    // 多参考图 → reference_contents type=image name=参考图N
-    for (const url of imageUrls ?? []) {
-      const dataUrl = await fetchImageAsDataUrl(url);
-      if (dataUrl)
-        referenceContents.push({ media_url: dataUrl, name: '参考图', type: 'image' });
-    }
-    // 尾帧图片 → reference_contents type=image name=尾帧
-    if (endImageUrl) {
-      const dataUrl = await fetchImageAsDataUrl(endImageUrl);
-      if (dataUrl) referenceContents.push({ media_url: dataUrl, name: '尾帧', type: 'image' });
-    }
-    // 视频参考 → reference_contents type=video name=动作
-    // 网关对 video 类型只接受 URL(不支持 base64 data URL),直接发原始 URL
-    if (mediaUrl) {
-      referenceContents.push({ media_url: mediaUrl, name: '动作', type: 'video' });
-    }
+    await pushRef(endImageUrl, '尾帧', 'image');
+    await pushRef(mediaUrl, '动作', 'video');
 
     if (referenceContents.length > 0) body['reference_contents'] = referenceContents;
 
