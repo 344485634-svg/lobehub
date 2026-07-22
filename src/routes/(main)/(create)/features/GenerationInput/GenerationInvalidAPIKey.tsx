@@ -2,14 +2,10 @@
 
 import { ProviderIcon } from '@lobehub/icons';
 import { Button } from '@lobehub/ui';
-import { ModelProvider } from 'model-bank';
 import { memo } from 'react';
-import { useTranslation } from 'react-i18next';
 
 import BaseErrorForm from '@/features/Conversation/Error/BaseErrorForm';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
-import { useProviderName } from '@/hooks/useProviderName';
-import { type GlobalLLMProviderKey } from '@/types/user/settings/modelProvider';
 
 interface GenerationInvalidAPIKeyProps {
   onNavigate?: () => void;
@@ -17,14 +13,10 @@ interface GenerationInvalidAPIKeyProps {
 }
 
 const GenerationInvalidAPIKey = memo<GenerationInvalidAPIKeyProps>(({ provider, onNavigate }) => {
-  const { t } = useTranslation(['modelProvider', 'error']);
   const navigate = useWorkspaceAwareNavigate();
-  const providerName = useProviderName(provider as GlobalLLMProviderKey);
 
   return (
     <BaseErrorForm
-      avatar={<ProviderIcon provider={provider} shape={'square'} size={40} />}
-      title={t(`unlock.apiKey.title`, { name: providerName, ns: 'error' })}
       action={
         <Button
           type={'primary'}
@@ -33,17 +25,12 @@ const GenerationInvalidAPIKey = memo<GenerationInvalidAPIKeyProps>(({ provider, 
             onNavigate?.();
           }}
         >
-          '查看订阅套餐'
+          查看订阅套餐
         </Button>
       }
-      desc={
-        provider === ModelProvider.Bedrock
-          ? t('bedrock.unlock.description')
-          : t(`unlock.apiKey.description`, {
-              name: providerName,
-              ns: 'error',
-            })
-      }
+      avatar={<ProviderIcon provider={provider} shape={'square'} size={40} />}
+      desc="当前账号未开通可用模型服务。请订阅套餐后使用，或联系管理员开通。"
+      title="暂无可用模型权限"
     />
   );
 });
