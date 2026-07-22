@@ -24,12 +24,12 @@ const DesktopAdminLayout: FC = () => {
   if (!isAdmin) return null;
 
   return (
-    <>
+    <Flexbox horizontal className={styles.root} height="100%" width="100%">
       <Sidebar />
       <Flexbox className={styles.mainContainer} flex={1} height="100%">
         <Outlet />
       </Flexbox>
-    </>
+    </Flexbox>
   );
 };
 

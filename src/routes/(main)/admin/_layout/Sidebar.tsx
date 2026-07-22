@@ -16,6 +16,8 @@ import {
 import { memo } from 'react';
 import { Link, useLocation } from 'react-router';
 
+import { styles } from './style';
+
 const Sidebar = memo(() => {
   const { pathname } = useLocation();
 
@@ -38,24 +40,35 @@ const Sidebar = memo(() => {
   };
 
   return (
-    <Flexbox gap={4} padding={12} style={{ width: 220 }}>
-      {items.map((item) => (
-        <Link key={item.key} style={{ color: 'inherit' }} to={item.key}>
-          <Flexbox
-            horizontal
-            align="center"
-            gap={8}
-            padding={8}
-            style={{
-              background: isActive(item.key) ? 'var(--lobe-color-fill-tertiary)' : undefined,
-              borderRadius: 8,
-            }}
-          >
-            <Icon icon={item.icon} />
-            {item.label}
-          </Flexbox>
-        </Link>
-      ))}
+    <Flexbox className={styles.sidebar} gap={4} padding={12}>
+      <div
+        style={{
+          color: 'var(--lobe-color-text-secondary)',
+          fontSize: 12,
+          fontWeight: 600,
+          marginBottom: 8,
+          paddingInline: 8,
+        }}
+      >
+        管理后台
+      </div>
+      {items.map((item) => {
+        const active = isActive(item.key);
+        return (
+          <Link className={styles.sidebarItem} key={item.key} to={item.key}>
+            <Flexbox
+              horizontal
+              align="center"
+              className={`${styles.sidebarItemInner}${active ? ` ${styles.sidebarItemActive}` : ''}`}
+              gap={8}
+              padding={8}
+            >
+              <Icon icon={item.icon} size={16} />
+              <span style={{ fontSize: 14 }}>{item.label}</span>
+            </Flexbox>
+          </Link>
+        );
+      })}
     </Flexbox>
   );
 });
