@@ -52,10 +52,17 @@ import WorkspaceSlugSettingsStoragePage from '@/routes/(main)/[workspaceSlug]/se
 import WorkspaceSlugSettingsUsagePage from '@/routes/(main)/[workspaceSlug]/settings/usage';
 import AdminDashboardPage from '@/routes/(main)/admin';
 import DesktopAdminLayout from '@/routes/(main)/admin/_layout';
-import AdminApiKeysPage from '@/routes/(main)/admin/api-keys';
+import AdminConnectorPage from '@/routes/(main)/admin/connector';
+import AdminCredsPage from '@/routes/(main)/admin/creds';
+import AdminMemoryPage from '@/routes/(main)/admin/memory';
 import AdminPlansPage from '@/routes/(main)/admin/plans';
 import AdminPlanEditPage from '@/routes/(main)/admin/plans/[id]/edit';
 import AdminPlanCreatePage from '@/routes/(main)/admin/plans/create';
+import {
+  ProviderDetailPage as AdminProviderDetailPage,
+  ProviderLayout as AdminProviderLayout,
+} from '@/routes/(main)/admin/provider';
+import AdminServiceModelPage from '@/routes/(main)/admin/service-model';
 import AdminSkillsPage from '@/routes/(main)/admin/skills';
 import AdminSubscriptionsPage from '@/routes/(main)/admin/subscriptions';
 import AdminUsersPage from '@/routes/(main)/admin/users';
@@ -525,12 +532,42 @@ export const sharedMainAreaChildren: RouteObject[] = [
         path: 'subscriptions',
       },
       {
-        element: <AdminApiKeysPage />,
-        path: 'api-keys',
+        children: [
+          {
+            element: redirectElement('/admin/provider/all'),
+            index: true,
+          },
+          {
+            element: <AdminProviderDetailPage />,
+            path: ':providerId',
+          },
+        ],
+        element: <AdminProviderLayout />,
+        path: 'provider',
+      },
+      {
+        element: <AdminServiceModelPage />,
+        path: 'service-model',
       },
       {
         element: <AdminSkillsPage />,
         path: 'skills',
+      },
+      {
+        element: <AdminConnectorPage />,
+        path: 'connector',
+      },
+      {
+        element: <AdminMemoryPage />,
+        path: 'memory',
+      },
+      {
+        element: <AdminCredsPage />,
+        path: 'creds',
+      },
+      {
+        element: redirectElement('/admin/provider'),
+        path: 'api-keys',
       },
     ],
     element: <DesktopAdminLayout />,

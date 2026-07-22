@@ -584,12 +584,33 @@ export const sharedMainAreaChildren: RouteObject[] = [
         ),
         path: 'subscriptions',
       },
+      // Agent config (moved from personal settings)
+      {
+        children: [
+          {
+            element: redirectElement('/admin/provider/all'),
+            index: true,
+          },
+          {
+            element: dynamicElement(
+              () => import('@/routes/(main)/admin/provider').then((m) => m.ProviderDetailPage),
+              'Desktop > Admin > Provider > Detail',
+            ),
+            path: ':providerId',
+          },
+        ],
+        element: dynamicElement(
+          () => import('@/routes/(main)/admin/provider').then((m) => m.ProviderLayout),
+          'Desktop > Admin > Provider > Layout',
+        ),
+        path: 'provider',
+      },
       {
         element: dynamicElement(
-          () => import('@/routes/(main)/admin/api-keys'),
-          'Desktop > Admin > API Keys',
+          () => import('@/routes/(main)/admin/service-model'),
+          'Desktop > Admin > Service Model',
         ),
-        path: 'api-keys',
+        path: 'service-model',
       },
       {
         element: dynamicElement(
@@ -597,6 +618,32 @@ export const sharedMainAreaChildren: RouteObject[] = [
           'Desktop > Admin > Skills',
         ),
         path: 'skills',
+      },
+      {
+        element: dynamicElement(
+          () => import('@/routes/(main)/admin/connector'),
+          'Desktop > Admin > Connector',
+        ),
+        path: 'connector',
+      },
+      {
+        element: dynamicElement(
+          () => import('@/routes/(main)/admin/memory'),
+          'Desktop > Admin > Memory',
+        ),
+        path: 'memory',
+      },
+      {
+        element: dynamicElement(
+          () => import('@/routes/(main)/admin/creds'),
+          'Desktop > Admin > Creds',
+        ),
+        path: 'creds',
+      },
+      // Legacy redirects
+      {
+        element: redirectElement('/admin/provider'),
+        path: 'api-keys',
       },
     ],
     element: dynamicLayout(

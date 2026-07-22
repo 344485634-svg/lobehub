@@ -1,7 +1,18 @@
 'use client';
 
 import { Flexbox, Icon } from '@lobehub/ui';
-import { CreditCard, Key, LayoutDashboard, Package, Users, Zap } from 'lucide-react';
+import {
+  Blocks,
+  Brain,
+  BrainCircuit,
+  CreditCard,
+  KeyRound,
+  LayoutDashboard,
+  Package,
+  Sparkles,
+  Users,
+  Zap,
+} from 'lucide-react';
 import { memo } from 'react';
 import { Link, useLocation } from 'react-router';
 
@@ -13,9 +24,18 @@ const Sidebar = memo(() => {
     { icon: Users, key: '/admin/users', label: '用户' },
     { icon: Package, key: '/admin/plans', label: '套餐' },
     { icon: CreditCard, key: '/admin/subscriptions', label: '订阅' },
-    { icon: Key, key: '/admin/api-keys', label: '模型服务商' },
-    { icon: Zap, key: '/admin/skills', label: '技能管理' },
+    { icon: Brain, key: '/admin/provider', label: '模型服务商' },
+    { icon: Sparkles, key: '/admin/service-model', label: '服务模型' },
+    { icon: Zap, key: '/admin/skills', label: '技能' },
+    { icon: Blocks, key: '/admin/connector', label: '连接器' },
+    { icon: BrainCircuit, key: '/admin/memory', label: '记忆' },
+    { icon: KeyRound, key: '/admin/creds', label: '凭证' },
   ];
+
+  const isActive = (key: string) => {
+    if (key === '/admin') return pathname === '/admin' || pathname === '/admin/';
+    return pathname === key || pathname.startsWith(`${key}/`);
+  };
 
   return (
     <Flexbox gap={4} padding={12} style={{ width: 220 }}>
@@ -27,7 +47,7 @@ const Sidebar = memo(() => {
             gap={8}
             padding={8}
             style={{
-              background: pathname === item.key ? 'var(--lobe-color-fill-tertiary)' : undefined,
+              background: isActive(item.key) ? 'var(--lobe-color-fill-tertiary)' : undefined,
               borderRadius: 8,
             }}
           >

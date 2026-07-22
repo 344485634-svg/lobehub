@@ -1,11 +1,7 @@
 import { isDesktop } from '@lobechat/const';
 import { Avatar } from '@lobehub/ui';
-import { SkillsIcon } from '@lobehub/ui/icons';
 import {
   BellIcon,
-  Blocks,
-  Brain,
-  BrainCircuit,
   ChartColumnBigIcon,
   Coins,
   CreditCard,
@@ -15,12 +11,9 @@ import {
   Gift,
   KeyboardIcon,
   KeyIcon,
-  KeyRound,
   Map,
-  MessageCircleIcon,
   MonitorSmartphoneIcon,
   PaletteIcon,
-  Sparkles,
   TerminalSquare,
 } from 'lucide-react';
 import { useMemo } from 'react';
@@ -64,7 +57,7 @@ export const useCategory = () => {
   const { t: tAuth } = useTranslation('auth');
   const { t: tSubscription } = useTranslation('subscription');
   const mobile = useServerConfigStore((s) => s.isMobile);
-  const { hideDocs, showApiKeyManage, showProvider } = useServerConfigStore(featureFlagsSelectors);
+  const { hideDocs } = useServerConfigStore(featureFlagsSelectors);
   const [avatar, username] = useUserStore((s) => [
     userProfileSelectors.userAvatar(s),
     userProfileSelectors.nickName(s),
@@ -142,58 +135,19 @@ export const useCategory = () => {
       });
     }
 
-    // Agent group
+    // Agent group — closed product: managed in Admin console only.
+    // Personal settings no longer expose provider/skill/connector/memory/creds.
     const agentItems: CategoryItem[] = [
-      // Provider settings should not depend on Advanced tools: new users may need
-      // non-LobeHub providers, and desktop users often bring their own API keys.
-      showProvider && {
-        icon: Brain,
-        key: SettingsTabs.Provider,
-        label: t('tab.provider'),
-      },
-      {
-        icon: Sparkles,
-        key: SettingsTabs.ServiceModel,
-        label: t('tab.serviceModel'),
-      },
-      {
-        icon: SkillsIcon,
-        key: SettingsTabs.Skill,
-        label: t('tab.skill'),
-      },
-      {
-        icon: Blocks,
-        key: SettingsTabs.Connector,
-        label: t('tab.connector'),
-      },
-      {
-        icon: BrainCircuit,
-        key: SettingsTabs.Memory,
-        label: t('tab.memory'),
-      },
-      {
-        icon: KeyRound,
-        key: SettingsTabs.Creds,
-        label: t('tab.creds'),
-      },
-      showApiKeyManage && {
-        icon: KeyIcon,
-        key: SettingsTabs.APIKey,
-        label: tAuth('tab.apikey'),
-      },
-      // 商业化白标:隐藏消息频道设置入口(C 端桌面产品不需要多 IM 接入)
-      // {
-      //   icon: MessageCircleIcon,
-      //   key: SettingsTabs.Messenger,
-      //   label: t('tab.messenger'),
-      // },
+      // intentionally empty for closed product
     ].filter(Boolean) as CategoryItem[];
 
-    groups.push({
-      items: agentItems,
-      key: SettingsGroupKey.Agent,
-      title: t('group.aiConfig'),
-    });
+    if (agentItems.length > 0) {
+      groups.push({
+        items: agentItems,
+        key: SettingsGroupKey.Agent,
+        title: t('group.aiConfig'),
+      });
+    }
 
     // System group
     const systemItems: CategoryItem[] = [
@@ -238,8 +192,6 @@ export const useCategory = () => {
     enableBusinessFeatures,
     hideDocs,
     mobile,
-    showApiKeyManage,
-    showProvider,
     isDevMode,
     avatarUrl,
     username,

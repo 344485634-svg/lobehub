@@ -1,53 +1,62 @@
 'use client';
 
-import { Center, Empty } from '@lobehub/ui';
+import { Flexbox } from '@lobehub/ui';
 import { memo } from 'react';
-import { useNavigate } from 'react-router';
+import { Outlet, useParams } from 'react-router';
 
-// Closed product: personal provider settings are disabled.
-// Model providers are managed exclusively in Admin → 模型服务商.
+import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
+
+import DesktopLayoutContainer from './_layout/Desktop/Container';
+import ProviderDetailPageComponent from './detail';
+import ProviderMenu from './ProviderMenu';
+
+// Layout component that wraps provider pages with navigation
 export const ProviderLayout = memo(() => {
-  const navigate = useNavigate();
+  const navigate = useWorkspaceAwareNavigate();
+
+  const handleProviderSelect = (providerKey: string) => {
+    // Prefer admin console when managing platform providers
+    const isAdminContext = window.location.pathname.startsWith('/admin');
+    navigate(
+      isAdminContext ? `/admin/provider/${providerKey}` : `/settings/provider/${providerKey}`,
+    );
+  };
 
   return (
-    <Center height="100%" width="100%">
-      <Empty
-        description="模型服务商已由管理员统一配置，个人设置入口已关闭。请前往管理后台配置。"
-        title="模型服务商"
-      />
-      <a
-        href="/admin/api-keys"
-        style={{ marginTop: 16 }}
-        onClick={(e) => {
-          e.preventDefault();
-          navigate('/admin/api-keys');
-        }}
-      >
-        前往管理后台
-      </a>
-    </Center>
+    <Flexbox
+      horizontal
+      width={'100%'}
+      style={{
+        maxHeight: '100%',
+      }}
+    >
+      <ProviderMenu mobile={false} onProviderSelect={handleProviderSelect} />
+      <DesktopLayoutContainer>
+        <Outlet />
+      </DesktopLayoutContainer>
+    </Flexbox>
   );
 });
 
 ProviderLayout.displayName = 'ProviderLayout';
 
+// Detail page component that receives providerId from route params
 export const ProviderDetailPage = memo(() => {
-  const navigate = useNavigate();
+  const params = useParams<{ providerId: string }>();
+  const navigate = useWorkspaceAwareNavigate();
+
+  const handleProviderSelect = (providerKey: string) => {
+    const isAdminContext = window.location.pathname.startsWith('/admin');
+    navigate(
+      isAdminContext ? `/admin/provider/${providerKey}` : `/settings/provider/${providerKey}`,
+    );
+  };
 
   return (
-    <Center height="100%" width="100%">
-      <Empty description="模型服务商已由管理员统一配置，个人设置入口已关闭。" title="模型服务商" />
-      <a
-        href="/admin/api-keys"
-        style={{ marginTop: 16 }}
-        onClick={(e) => {
-          e.preventDefault();
-          navigate('/admin/api-keys');
-        }}
-      >
-        前往管理后台
-      </a>
-    </Center>
+    <ProviderDetailPageComponent
+      id={params.providerId ?? 'all'}
+      onProviderSelect={handleProviderSelect}
+    />
   );
 });
 
