@@ -4,7 +4,7 @@ import { AgentRuntimeErrorType, getErrorCodeSpec } from '@lobechat/model-runtime
 import { type ChatMessageError, type ErrorType, type IToolErrorType } from '@lobechat/types';
 import { ChatErrorType } from '@lobechat/types';
 import { type AlertProps } from '@lobehub/ui';
-import { Block, Highlighter, Skeleton } from '@lobehub/ui';
+import { Block, Skeleton } from '@lobehub/ui';
 import { memo, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -37,18 +37,40 @@ interface ErrorMessageData {
 const getRawErrorMessage = (error?: ChatMessageError | null) => {
   if (!error) return;
 
-  if (typeof error.message === 'string' && error.message.trim()) {
-    return error.message;
-  }
+  const pickHumanMessage = (value: unknown): string | undefined => {
+    if (typeof value !== 'string') return;
+    const trimmed = value.trim();
+    if (!trimmed) return;
 
-  if (
-    error.body &&
-    typeof error.body === 'object' &&
-    'message' in error.body &&
-    typeof error.body.message === 'string' &&
-    error.body.message.trim()
-  ) {
-    return error.body.message;
+    // Prefer nested provider message when the whole payload is JSON-ish
+    try {
+      if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+        const parsed = JSON.parse(trimmed);
+        const nested =
+          parsed?.error?.message ||
+          parsed?.message ||
+          parsed?.error?.error?.message ||
+          parsed?.body?.message;
+        if (typeof nested === 'string' && nested.trim()) return nested.trim();
+      }
+    } catch {
+      // not JSON — fall through
+    }
+
+    // Strip leading HTTP status codes like "503 xxx"
+    return trimmed.replace(/^\d{3}\s+/, '').trim() || trimmed;
+  };
+
+  const fromMessage = pickHumanMessage(error.message);
+  if (fromMessage) return fromMessage;
+
+  if (error.body && typeof error.body === 'object') {
+    const body = error.body as Record<string, any>;
+    const fromBody =
+      pickHumanMessage(body.message) ||
+      pickHumanMessage(body?.error?.message) ||
+      pickHumanMessage(body?.error?.error?.message);
+    if (fromBody) return fromBody;
   }
 
   return;
@@ -375,16 +397,8 @@ const ErrorMessageExtra = memo<ErrorExtraProps>(
         error={{
           ...alertError,
           ...(rawErrorMessage ? { message: rawErrorMessage } : {}),
-          extra: data.error?.body ? (
-            <Highlighter
-              actionIconSize={'small'}
-              language={'json'}
-              padding={8}
-              variant={'borderless'}
-            >
-              {JSON.stringify(data.error?.body, null, 2)}
-            </Highlighter>
-          ) : undefined,
+          // 不向普通用户展示 JSON 原始错误体（endpoint/provider 等调试信息）
+          extra: undefined,
         }}
         onRegenerate={canCreate ? onRegenerate : undefined}
       />
