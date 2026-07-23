@@ -826,6 +826,13 @@
       "when": 1784729930820,
       "tag": "0117_next_raider",
       "breakpoints": true
+    },
+    {
+      "idx": 118,
+      "version": "7",
+      "when": 1784784675004,
+      "tag": "0118_narrow_vertigo",
+      "breakpoints": true
     }
   ],
   "version": "6"

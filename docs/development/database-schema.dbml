@@ -1546,6 +1546,33 @@ table oidc_sessions {
   }
 }
 
+table payment_orders {
+  id varchar(255) [pk, not null]
+  user_id varchar(255) [not null]
+  plan_id varchar(255) [not null]
+  out_trade_no varchar(64) [not null, unique]
+  trade_no varchar(128)
+  provider varchar(32) [not null, default: 'shouqianba']
+  channel varchar(32)
+  amount "numeric(10, 2)" [not null]
+  currency varchar(8) [not null, default: 'CNY']
+  subject varchar(255) [not null]
+  status varchar(20) [not null, default: 'pending']
+  pay_payload jsonb [default: `{}`]
+  paid_at "timestamp with time zone"
+  notify_raw jsonb
+  error_message text
+  accessed_at "timestamp with time zone" [not null, default: `now()`]
+  created_at "timestamp with time zone" [not null, default: `now()`]
+  updated_at "timestamp with time zone" [not null, default: `now()`]
+
+  indexes {
+    user_id [name: 'payment_orders_user_id_idx']
+    status [name: 'payment_orders_status_idx']
+    out_trade_no [name: 'payment_orders_out_trade_no_idx']
+  }
+}
+
 table push_tokens {
   id uuid [pk, not null, default: `gen_random_uuid()`]
   user_id text [not null]

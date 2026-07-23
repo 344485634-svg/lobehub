@@ -28,6 +28,7 @@ const prefixes = {
   memory: 'mem',
   messageGroups: 'mg',
   messages: 'msg',
+  paymentOrders: 'pay',
   plugins: 'plg',
   sessionGroups: 'sg',
   sessions: 'ssn',
