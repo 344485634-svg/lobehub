@@ -82,15 +82,24 @@ export const subscriptionRouter = router({
       pageSize: 50,
     });
     return plans.map((p) => ({
+      allowedModels: p.allowedModels || [],
+      badge: p.badge,
+      benefits: p.benefits || [],
       billingCycle: p.billingCycle,
+      credits: p.credits ?? 0,
       description: p.description,
       displayName: p.displayName,
       features: p.features,
+      highlight: p.highlight,
       id: p.id,
+      monthlyOriginalPrice: p.monthlyOriginalPrice,
+      monthlyPrice: p.monthlyPrice || p.price,
       name: p.name,
-      price: p.price,
+      price: p.monthlyPrice || p.price,
       quotas: p.quotas,
       sortOrder: p.sortOrder,
+      yearlyOriginalPrice: p.yearlyOriginalPrice,
+      yearlyPrice: p.yearlyPrice,
     }));
   }),
 
@@ -107,6 +116,7 @@ export const subscriptionRouter = router({
   createOrder: authed
     .input(
       z.object({
+        billingCycle: z.enum(['monthly', 'yearly']).default('monthly'),
         channel: z.enum(['alipay', 'wechat', 'unionpay']).default('alipay'),
         planId: z.string(),
       }),
@@ -118,7 +128,11 @@ export const subscriptionRouter = router({
         throw new TRPCError({ code: 'NOT_FOUND', message: '套餐不存在或未上架' });
       }
 
-      const price = Number(plan.price);
+      const price = Number(
+        input.billingCycle === 'yearly'
+          ? plan.yearlyPrice || plan.price
+          : plan.monthlyPrice || plan.price,
+      );
       if (!Number.isFinite(price) || price < 0) {
         throw new TRPCError({ code: 'BAD_REQUEST', message: '套餐价格无效' });
       }
@@ -127,11 +141,9 @@ export const subscriptionRouter = router({
         await SubscriptionModel.adminAssign(ctx.serverDB, {
           assignedBy: ctx.userId,
           expiresAt:
-            plan.billingCycle === 'lifetime'
-              ? null
-              : plan.billingCycle === 'yearly'
-                ? new Date(Date.now() + 365 * 24 * 3600 * 1000)
-                : new Date(Date.now() + 30 * 24 * 3600 * 1000),
+            input.billingCycle === 'yearly'
+              ? new Date(Date.now() + 365 * 24 * 3600 * 1000)
+              : new Date(Date.now() + 30 * 24 * 3600 * 1000),
           notes: '免费套餐自动开通',
           planId: plan.id,
           userId: ctx.userId,
@@ -155,7 +167,7 @@ export const subscriptionRouter = router({
 
       const outTradeNo = ShouqianbaClient.generateOutTradeNo('LH');
       const amount = price.toFixed(2);
-      const subject = `${plan.displayName || plan.name} - 订阅`;
+      const subject = `${plan.displayName || plan.name}（${input.billingCycle === 'yearly' ? '年付' : '月付'}）`;
 
       const orderModel = new PaymentOrderModel(ctx.serverDB, ctx.userId);
       const order = await orderModel.create({

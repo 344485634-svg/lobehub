@@ -87,14 +87,23 @@ export class PlanModel {
       Pick<
         SubscriptionPlanItem,
         | 'active'
+        | 'allowedModels'
+        | 'badge'
+        | 'benefits'
         | 'billingCycle'
+        | 'credits'
         | 'description'
         | 'displayName'
         | 'features'
+        | 'highlight'
+        | 'monthlyOriginalPrice'
+        | 'monthlyPrice'
         | 'name'
         | 'price'
         | 'quotas'
         | 'sortOrder'
+        | 'yearlyOriginalPrice'
+        | 'yearlyPrice'
       >
     >,
   ): Promise<SubscriptionPlanItem> {

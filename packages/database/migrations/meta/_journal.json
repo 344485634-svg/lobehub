@@ -833,6 +833,13 @@
       "when": 1784784675004,
       "tag": "0118_narrow_vertigo",
       "breakpoints": true
+    },
+    {
+      "idx": 119,
+      "version": "7",
+      "when": 1784787604550,
+      "tag": "0119_curvy_lord_tyger",
+      "breakpoints": true
     }
   ],
   "version": "6"

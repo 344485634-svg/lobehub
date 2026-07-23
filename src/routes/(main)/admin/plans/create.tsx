@@ -2,9 +2,10 @@
 
 import { Flexbox } from '@lobehub/ui';
 import { Button, Select } from '@lobehub/ui/base-ui';
-import { App, Card, Form, Input, InputNumber, Switch } from 'antd';
-import { type FC } from 'react';
+import { App, Card, Form, Input, InputNumber, Space, Switch, Tag } from 'antd';
+import { type FC, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
+import useSWR from 'swr';
 
 import { lambdaClient } from '@/libs/trpc/client';
 
@@ -14,30 +15,87 @@ const AdminPlanCreatePage: FC = () => {
   const { message } = App.useApp();
   const navigate = useNavigate();
   const [form] = Form.useForm();
+  const [benefitInput, setBenefitInput] = useState('');
+  const [benefits, setBenefits] = useState<string[]>([]);
+  const [allowedModels, setAllowedModels] = useState<
+    Array<{ displayName?: string; modelId: string; providerId: string }>
+  >([]);
+
+  const { data: providers } = useSWR('admin-providers-for-plan', () =>
+    lambdaClient.admin.listProviders.query(),
+  );
+
+  const enabledProviders = useMemo(
+    () => (providers || []).filter((p: any) => p.enabled),
+    [providers],
+  );
+
+  // Load models for all enabled providers
+  const { data: allModelsNested } = useSWR(
+    enabledProviders.length
+      ? ['plan-models', enabledProviders.map((p: any) => p.id).join(',')]
+      : null,
+    async () => {
+      const lists = await Promise.all(
+        enabledProviders.map(async (p: any) => {
+          const models = await lambdaClient.admin.listProviderModels.query({ providerId: p.id });
+          return (models || [])
+            .filter((m: any) => m.enabled)
+            .map((m: any) => ({
+              displayName: m.displayName || m.id,
+              modelId: m.id,
+              providerId: p.id,
+              type: m.type,
+            }));
+        }),
+      );
+      return lists.flat();
+    },
+  );
+
+  const modelOptions = useMemo(
+    () =>
+      (allModelsNested || []).map((m) => ({
+        label: `${m.displayName} (${m.providerId}/${m.modelId})`,
+        value: `${m.providerId}::${m.modelId}`,
+      })),
+    [allModelsNested],
+  );
+
+  const addBenefit = () => {
+    const text = benefitInput.trim();
+    if (!text) return;
+    if (benefits.includes(text)) return;
+    setBenefits((b) => [...b, text]);
+    setBenefitInput('');
+  };
 
   const handleSubmit = async (values: any) => {
     try {
-      // Convert quotas from form structure to flat object
-      const quotas: Record<string, number> = {};
-      if (values.chatMessages) quotas.chatMessages = values.chatMessages;
-      if (values.imageGenerations) quotas.imageGenerations = values.imageGenerations;
-      if (values.videoGenerations) quotas.videoGenerations = values.videoGenerations;
-      if (values.fileStorage) quotas.fileStorage = values.fileStorage * 1024 * 1024 * 1024; // GB to bytes
-      if (values.apiCalls) quotas.apiCalls = values.apiCalls;
-      if (values.maxApiKeys) quotas.maxApiKeys = values.maxApiKeys;
-
+      const monthlyPrice = String(values.monthlyPrice ?? 0);
       await lambdaClient.admin.createPlan.mutate({
         active: values.active ?? true,
-        billingCycle: values.billingCycle,
+        allowedModels,
+        badge: values.badge || undefined,
+        benefits,
+        billingCycle: 'monthly',
+        credits: values.credits ?? 0,
         description: values.description,
         displayName: values.displayName,
-        features: values.features || [],
+        highlight: values.highlight ?? false,
+        monthlyOriginalPrice: values.monthlyOriginalPrice
+          ? String(values.monthlyOriginalPrice)
+          : undefined,
+        monthlyPrice,
         name: values.name,
-        price: String(values.price),
-        quotas,
+        price: monthlyPrice,
+        quotas: { credits: values.credits ?? 0 },
         sortOrder: values.sortOrder ?? 0,
+        yearlyOriginalPrice: values.yearlyOriginalPrice
+          ? String(values.yearlyOriginalPrice)
+          : undefined,
+        yearlyPrice: String(values.yearlyPrice ?? 0),
       });
-
       message.success('套餐创建成功');
       navigate('/admin/plans');
     } catch (e: any) {
@@ -50,13 +108,9 @@ const AdminPlanCreatePage: FC = () => {
       <Card title="创建套餐">
         <Form
           form={form}
+          initialValues={{ active: true, credits: 1000, highlight: false, sortOrder: 0 }}
           labelCol={{ span: 6 }}
           wrapperCol={{ span: 14 }}
-          initialValues={{
-            active: true,
-            billingCycle: 'monthly',
-            sortOrder: 0,
-          }}
           onFinish={handleSubmit}
         >
           <Form.Item
@@ -67,7 +121,6 @@ const AdminPlanCreatePage: FC = () => {
           >
             <Input placeholder="例如：pro" />
           </Form.Item>
-
           <Form.Item
             required
             label="显示名称"
@@ -76,60 +129,106 @@ const AdminPlanCreatePage: FC = () => {
           >
             <Input placeholder="例如：专业版" />
           </Form.Item>
-
           <Form.Item label="描述" name="description">
-            <TextArea placeholder="描述此套餐" rows={3} />
+            <TextArea placeholder="一句话卖点" rows={2} />
+          </Form.Item>
+          <Form.Item label="角标" name="badge">
+            <Input placeholder="例如：最受欢迎 / 限时优惠" />
+          </Form.Item>
+          <Form.Item label="高亮推荐" name="highlight" valuePropName="checked">
+            <Switch />
           </Form.Item>
 
-          <Form.Item
-            required
-            label="价格"
-            name="price"
-            rules={[{ message: '必填', required: true }]}
-          >
-            <InputNumber min={0} placeholder="99.00" step={0.01} style={{ width: '100%' }} />
-          </Form.Item>
-
-          <Form.Item required label="计费周期" name="billingCycle">
-            <Select
-              options={[
-                { label: '月付', value: 'monthly' },
-                { label: '年付', value: 'yearly' },
-                { label: '终身', value: 'lifetime' },
-              ]}
-            />
-          </Form.Item>
-
-          <Card size="small" style={{ marginBottom: 24 }} title="配额设置" type="inner">
-            <Form.Item label="聊天消息数/月" name="chatMessages">
-              <InputNumber min={0} placeholder="1000" style={{ width: '100%' }} />
+          <Card size="small" style={{ marginBottom: 24 }} title="价格（月付 / 年付）" type="inner">
+            <Form.Item
+              required
+              label="月付现价"
+              name="monthlyPrice"
+              rules={[{ message: '必填', required: true }]}
+            >
+              <InputNumber min={0} placeholder="99" step={0.01} style={{ width: '100%' }} />
             </Form.Item>
-
-            <Form.Item label="图片生成数/月" name="imageGenerations">
-              <InputNumber min={0} placeholder="50" style={{ width: '100%' }} />
+            <Form.Item label="月付原价（划线）" name="monthlyOriginalPrice">
+              <InputNumber min={0} placeholder="149" step={0.01} style={{ width: '100%' }} />
             </Form.Item>
-
-            <Form.Item label="视频生成数/月" name="videoGenerations">
-              <InputNumber min={0} placeholder="10" style={{ width: '100%' }} />
+            <Form.Item label="年付现价" name="yearlyPrice">
+              <InputNumber min={0} placeholder="990" step={0.01} style={{ width: '100%' }} />
             </Form.Item>
-
-            <Form.Item label="文件存储上限（GB）" name="fileStorage">
-              <InputNumber min={0} placeholder="5" step={0.1} style={{ width: '100%' }} />
+            <Form.Item label="年付原价（划线）" name="yearlyOriginalPrice">
+              <InputNumber min={0} placeholder="1788" step={0.01} style={{ width: '100%' }} />
             </Form.Item>
-
-            <Form.Item label="API调用数/月" name="apiCalls">
+            <Form.Item
+              required
+              label="包含积分点"
+              name="credits"
+              tooltip="用户开通后获得的积分，用于按模型扣费"
+            >
               <InputNumber min={0} placeholder="10000" style={{ width: '100%' }} />
             </Form.Item>
+          </Card>
 
-            <Form.Item label="最大API Key数" name="maxApiKeys">
-              <InputNumber min={0} placeholder="5" style={{ width: '100%' }} />
-            </Form.Item>
+          <Card size="small" style={{ marginBottom: 24 }} title="权益文案" type="inner">
+            <Space.Compact style={{ marginBottom: 12, width: '100%' }}>
+              <Input
+                placeholder="例如：支持 Seedance 2.0 快速通道"
+                value={benefitInput}
+                onChange={(e) => setBenefitInput(e.target.value)}
+                onPressEnter={addBenefit}
+              />
+              <Button type="primary" onClick={addBenefit}>
+                添加
+              </Button>
+            </Space.Compact>
+            <Flexbox horizontal gap={8} style={{ flexWrap: 'wrap' }}>
+              {benefits.map((b) => (
+                <Tag
+                  closable
+                  key={b}
+                  onClose={() => setBenefits((list) => list.filter((x) => x !== b))}
+                >
+                  {b}
+                </Tag>
+              ))}
+              {!benefits.length && (
+                <span style={{ color: 'var(--lobe-color-text-secondary)', fontSize: 12 }}>
+                  暂无权益，添加后会展示在用户订阅页
+                </span>
+              )}
+            </Flexbox>
+          </Card>
+
+          <Card size="small" style={{ marginBottom: 24 }} title="可用模型" type="inner">
+            <div
+              style={{ color: 'var(--lobe-color-text-secondary)', fontSize: 12, marginBottom: 8 }}
+            >
+              仅管理员已启用的模型可选。用户前端只能看到并使用此处配置的模型。
+            </div>
+            <Select
+              mode="multiple"
+              options={modelOptions}
+              placeholder="选择可用模型"
+              style={{ width: '100%' }}
+              value={allowedModels.map((m) => `${m.providerId}::${m.modelId}`)}
+              onChange={(vals) => {
+                const selected = (vals as string[]).map((v) => {
+                  const [providerId, modelId] = v.split('::');
+                  const found = (allModelsNested || []).find(
+                    (m) => m.providerId === providerId && m.modelId === modelId,
+                  );
+                  return {
+                    displayName: found?.displayName,
+                    modelId,
+                    providerId,
+                  };
+                });
+                setAllowedModels(selected);
+              }}
+            />
           </Card>
 
           <Form.Item label="启用" name="active" valuePropName="checked">
             <Switch />
           </Form.Item>
-
           <Form.Item label="排序" name="sortOrder">
             <InputNumber min={0} style={{ width: '100%' }} />
           </Form.Item>

@@ -52,6 +52,11 @@ const AdminPlansPage: FC = () => {
       render: (name: string, row: any) => (
         <Link to={`/admin/plans/${row.id}/edit`}>
           <strong>{name}</strong>
+          {row.badge ? (
+            <Tag color="gold" style={{ marginLeft: 8 }}>
+              {row.badge}
+            </Tag>
+          ) : null}
         </Link>
       ),
       title: '套餐标识',
@@ -62,42 +67,60 @@ const AdminPlansPage: FC = () => {
       title: '显示名称',
     },
     {
-      dataIndex: 'price',
-      key: 'price',
-      render: (price: string, row: any) => {
-        const cycle =
-          row.billingCycle === 'monthly'
-            ? '/月'
-            : row.billingCycle === 'yearly'
-              ? '/年'
-              : '（终身）';
-        return `¥${price}${cycle}`;
-      },
-      title: '价格',
-    },
-    {
-      dataIndex: 'billingCycle',
-      key: 'billingCycle',
-      render: (cycle: string) => (
-        <Tag>{cycle === 'monthly' ? '月付' : cycle === 'yearly' ? '年付' : '终身'}</Tag>
+      key: 'pricing',
+      render: (_: unknown, row: any) => (
+        <div style={{ fontSize: 12, lineHeight: 1.6 }}>
+          <div>
+            月：
+            {row.monthlyOriginalPrice && (
+              <span style={{ marginRight: 4, opacity: 0.5, textDecoration: 'line-through' }}>
+                ¥{row.monthlyOriginalPrice}
+              </span>
+            )}
+            <strong>¥{row.monthlyPrice || row.price}</strong>
+          </div>
+          <div>
+            年：
+            {row.yearlyOriginalPrice && (
+              <span style={{ marginRight: 4, opacity: 0.5, textDecoration: 'line-through' }}>
+                ¥{row.yearlyOriginalPrice}
+              </span>
+            )}
+            <strong>¥{row.yearlyPrice || '-'}</strong>
+          </div>
+        </div>
       ),
-      title: '计费周期',
+      title: '价格',
+      width: 160,
     },
     {
-      dataIndex: 'quotas',
-      key: 'quotas',
-      render: (quotas: Record<string, number>) => {
-        const entries = Object.entries(quotas || {}).slice(0, 3);
-        if (entries.length === 0) return '-';
+      dataIndex: 'credits',
+      key: 'credits',
+      render: (c: number) => (c != null ? `${c} 积分` : '-'),
+      title: '积分',
+      width: 100,
+    },
+    {
+      dataIndex: 'benefits',
+      key: 'benefits',
+      render: (benefits: string[]) => {
+        if (!Array.isArray(benefits) || !benefits.length) return '-';
         return (
           <span style={{ fontSize: 12 }}>
-            {entries.map(([k, v]) => `${k}: ${v}`).join(', ')}
-            {Object.keys(quotas).length > 3 && '...'}
+            {benefits.slice(0, 2).join('；')}
+            {benefits.length > 2 ? '…' : ''}
           </span>
         );
       },
-      title: '配额',
+      title: '权益',
       width: 200,
+    },
+    {
+      dataIndex: 'allowedModels',
+      key: 'allowedModels',
+      render: (models: any[]) => (Array.isArray(models) ? `${models.length} 个模型` : '0 个模型'),
+      title: '可用模型',
+      width: 100,
     },
     {
       dataIndex: 'active',

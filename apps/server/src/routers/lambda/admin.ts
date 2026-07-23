@@ -168,7 +168,19 @@ export const adminRouter = router({
     .input(
       z.object({
         active: z.boolean().default(true),
-        billingCycle: z.enum(['monthly', 'yearly', 'lifetime']),
+        allowedModels: z
+          .array(
+            z.object({
+              displayName: z.string().optional(),
+              modelId: z.string(),
+              providerId: z.string(),
+            }),
+          )
+          .default([]),
+        badge: z.string().optional(),
+        benefits: z.array(z.string()).default([]),
+        billingCycle: z.enum(['monthly', 'yearly', 'lifetime']).default('monthly'),
+        credits: z.number().int().min(0).default(0),
         description: z.string().optional(),
         displayName: z.string(),
         features: z
@@ -179,21 +191,62 @@ export const adminRouter = router({
             }),
           )
           .default([]),
+        highlight: z.boolean().optional(),
+        monthlyOriginalPrice: z.string().optional(),
+        monthlyPrice: z.string().default('0'),
         name: z.string(),
-        price: z.string(), // decimal as string
+        price: z.string().optional(), // legacy
         quotas: z.record(z.number()).default({}),
         sortOrder: z.number().default(0),
+        yearlyOriginalPrice: z.string().optional(),
+        yearlyPrice: z.string().default('0'),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      return PlanModel.adminCreate(ctx.serverDB, input);
+      const monthlyPrice = input.monthlyPrice || input.price || '0';
+      const quotas = {
+        ...input.quotas,
+        credits: input.credits,
+      };
+      return PlanModel.adminCreate(ctx.serverDB, {
+        active: input.active,
+        allowedModels: input.allowedModels,
+        badge: input.badge,
+        benefits: input.benefits,
+        billingCycle: input.billingCycle,
+        credits: input.credits,
+        description: input.description,
+        displayName: input.displayName,
+        features: input.features,
+        highlight: input.highlight ?? false,
+        monthlyOriginalPrice: input.monthlyOriginalPrice,
+        monthlyPrice,
+        name: input.name,
+        price: monthlyPrice,
+        quotas,
+        sortOrder: input.sortOrder,
+        yearlyOriginalPrice: input.yearlyOriginalPrice,
+        yearlyPrice: input.yearlyPrice,
+      });
     }),
 
   updatePlan: adminProcedure
     .input(
       z.object({
         active: z.boolean().optional(),
+        allowedModels: z
+          .array(
+            z.object({
+              displayName: z.string().optional(),
+              modelId: z.string(),
+              providerId: z.string(),
+            }),
+          )
+          .optional(),
+        badge: z.string().nullish(),
+        benefits: z.array(z.string()).optional(),
         billingCycle: z.enum(['monthly', 'yearly', 'lifetime']).optional(),
+        credits: z.number().int().min(0).optional(),
         description: z.string().optional(),
         displayName: z.string().optional(),
         features: z
@@ -204,16 +257,26 @@ export const adminRouter = router({
             }),
           )
           .optional(),
+        highlight: z.boolean().optional(),
         id: z.string(),
+        monthlyOriginalPrice: z.string().nullish(),
+        monthlyPrice: z.string().optional(),
         name: z.string().optional(),
         price: z.string().optional(),
         quotas: z.record(z.number()).optional(),
         sortOrder: z.number().optional(),
+        yearlyOriginalPrice: z.string().nullish(),
+        yearlyPrice: z.string().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const { id, ...value } = input;
-      return PlanModel.adminUpdate(ctx.serverDB, id, value);
+      const { id, ...rest } = input;
+      const value: Record<string, unknown> = { ...rest };
+      if (rest.monthlyPrice !== undefined) value.price = rest.monthlyPrice;
+      if (rest.credits !== undefined) {
+        value.quotas = { ...rest.quotas, credits: rest.credits };
+      }
+      return PlanModel.adminUpdate(ctx.serverDB, id, value as any);
     }),
 
   deletePlan: adminProcedure
@@ -458,6 +521,25 @@ export const adminRouter = router({
       const aiModelModel = new AiModelModel(ctx.serverDB, ctx.userId);
       await aiModelModel.batchToggleAiModels(input.providerId, input.modelIds, input.enabled);
       return { success: true as const };
+    }),
+
+  updateModelCredits: adminProcedure
+    .input(
+      z.object({
+        creditsPerRequest: z.number().min(0),
+        modelId: z.string(),
+        providerId: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const aiModelModel = new AiModelModel(ctx.serverDB, ctx.userId);
+      const existing = await aiModelModel.findByIdAndProvider(input.modelId, input.providerId);
+      const pricing = {
+        ...(existing?.pricing as Record<string, unknown>),
+        creditsPerRequest: input.creditsPerRequest,
+      };
+      await aiModelModel.update(input.modelId, input.providerId, { pricing } as any);
+      return { success: true as const, pricing };
     }),
 
   // ===== Platform Skills (admin upload, users can consume) =====

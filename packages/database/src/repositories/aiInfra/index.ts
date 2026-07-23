@@ -329,6 +329,43 @@ export class AiInfraRepos {
       break;
     }
 
+    // Closed product: further restrict models by current user's subscription allowlist.
+    // Admin users keep full enabled set for management convenience.
+    try {
+      const { eq: eq2 } = await import('drizzle-orm');
+      const { users: usersTable } = await import('../../schemas/user');
+      const userRow = await this.db
+        .select({ role: usersTable.role })
+        .from(usersTable)
+        .where(eq2(usersTable.id, this.userId))
+        .limit(1);
+      const role = userRow[0]?.role;
+      if (role !== 'admin') {
+        const { SubscriptionModel } = await import('../../models/subscription');
+        const { PlanModel } = await import('../../models/plan');
+        const sub = await new SubscriptionModel(this.db, this.userId).getCurrentSubscription();
+        let allow: Set<string>;
+        if (sub) {
+          const plan = await new PlanModel(this.db, this.userId).findById(sub.planId);
+          const list =
+            (plan?.allowedModels as Array<{ modelId: string; providerId: string }>) || [];
+          // empty allowlist = no model access for non-admin
+          allow = new Set(list.map((m) => `${m.providerId}::${m.modelId}`));
+        } else {
+          allow = new Set(); // no subscription => no models
+        }
+        allModels = allModels.filter((m) => allow.has(`${m.providerId}::${m.id}`));
+        const providerIdsWithModels = new Set(allModels.map((m) => m.providerId));
+        enabledAiProviders = enabledAiProviders.filter((p) => providerIdsWithModels.has(p.id));
+        // also drop runtimeConfig for providers with no allowed models
+        for (const pid of Object.keys(runtimeConfig)) {
+          if (!providerIdsWithModels.has(pid)) delete runtimeConfig[pid];
+        }
+      }
+    } catch (err) {
+      console.warn('[AiInfra] plan model allowlist filter failed:', err);
+    }
+
     // Merge env-level provider defaults (without reintroducing user personal keys)
     Object.entries(runtimeConfig).forEach(([key, value]) => {
       runtimeConfig[key] = merge(this.providerConfigs[key] || {}, value);

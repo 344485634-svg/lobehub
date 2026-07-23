@@ -10,12 +10,10 @@ import useSWR from 'swr';
 
 import { lambdaClient } from '@/libs/trpc/client';
 
-const cycleLabel = (c: string) =>
-  c === 'monthly' ? '月付' : c === 'yearly' ? '年付' : c === 'lifetime' ? '终身' : c;
-
 const PlansPage: FC = () => {
   const { message } = App.useApp();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [cycle, setCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [channel, setChannel] = useState<'alipay' | 'wechat'>('alipay');
   const [payingPlanId, setPayingPlanId] = useState<string | null>(null);
   const [payModal, setPayModal] = useState<{
@@ -27,17 +25,13 @@ const PlansPage: FC = () => {
   const { data: plans, isLoading } = useSWR('user-plans', () =>
     lambdaClient.subscription.listPlans.query(),
   );
-
   const { data: mine, mutate: mutateMine } = useSWR('my-subscription', () =>
     lambdaClient.subscription.mySubscription.query(),
   );
 
   const outTradeNoFromUrl = searchParams.get('outTradeNo');
-
   useEffect(() => {
-    if (outTradeNoFromUrl) {
-      setPayModal({ outTradeNo: outTradeNoFromUrl });
-    }
+    if (outTradeNoFromUrl) setPayModal({ outTradeNo: outTradeNoFromUrl });
   }, [outTradeNoFromUrl]);
 
   const { data: orderStatus } = useSWR(
@@ -62,35 +56,53 @@ const PlansPage: FC = () => {
         setSearchParams(searchParams, { replace: true });
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderStatus?.status]);
 
   const currentPlanId = mine?.subscription?.planId;
-
   const sortedPlans = useMemo(
-    () => [...(plans || [])].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)),
+    () => [...(plans || [])].sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)),
     [plans],
   );
+
+  const priceOf = (plan: any) => {
+    if (cycle === 'yearly') {
+      return {
+        original: plan.yearlyOriginalPrice,
+        price: plan.yearlyPrice || plan.price,
+      };
+    }
+    return {
+      original: plan.monthlyOriginalPrice,
+      price: plan.monthlyPrice || plan.price,
+    };
+  };
+
+  const discountPercent = (original?: string | null, price?: string | null) => {
+    const o = Number(original);
+    const p = Number(price);
+    if (!o || !p || o <= p) return null;
+    return Math.round((1 - p / o) * 100);
+  };
 
   const handleBuy = async (planId: string) => {
     setPayingPlanId(planId);
     try {
       const res = await lambdaClient.subscription.createOrder.mutate({
+        billingCycle: cycle,
         channel,
         planId,
       });
-
       if (res.freeActivated) {
         message.success('已开通免费套餐');
         mutateMine();
         setPayingPlanId(null);
         return;
       }
-
       if (res.payUrl && !res.qrCode) {
         window.location.href = res.payUrl;
         return;
       }
-
       setPayModal({
         outTradeNo: res.outTradeNo!,
         payUrl: res.payUrl,
@@ -121,43 +133,51 @@ const PlansPage: FC = () => {
   return (
     <Flexbox gap={20} padding={24}>
       <div>
-        <div style={{ fontSize: 20, fontWeight: 600 }}>订阅套餐</div>
-        <div style={{ color: 'var(--lobe-color-text-secondary)', marginTop: 4 }}>
-          选择适合你的方案，支付成功后自动开通模型使用权
+        <div style={{ fontSize: 22, fontWeight: 700 }}>选择适合你的套餐</div>
+        <div style={{ color: 'var(--lobe-color-text-secondary)', marginTop: 6 }}>
+          年付更划算 · 积分点随套餐到账 · 按模型精准扣费
         </div>
       </div>
 
       <Card size="small" title="当前订阅">
         {mine?.subscription && mine.plan ? (
-          <Flexbox gap={8}>
+          <Flexbox gap={6}>
             <div>
               套餐：<strong>{mine.plan.displayName}</strong>{' '}
               <Tag color="green">
                 {mine.subscription.status === 'active' ? '生效中' : mine.subscription.status}
               </Tag>
             </div>
-            <div>开始：{dayjs(mine.subscription.startedAt).format('YYYY-MM-DD HH:mm')}</div>
+            <div>积分：{(mine.plan as any).credits ?? mine.plan.quotas?.credits ?? '-'} 点</div>
+            <div>开始：{dayjs(mine.subscription.startedAt).format('YYYY-MM-DD')}</div>
             <div>
               到期：
               {mine.subscription.expiresAt
-                ? dayjs(mine.subscription.expiresAt).format('YYYY-MM-DD HH:mm')
+                ? dayjs(mine.subscription.expiresAt).format('YYYY-MM-DD')
                 : '终身'}
             </div>
           </Flexbox>
         ) : (
           <div style={{ color: 'var(--lobe-color-text-secondary)' }}>
-            暂无生效中的订阅，请选择下方套餐开通
+            暂无生效中的订阅，开通后即可使用对应模型
           </div>
         )}
       </Card>
 
-      <Flexbox horizontal gap={8}>
-        <span style={{ lineHeight: '32px' }}>支付方式：</span>
+      <Flexbox horizontal gap={16} style={{ flexWrap: 'wrap' }}>
+        <Segmented
+          value={cycle}
+          options={[
+            { label: '月付', value: 'monthly' },
+            { label: '年付（更优惠）', value: 'yearly' },
+          ]}
+          onChange={(v) => setCycle(v as 'monthly' | 'yearly')}
+        />
         <Segmented
           value={channel}
           options={[
             { label: '支付宝', value: 'alipay' },
-            { label: '微信支付', value: 'wechat' },
+            { label: '微信', value: 'wechat' },
           ]}
           onChange={(v) => setChannel(v as 'alipay' | 'wechat')}
         />
@@ -166,31 +186,34 @@ const PlansPage: FC = () => {
       {isLoading ? (
         <div>加载中…</div>
       ) : !sortedPlans.length ? (
-        <Empty description="暂无可购买套餐，请联系管理员在后台创建" />
+        <Empty description="暂无可购买套餐" />
       ) : (
         <Row gutter={[16, 16]}>
-          {sortedPlans.map((plan) => {
-            const quotas = (plan.quotas || {}) as Record<string, number>;
+          {sortedPlans.map((plan: any) => {
+            const { price, original } = priceOf(plan);
+            const off = discountPercent(original, price);
             const isCurrent = currentPlanId === plan.id;
+            const benefits: string[] = Array.isArray(plan.benefits) ? plan.benefits : [];
+            const models: any[] = Array.isArray(plan.allowedModels) ? plan.allowedModels : [];
+            const credits = plan.credits ?? plan.quotas?.credits ?? 0;
             return (
-              <Col key={plan.id} md={8} sm={12} xs={24}>
+              <Col key={plan.id} lg={8} md={12} xs={24}>
                 <Card
                   style={{
-                    borderColor: isCurrent ? 'var(--lobe-color-primary)' : undefined,
+                    borderColor:
+                      plan.highlight || isCurrent ? 'var(--lobe-color-primary)' : undefined,
+                    boxShadow: plan.highlight ? '0 8px 24px rgba(0,0,0,0.08)' : undefined,
                     height: '100%',
+                    position: 'relative',
                   }}
-                  title={
-                    <Flexbox horizontal align="center" gap={8} justify="space-between">
-                      <span>{plan.displayName}</span>
-                      {isCurrent && <Tag color="blue">当前</Tag>}
-                    </Flexbox>
-                  }
                 >
-                  <div style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>
-                    ¥{plan.price}
-                    <span style={{ fontSize: 13, fontWeight: 400, opacity: 0.65 }}>
-                      /{cycleLabel(plan.billingCycle)}
-                    </span>
+                  {(plan.badge || plan.highlight) && (
+                    <Tag color="gold" style={{ position: 'absolute', right: 12, top: 12 }}>
+                      {plan.badge || '推荐'}
+                    </Tag>
+                  )}
+                  <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>
+                    {plan.displayName}
                   </div>
                   {plan.description && (
                     <div
@@ -198,22 +221,78 @@ const PlansPage: FC = () => {
                         color: 'var(--lobe-color-text-secondary)',
                         fontSize: 13,
                         marginBottom: 12,
-                        minHeight: 40,
+                        minHeight: 36,
                       }}
                     >
                       {plan.description}
                     </div>
                   )}
-                  <Flexbox gap={4} style={{ fontSize: 13, marginBottom: 16 }}>
-                    {quotas.chatMessages != null && <div>聊天：{quotas.chatMessages}/月</div>}
-                    {quotas.imageGenerations != null && (
-                      <div>图片：{quotas.imageGenerations}/月</div>
+
+                  <div style={{ alignItems: 'baseline', display: 'flex', gap: 8, marginBottom: 4 }}>
+                    <span
+                      style={{ color: 'var(--lobe-color-primary)', fontSize: 32, fontWeight: 800 }}
+                    >
+                      ¥{price}
+                    </span>
+                    <span style={{ opacity: 0.65 }}>/{cycle === 'yearly' ? '年' : '月'}</span>
+                  </div>
+                  {original && Number(original) > Number(price) && (
+                    <div style={{ marginBottom: 8 }}>
+                      <span
+                        style={{
+                          marginRight: 8,
+                          opacity: 0.5,
+                          textDecoration: 'line-through',
+                        }}
+                      >
+                        原价 ¥{original}
+                      </span>
+                      {off != null && <Tag color="red">省 {off}%</Tag>}
+                    </div>
+                  )}
+
+                  <div
+                    style={{
+                      background: 'rgba(22,119,255,0.06)',
+                      borderRadius: 8,
+                      fontWeight: 600,
+                      marginBottom: 12,
+                      padding: '8px 12px',
+                    }}
+                  >
+                    含{' '}
+                    <span style={{ color: 'var(--lobe-color-primary)', fontSize: 20 }}>
+                      {credits}
+                    </span>{' '}
+                    积分点
+                    {cycle === 'yearly' && (
+                      <span style={{ fontSize: 12, fontWeight: 400, marginLeft: 6, opacity: 0.7 }}>
+                        /年
+                      </span>
                     )}
-                    {quotas.videoGenerations != null && (
-                      <div>视频：{quotas.videoGenerations}/月</div>
+                  </div>
+
+                  <Flexbox gap={6} style={{ fontSize: 13, marginBottom: 12, minHeight: 72 }}>
+                    {benefits.length ? (
+                      benefits.map((b) => <div key={b}>✓ {b}</div>)
+                    ) : (
+                      <div style={{ opacity: 0.5 }}>权益以开通后实际权限为准</div>
                     )}
-                    {quotas.apiCalls != null && <div>API：{quotas.apiCalls}/月</div>}
                   </Flexbox>
+
+                  <div style={{ fontSize: 12, marginBottom: 16, opacity: 0.75 }}>
+                    可用模型 {models.length} 个
+                    {models.length > 0 && (
+                      <div style={{ marginTop: 4 }}>
+                        {models
+                          .slice(0, 3)
+                          .map((m) => m.displayName || m.modelId)
+                          .join('、')}
+                        {models.length > 3 ? '…' : ''}
+                      </div>
+                    )}
+                  </div>
+
                   <Button
                     block
                     disabled={isCurrent}
@@ -221,13 +300,15 @@ const PlansPage: FC = () => {
                     type="primary"
                     onClick={() => handleBuy(plan.id)}
                   >
-                    {Number(plan.price) === 0
+                    {Number(price) === 0
                       ? isCurrent
                         ? '已开通'
                         : '免费开通'
                       : isCurrent
-                        ? '已订阅'
-                        : '立即订阅'}
+                        ? '当前方案'
+                        : cycle === 'yearly'
+                          ? '年付订阅'
+                          : '月付订阅'}
                   </Button>
                 </Card>
               </Col>
@@ -263,7 +344,7 @@ const PlansPage: FC = () => {
           <div style={{ fontSize: 12, opacity: 0.7 }}>
             订单号：{payModal?.outTradeNo}
             <br />
-            状态：{orderStatus?.status || 'pending'}（支付完成后自动开通）
+            状态：{orderStatus?.status || 'pending'}
           </div>
           <Button onClick={handleMockPay}>沙箱模拟支付成功</Button>
         </Flexbox>

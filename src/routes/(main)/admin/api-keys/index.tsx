@@ -2,7 +2,7 @@
 
 import { Flexbox, Input } from '@lobehub/ui';
 import { Button, Modal, Switch } from '@lobehub/ui/base-ui';
-import { App, Form, Table, Tag } from 'antd';
+import { App, Form, InputNumber, Table, Tag } from 'antd';
 import { type FC, useEffect, useState } from 'react';
 import useSWR from 'swr';
 
@@ -166,6 +166,21 @@ const AdminProvidersPage: FC = () => {
     },
   ];
 
+  const handleCreditsChange = async (modelId: string, creditsPerRequest: number) => {
+    if (!modelsProviderId) return;
+    try {
+      await lambdaClient.admin.updateModelCredits.mutate({
+        creditsPerRequest,
+        modelId,
+        providerId: modelsProviderId,
+      });
+      message.success('积分已更新');
+      mutateModels();
+    } catch (e: any) {
+      message.error(e?.message ?? '更新失败');
+    }
+  };
+
   const modelColumns = [
     {
       dataIndex: 'id',
@@ -205,6 +220,25 @@ const AdminProvidersPage: FC = () => {
       ),
       title: '来源',
       width: 80,
+    },
+    {
+      key: 'credits',
+      render: (_: unknown, row: any) => {
+        const credits = row?.pricing?.creditsPerRequest ?? 0;
+        return (
+          <InputNumber
+            min={0}
+            size="small"
+            style={{ width: 90 }}
+            value={credits}
+            onChange={(v) => {
+              if (typeof v === 'number') handleCreditsChange(row.id, v);
+            }}
+          />
+        );
+      },
+      title: '积分/次',
+      width: 110,
     },
     {
       dataIndex: 'enabled',
