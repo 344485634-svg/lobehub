@@ -83,7 +83,10 @@ const AdminProvidersPage: FC = () => {
       const res = await lambdaClient.admin.fetchProviderModels.mutate({
         providerId: modelsProviderId,
       });
-      message.success(`已拉取 ${res.count} 个模型`);
+      message.success(
+        `已拉取 ${res.count} 个模型` +
+          (res.prunedPlanModels ? `，已清理套餐中 ${res.prunedPlanModels} 个失效模型` : ''),
+      );
       mutateModels();
     } catch (e: any) {
       message.error(e?.message ?? '拉取模型失败，请先检查 Base URL 和 API Key');

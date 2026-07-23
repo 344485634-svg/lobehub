@@ -108,6 +108,19 @@ export class AiModelActionImpl {
         }),
       );
 
+      // 同步清理套餐中已不存在的可用模型引用
+      try {
+        const { lambdaClient } = await import('@/libs/trpc/client');
+        if (lambdaClient?.admin?.prunePlanModelsForProvider?.mutate) {
+          await lambdaClient.admin.prunePlanModelsForProvider.mutate({
+            providerId,
+            validModelIds: data.map((m) => m.id).filter(Boolean),
+          });
+        }
+      } catch {
+        // non-admin users ignore
+      }
+
       await this.#get().refreshAiModelList();
     }
   };

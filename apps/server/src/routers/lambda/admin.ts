@@ -419,6 +419,13 @@ export const adminRouter = router({
         await model.toggleProviderEnabled(input.id, input.enabled);
       }
 
+      // 更换 baseURL / API Key 后清掉旧 remote 模型与套餐引用，需重新拉取
+      if (input.keyVaults && (input.keyVaults.apiKey || input.keyVaults.baseURL)) {
+        const aiModelModel = new AiModelModel(ctx.serverDB, ctx.userId);
+        await aiModelModel.clearRemoteModels(input.id);
+        await PlanModel.pruneAllowedModelsForProvider(ctx.serverDB, input.id, []);
+      }
+
       return { success: true as const };
     }),
 
@@ -485,10 +492,36 @@ export const adminRouter = router({
       });
 
       await aiModelModel.batchUpdateAiModels(input.providerId, models);
+
+      // 同步清理所有套餐里已失效的可用模型（上一家厂商残留）
+      const validIds = models.map((m: any) => m.id).filter(Boolean);
+      const prune = await PlanModel.pruneAllowedModelsForProvider(
+        ctx.serverDB,
+        input.providerId,
+        validIds,
+      );
+
       return {
         count: models.length,
         models: await aiModelModel.getModelListByProviderId(input.providerId),
+        prunedPlanModels: prune.removed,
+        prunedPlans: prune.plansUpdated,
       };
+    }),
+
+  prunePlanModelsForProvider: adminProcedure
+    .input(
+      z.object({
+        providerId: z.string(),
+        validModelIds: z.array(z.string()).default([]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      return PlanModel.pruneAllowedModelsForProvider(
+        ctx.serverDB,
+        input.providerId,
+        input.validModelIds,
+      );
     }),
 
   toggleProviderModel: adminProcedure

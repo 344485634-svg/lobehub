@@ -121,4 +121,47 @@ export class PlanModel {
     // Note: ON DELETE RESTRICT on user_subscriptions will prevent deletion if plan is in use
     await db.delete(subscriptionPlans).where(eq(subscriptionPlans.id, id));
   }
+
+  /**
+   * After a provider re-fetch, drop allowedModels entries for that provider
+   * whose modelId is no longer present in the new catalog.
+   * Pass empty validModelIds to remove all models of this provider from every plan.
+   */
+  static async pruneAllowedModelsForProvider(
+    db: LobeChatDatabase,
+    providerId: string,
+    validModelIds: string[],
+  ): Promise<{ plansUpdated: number; removed: number }> {
+    const valid = new Set(validModelIds);
+    const plans = await db.query.subscriptionPlans.findMany();
+    let plansUpdated = 0;
+    let removed = 0;
+
+    for (const plan of plans) {
+      const list =
+        (plan.allowedModels as Array<{
+          displayName?: string;
+          modelId: string;
+          providerId: string;
+        }> | null) || [];
+      if (!Array.isArray(list) || list.length === 0) continue;
+
+      const next = list.filter((m) => {
+        if (m.providerId !== providerId) return true;
+        const keep = valid.has(m.modelId);
+        if (!keep) removed += 1;
+        return keep;
+      });
+
+      if (next.length !== list.length) {
+        await db
+          .update(subscriptionPlans)
+          .set({ allowedModels: next, updatedAt: new Date() })
+          .where(eq(subscriptionPlans.id, plan.id));
+        plansUpdated += 1;
+      }
+    }
+
+    return { plansUpdated, removed };
+  }
 }
