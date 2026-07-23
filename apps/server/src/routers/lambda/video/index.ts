@@ -119,8 +119,7 @@ export const videoRouter = router({
         if (creditsPerRequest > 0) {
           throw new TRPCError({
             code: 'FORBIDDEN',
-            message:
-              '当前视频模型需要积分，请先订阅套餐后再使用。前往「设置 → 订阅套餐」开通即可。',
+            message: '积分不足：当前视频模型需订阅套餐后使用，请前往「设置 → 订阅套餐」开通。',
           });
         }
       }
