@@ -63,14 +63,15 @@ export class AiModelActionImpl {
 
     const data = await modelsService.getModels(providerId);
     if (data) {
-      const currentEnabledState = new Map(
-        this.#get().aiProviderModelList.map(({ enabled, id }) => [id, enabled]),
-      );
+      // 重新拉取前清空该服务商 remote 模型，避免换上游后旧模型残留
+      await this.#get().clearRemoteModels(providerId);
+
       await this.#get().batchUpdateAiModels(
         data.map((model) => {
           const result: any = {
             ...model,
-            enabled: currentEnabledState.get(model.id) ?? model.enabled ?? false,
+            // 新拉取默认关闭，由管理员手动开启
+            enabled: model.enabled ?? false,
             source: 'remote',
           };
 

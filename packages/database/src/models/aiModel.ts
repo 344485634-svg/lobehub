@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNotNull, isNull, not, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, isNull, not, or, sql } from 'drizzle-orm';
 import type {
   AiModelSortMap,
   AiProviderModelListItem,
@@ -429,15 +429,40 @@ export class AiModelModel {
   };
 
   clearRemoteModels(providerId: string) {
+    // On re-fetch we treat non-builtin models as replaceable remote cache.
+    // This prevents previous gateway model lists from lingering after baseURL/key change.
     return this.db
       .delete(aiModels)
       .where(
         and(
           eq(aiModels.providerId, providerId),
-          eq(aiModels.source, AiModelSourceEnum.Remote),
+          or(
+            eq(aiModels.source, AiModelSourceEnum.Remote),
+            eq(aiModels.source, AiModelSourceEnum.Custom),
+            sql`${aiModels.source} IS NULL`,
+          ),
           this.scopeWhere(),
         ),
       );
+  }
+
+  /**
+   * Clear remote + custom models for a provider before re-fetch.
+   * Builtin rows (if any) are kept.
+   */
+  clearFetchedModels(providerId: string) {
+    return this.db.delete(aiModels).where(
+      and(
+        eq(aiModels.providerId, providerId),
+        // keep only true builtins; remote/custom/null all go away on refresh
+        or(
+          eq(aiModels.source, AiModelSourceEnum.Remote),
+          eq(aiModels.source, AiModelSourceEnum.Custom),
+          sql`${aiModels.source} IS NULL`,
+        ),
+        this.scopeWhere(),
+      ),
+    );
   }
 
   clearModelsByProvider(providerId: string) {

@@ -447,13 +447,15 @@ export const adminRouter = router({
       const remoteList = (await runtime.models()) || [];
 
       const aiModelModel = new AiModelModel(ctx.serverDB, ctx.userId);
-      const existing = await aiModelModel.getModelListByProviderId(input.providerId);
-      const enabledMap = new Map(existing.map((m) => [m.id, m.enabled]));
+
+      // 换上游/密钥后重新拉取：先清空该服务商已有 remote 模型，避免旧厂商模型残留
+      await aiModelModel.clearRemoteModels(input.providerId);
 
       const models = remoteList.map((model: any) => {
         const result: any = {
           ...model,
-          enabled: enabledMap.get(model.id) ?? model.enabled ?? false,
+          // 新拉取的模型默认关闭，由管理员手动开启
+          enabled: model.enabled ?? false,
           source: 'remote',
         };
 
