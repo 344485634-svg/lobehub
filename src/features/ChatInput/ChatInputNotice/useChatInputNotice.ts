@@ -1,3 +1,5 @@
+import { useEffect, useMemo, useRef } from 'react';
+
 import { useAgentId } from '@/features/ChatInput/hooks/useAgentId';
 import { useEnabledChatModels } from '@/hooks/useEnabledChatModels';
 import { useAgentStore } from '@/store/agent';
@@ -21,6 +23,16 @@ const findEnabledChatModel = (
     ?.children.find((item) => item.id === model);
 };
 
+const findFirstEnabledChatModel = (enabledChatModelList: EnabledProviderWithModels[]) => {
+  for (const provider of enabledChatModelList) {
+    const first = provider.children?.[0];
+    if (first?.id) {
+      return { model: first.id, provider: provider.id };
+    }
+  }
+  return null;
+};
+
 export const resolveChatInputNotice = ({
   currentChatModel,
   isHeterogeneousAgent,
@@ -28,12 +40,7 @@ export const resolveChatInputNotice = ({
 }: ResolveChatInputNoticeParams) => {
   // Model-config notices don't apply to heterogeneous agents (own toolchain) or
   // before the model runtime config is ready.
-  if (
-    !isHeterogeneousAgent &&
-    isModelConfigReady && // Example: an agent still references `gpt-4-32k`, or a model reclassified to
-    // image/video; once absent from the chat selector, it should read as unavailable.
-    !currentChatModel
-  )
+  if (!isHeterogeneousAgent && isModelConfigReady && !currentChatModel)
     return { action: undefined, key: 'input.modelUnavailable', type: 'warning' } as const;
 };
 
@@ -43,10 +50,11 @@ export type ChatInputNotice = NonNullable<ReturnType<typeof resolveChatInputNoti
 export const useChatInputNotice = (): ChatInputNotice | undefined => {
   const agentId = useAgentId();
 
-  const [isHeterogeneousAgent, model, provider] = useAgentStore((s) => [
+  const [isHeterogeneousAgent, model, provider, updateAgentConfigById] = useAgentStore((s) => [
     agentByIdSelectors.isAgentHeterogeneousById(agentId)(s),
     agentByIdSelectors.getAgentModelById(agentId)(s),
     agentByIdSelectors.getAgentModelProviderById(agentId)(s),
+    s.updateAgentConfigById,
   ]);
 
   const enabledChatModelList = useEnabledChatModels();
@@ -55,9 +63,39 @@ export const useChatInputNotice = (): ChatInputNotice | undefined => {
   );
   const currentChatModel = findEnabledChatModel(enabledChatModelList, model, provider);
 
-  return resolveChatInputNotice({
+  // Closed product: if agent still points to a removed default (e.g. deepseek),
+  // auto-switch to the first available enabled chat model once.
+  const autoFixedRef = useRef(false);
+  useEffect(() => {
+    if (autoFixedRef.current) return;
+    if (isHeterogeneousAgent || !isModelConfigReady) return;
+    if (currentChatModel) return;
+    if (!enabledChatModelList.length) return;
+
+    const next = findFirstEnabledChatModel(enabledChatModelList);
+    if (!next || !agentId) return;
+
+    autoFixedRef.current = true;
+    void updateAgentConfigById(agentId, {
+      model: next.model,
+      provider: next.provider,
+    });
+  }, [
+    agentId,
     currentChatModel,
+    enabledChatModelList,
     isHeterogeneousAgent,
     isModelConfigReady,
-  });
+    updateAgentConfigById,
+  ]);
+
+  return useMemo(
+    () =>
+      resolveChatInputNotice({
+        currentChatModel,
+        isHeterogeneousAgent,
+        isModelConfigReady,
+      }),
+    [currentChatModel, isHeterogeneousAgent, isModelConfigReady],
+  );
 };
