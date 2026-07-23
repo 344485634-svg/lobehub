@@ -54,7 +54,9 @@ import AdminDashboardPage from '@/routes/(main)/admin';
 import DesktopAdminLayout from '@/routes/(main)/admin/_layout';
 import AdminConnectorPage from '@/routes/(main)/admin/connector';
 import AdminCredsPage from '@/routes/(main)/admin/creds';
+import AdminEmailPage from '@/routes/(main)/admin/email';
 import AdminMemoryPage from '@/routes/(main)/admin/memory';
+import AdminPaymentPage from '@/routes/(main)/admin/payment';
 import AdminPlansPage from '@/routes/(main)/admin/plans';
 import AdminPlanEditPage from '@/routes/(main)/admin/plans/[id]/edit';
 import AdminPlanCreatePage from '@/routes/(main)/admin/plans/create';
@@ -564,6 +566,14 @@ export const sharedMainAreaChildren: RouteObject[] = [
       {
         element: <AdminCredsPage />,
         path: 'creds',
+      },
+      {
+        element: <AdminEmailPage />,
+        path: 'email',
+      },
+      {
+        element: <AdminPaymentPage />,
+        path: 'payment',
       },
       {
         element: redirectElement('/admin/provider'),

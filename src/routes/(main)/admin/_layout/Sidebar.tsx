@@ -8,9 +8,11 @@ import {
   CreditCard,
   KeyRound,
   LayoutDashboard,
+  Mail,
   Package,
   Sparkles,
   Users,
+  Wallet,
   Zap,
 } from 'lucide-react';
 import { memo } from 'react';
@@ -26,6 +28,8 @@ const Sidebar = memo(() => {
     { icon: Users, key: '/admin/users', label: '用户' },
     { icon: Package, key: '/admin/plans', label: '套餐' },
     { icon: CreditCard, key: '/admin/subscriptions', label: '订阅' },
+    { icon: Wallet, key: '/admin/payment', label: '支付配置' },
+    { icon: Mail, key: '/admin/email', label: '邮箱配置' },
     { icon: Brain, key: '/admin/provider', label: '模型服务商' },
     { icon: Sparkles, key: '/admin/service-model', label: '服务模型' },
     { icon: Zap, key: '/admin/skills', label: '技能' },

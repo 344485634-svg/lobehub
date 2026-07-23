@@ -15,26 +15,34 @@ const log = debug('lobe-email:Nodemailer');
  */
 export class NodemailerImpl implements EmailServiceImpl {
   private transporter: Transporter;
+  private defaultFrom?: string;
 
-  constructor() {
-    log('Initializing Nodemailer from environment variables');
+  constructor(config?: NodemailerConfig, defaultFrom?: string) {
+    log('Initializing Nodemailer');
+    this.defaultFrom = defaultFrom;
 
-    if (!emailEnv.SMTP_USER || !emailEnv.SMTP_PASS) {
-      throw new Error(
-        'SMTP_USER and SMTP_PASS environment variables are required to use email service. Please configure SMTP settings in your .env file.',
-      );
+    let transportConfig: NodemailerConfig;
+
+    if (config) {
+      transportConfig = config;
+    } else {
+      if (!emailEnv.SMTP_USER || !emailEnv.SMTP_PASS) {
+        throw new Error(
+          'SMTP_USER and SMTP_PASS environment variables are required to use email service. Please configure SMTP settings in your .env file, or set them in Admin > 邮箱配置.',
+        );
+      }
+
+      // Note: Use || to handle empty string from Dockerfile defaults
+      transportConfig = {
+        auth: {
+          pass: emailEnv.SMTP_PASS,
+          user: emailEnv.SMTP_USER,
+        },
+        host: emailEnv.SMTP_HOST || 'localhost',
+        port: emailEnv.SMTP_PORT || 587,
+        secure: emailEnv.SMTP_SECURE || false,
+      };
     }
-
-    // Note: Use || to handle empty string from Dockerfile defaults
-    const transportConfig: NodemailerConfig = {
-      auth: {
-        pass: emailEnv.SMTP_PASS,
-        user: emailEnv.SMTP_USER,
-      },
-      host: emailEnv.SMTP_HOST || 'localhost',
-      port: emailEnv.SMTP_PORT || 587,
-      secure: emailEnv.SMTP_SECURE || false,
-    };
 
     try {
       this.transporter = nodemailer.createTransport(transportConfig);
@@ -50,8 +58,16 @@ export class NodemailerImpl implements EmailServiceImpl {
   }
 
   async sendMail(payload: EmailPayload): Promise<EmailResponse> {
-    // Use SMTP_FROM as default sender, fallback to SMTP_USER for backward compatibility
-    const from = payload.from || emailEnv.SMTP_FROM || emailEnv.SMTP_USER!;
+    // Prefer explicit payload.from, then instance default, then env
+    const from =
+      payload.from || this.defaultFrom || emailEnv.SMTP_FROM || emailEnv.SMTP_USER || undefined;
+
+    if (!from) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'Sender address (from) is required',
+      });
+    }
 
     log('Sending email with payload: %o', {
       from,

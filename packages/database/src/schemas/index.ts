@@ -32,6 +32,7 @@ export * from './relations';
 export * from './session';
 export * from './subscriptionPlan';
 export * from './systemBotProvider';
+export * from './systemConfig';
 export * from './task';
 export * from './topic';
 export * from './user';

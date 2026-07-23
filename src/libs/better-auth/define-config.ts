@@ -147,7 +147,15 @@ export function defineConfig(customOptions: CustomBetterAuthOptions) {
       sendResetPassword: async ({ user, url }) => {
         const template = getResetPasswordEmailTemplate({ url });
 
-        const emailService = new EmailService();
+        // Prefer admin DB SMTP config when available
+        let emailService: EmailService;
+        try {
+          const { getServerDB } = await import('@/database/server');
+          const db = await getServerDB();
+          emailService = await EmailService.createFromSystemConfig(db);
+        } catch {
+          emailService = new EmailService();
+        }
         await emailService.sendMail({
           to: user.email,
           ...template,
@@ -178,7 +186,14 @@ export function defineConfig(customOptions: CustomBetterAuthOptions) {
               userName: user.name,
             });
 
-        const emailService = new EmailService();
+        let emailService: EmailService;
+        try {
+          const { getServerDB } = await import('@/database/server');
+          const db = await getServerDB();
+          emailService = await EmailService.createFromSystemConfig(db);
+        } catch {
+          emailService = new EmailService();
+        }
         await emailService.sendMail({
           to: user.email,
           ...template,

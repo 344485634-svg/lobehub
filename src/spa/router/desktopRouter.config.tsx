@@ -640,6 +640,20 @@ export const sharedMainAreaChildren: RouteObject[] = [
         ),
         path: 'creds',
       },
+      {
+        element: dynamicElement(
+          () => import('@/routes/(main)/admin/email'),
+          'Desktop > Admin > Email',
+        ),
+        path: 'email',
+      },
+      {
+        element: dynamicElement(
+          () => import('@/routes/(main)/admin/payment'),
+          'Desktop > Admin > Payment',
+        ),
+        path: 'payment',
+      },
       // Legacy redirects
       {
         element: redirectElement('/admin/provider'),

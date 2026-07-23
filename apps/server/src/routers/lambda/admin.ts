@@ -8,12 +8,15 @@ import { AiProviderModel } from '@/database/models/aiProvider';
 import { ApiKeyModel } from '@/database/models/apiKey';
 import { PlanModel } from '@/database/models/plan';
 import { SubscriptionModel } from '@/database/models/subscription';
+import { SystemConfigModel } from '@/database/models/systemConfig';
 import { UserModel } from '@/database/models/user';
 import { AiInfraRepos } from '@/database/repositories/aiInfra';
+import type { EmailSmtpConfig, ShouqianbaConfig } from '@/database/schemas/systemConfig';
 import { router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { KeyVaultsGateKeeper } from '@/server/modules/KeyVaultsEncrypt';
 import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
+import { EmailService } from '@/server/services/email';
 import { SkillImporter } from '@/server/services/skill';
 
 const adminProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) => {
@@ -505,4 +508,182 @@ export const adminRouter = router({
         });
       }
     }),
+
+  // ===== Email (SMTP) Configuration =====
+  getEmailConfig: adminProcedure.query(async ({ ctx }) => {
+    const model = new SystemConfigModel(ctx.serverDB);
+    const cfg = (await model.getEmailConfig()) || ({} as Partial<EmailSmtpConfig>);
+    return {
+      enabled: cfg.enabled ?? false,
+      from: cfg.from || '',
+      hasPass: Boolean(cfg.pass),
+      hasResendApiKey: Boolean(cfg.resendApiKey),
+      host: cfg.host || '',
+      port: cfg.port ?? 465,
+      provider: cfg.provider || 'nodemailer',
+      requireVerification: cfg.requireVerification ?? false,
+      secure: cfg.secure ?? true,
+      user: cfg.user || '',
+    } satisfies Partial<EmailSmtpConfig> & {
+      hasPass: boolean;
+      hasResendApiKey: boolean;
+    };
+  }),
+
+  updateEmailConfig: adminProcedure
+    .input(
+      z.object({
+        enabled: z.boolean(),
+        from: z.string().optional(),
+        host: z.string().optional(),
+        pass: z.string().optional(), // empty = keep existing
+        port: z.number().int().min(1).max(65535).optional(),
+        provider: z.enum(['nodemailer', 'resend']).optional(),
+        requireVerification: z.boolean().optional(),
+        resendApiKey: z.string().optional(),
+        secure: z.boolean().optional(),
+        user: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const model = new SystemConfigModel(ctx.serverDB);
+      const existing = (await model.getEmailConfig()) || ({} as Partial<EmailSmtpConfig>);
+      const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
+
+      let pass = existing.pass;
+      if (input.pass) {
+        pass = await gateKeeper.encrypt(input.pass);
+      }
+
+      let resendApiKey = existing.resendApiKey;
+      if (input.resendApiKey) {
+        resendApiKey = await gateKeeper.encrypt(input.resendApiKey);
+      }
+
+      const next: EmailSmtpConfig = {
+        enabled: input.enabled,
+        from: input.from ?? existing.from ?? '',
+        host: input.host ?? existing.host ?? '',
+        pass,
+        port: input.port ?? existing.port ?? 465,
+        provider: input.provider ?? existing.provider ?? 'nodemailer',
+        requireVerification: input.requireVerification ?? existing.requireVerification ?? false,
+        resendApiKey,
+        secure: input.secure ?? existing.secure ?? true,
+        user: input.user ?? existing.user ?? '',
+      };
+
+      await model.setEmailConfig(next, ctx.userId);
+      return { success: true as const };
+    }),
+
+  testEmailConfig: adminProcedure
+    .input(z.object({ to: z.string().email() }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const emailService = await EmailService.createFromSystemConfig(ctx.serverDB);
+        await emailService.verify();
+        await emailService.sendMail({
+          html: `<p>这是一封来自管理后台的测试邮件，说明 SMTP 配置正常。</p><p>时间：${new Date().toISOString()}</p>`,
+          subject: '【测试】邮箱配置验证成功',
+          text: `这是一封来自管理后台的测试邮件，说明 SMTP 配置正常。时间：${new Date().toISOString()}`,
+          to: input.to,
+        });
+        return { success: true as const };
+      } catch (error: any) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: error?.message || '发送测试邮件失败，请检查 SMTP 配置',
+        });
+      }
+    }),
+
+  // ===== Payment (Shouqianba / 收钱吧) Configuration =====
+  getPaymentConfig: adminProcedure.query(async ({ ctx }) => {
+    const model = new SystemConfigModel(ctx.serverDB);
+    const cfg = (await model.getShouqianbaConfig()) || ({} as Partial<ShouqianbaConfig>);
+    return {
+      appId: cfg.appId || '',
+      enabled: cfg.enabled ?? false,
+      env: cfg.env || 'sandbox',
+      hasTerminalKey: Boolean(cfg.terminalKey),
+      hasVendorKey: Boolean(cfg.vendorKey),
+      notifyUrl: cfg.notifyUrl || '',
+      payways: cfg.payways || ['alipay', 'wechat'],
+      remark: cfg.remark || '',
+      returnUrl: cfg.returnUrl || '',
+      terminalSn: cfg.terminalSn || '',
+      vendorSn: cfg.vendorSn || '',
+    };
+  }),
+
+  updatePaymentConfig: adminProcedure
+    .input(
+      z.object({
+        appId: z.string().optional(),
+        enabled: z.boolean(),
+        env: z.enum(['sandbox', 'production']).optional(),
+        notifyUrl: z.string().optional(),
+        payways: z.array(z.enum(['alipay', 'wechat', 'unionpay'])).optional(),
+        remark: z.string().optional(),
+        returnUrl: z.string().optional(),
+        terminalKey: z.string().optional(),
+        terminalSn: z.string().optional(),
+        vendorKey: z.string().optional(),
+        vendorSn: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const model = new SystemConfigModel(ctx.serverDB);
+      const existing = (await model.getShouqianbaConfig()) || ({} as Partial<ShouqianbaConfig>);
+      const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
+
+      let vendorKey = existing.vendorKey;
+      if (input.vendorKey) vendorKey = await gateKeeper.encrypt(input.vendorKey);
+
+      let terminalKey = existing.terminalKey;
+      if (input.terminalKey) terminalKey = await gateKeeper.encrypt(input.terminalKey);
+
+      const next: ShouqianbaConfig = {
+        appId: input.appId ?? existing.appId ?? '',
+        enabled: input.enabled,
+        env: input.env ?? existing.env ?? 'sandbox',
+        notifyUrl: input.notifyUrl ?? existing.notifyUrl ?? '',
+        payways: input.payways ?? existing.payways ?? ['alipay', 'wechat'],
+        remark: input.remark ?? existing.remark,
+        returnUrl: input.returnUrl ?? existing.returnUrl ?? '',
+        terminalKey,
+        terminalSn: input.terminalSn ?? existing.terminalSn ?? '',
+        vendorKey,
+        vendorSn: input.vendorSn ?? existing.vendorSn ?? '',
+      };
+
+      await model.setShouqianbaConfig(next, ctx.userId);
+      return { success: true as const };
+    }),
+
+  testPaymentConfig: adminProcedure.mutation(async ({ ctx }) => {
+    const model = new SystemConfigModel(ctx.serverDB);
+    const cfg = await model.getShouqianbaConfig();
+    if (!cfg?.enabled) {
+      throw new TRPCError({ code: 'BAD_REQUEST', message: '请先启用并保存收钱吧配置' });
+    }
+    if (!cfg.appId || !cfg.vendorSn || !cfg.terminalSn) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: '请完整填写 appId / vendorSn / terminalSn',
+      });
+    }
+    if (!cfg.vendorKey || !cfg.terminalKey) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: '请配置 vendorKey 与 terminalKey',
+      });
+    }
+    // 配置完整性校验通过；真实下单接口将在支付对接阶段实现
+    return {
+      message: '配置字段校验通过。下单/退款接口将在支付对接阶段启用。',
+      success: true as const,
+    };
+  }),
 });
