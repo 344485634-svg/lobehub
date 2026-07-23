@@ -344,20 +344,24 @@ export class AiInfraRepos {
         const { SubscriptionModel } = await import('../../models/subscription');
         const { PlanModel } = await import('../../models/plan');
         const sub = await new SubscriptionModel(this.db, this.userId).getCurrentSubscription();
-        let allow: Set<string>;
+
         if (sub) {
+          // Paid/active subscription: only models on the plan allowlist
           const plan = await new PlanModel(this.db, this.userId).findById(sub.planId);
           const list =
             (plan?.allowedModels as Array<{ modelId: string; providerId: string }>) || [];
-          // empty allowlist = no model access for non-admin
-          allow = new Set(list.map((m) => `${m.providerId}::${m.modelId}`));
+          const allow = new Set(list.map((m) => `${m.providerId}::${m.modelId}`));
+          allModels = allModels.filter((m) => allow.has(`${m.providerId}::${m.id}`));
         } else {
-          allow = new Set(); // no subscription => no models
+          // Free users (no subscription): only "basic" models — creditsPerRequest is 0 / missing
+          allModels = allModels.filter((m) => {
+            const credits = Number((m as any)?.pricing?.creditsPerRequest ?? 0);
+            return !Number.isFinite(credits) || credits <= 0;
+          });
         }
-        allModels = allModels.filter((m) => allow.has(`${m.providerId}::${m.id}`));
+
         const providerIdsWithModels = new Set(allModels.map((m) => m.providerId));
         enabledAiProviders = enabledAiProviders.filter((p) => providerIdsWithModels.has(p.id));
-        // also drop runtimeConfig for providers with no allowed models
         for (const pid of Object.keys(runtimeConfig)) {
           if (!providerIdsWithModels.has(pid)) delete runtimeConfig[pid];
         }

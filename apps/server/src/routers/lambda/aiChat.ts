@@ -166,15 +166,54 @@ export const aiChatRouter = router({
   sendMessageInServer: aiChatWriteProcedure
     .input(AiSendMessageServerSchema)
     .mutation(async ({ input, ctx }) => {
-      // Closed product: require active subscription before model chat
-      const { getSubscriptionPlan } = await import('@/business/server/user');
-      const { Plans } = await import('@lobechat/types');
-      const plan = await getSubscriptionPlan(ctx.userId);
-      if (!plan || plan === Plans.Free) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: '当前账号未订阅套餐，暂无法使用大模型。请先订阅套餐，或联系管理员开通。',
-        });
+      // Closed product access gate:
+      // - free users may use basic models (creditsPerRequest <= 0)
+      // - paid models require an active subscription; otherwise guide to /settings/plans
+      {
+        const { getSubscriptionPlan } = await import('@/business/server/user');
+        const { Plans } = await import('@lobechat/types');
+        const { AiModelModel } = await import('@/database/models/aiModel');
+        const plan = await getSubscriptionPlan(ctx.userId);
+        const isFree = !plan || plan === Plans.Free;
+
+        const providerId = input.newAssistantMessage?.provider;
+        const modelId = input.newAssistantMessage?.model;
+
+        if (providerId && modelId) {
+          // Resolve model pricing from admin-owned catalog when possible
+          let creditsPerRequest = 0;
+          try {
+            const { eq: eq2 } = await import('drizzle-orm');
+            const { users: usersTable } = await import('@/database/schemas');
+            const admins = await ctx.serverDB
+              .select({ id: usersTable.id })
+              .from(usersTable)
+              .where(eq2(usersTable.role, 'admin'))
+              .limit(5);
+            const ownerIds = [ctx.userId, ...admins.map((a) => a.id)];
+            for (const ownerId of ownerIds) {
+              const m = await new AiModelModel(ctx.serverDB, ownerId).findByIdAndProvider(
+                modelId,
+                providerId,
+              );
+              if (m) {
+                creditsPerRequest = Number((m.pricing as any)?.creditsPerRequest ?? 0) || 0;
+                break;
+              }
+            }
+          } catch {
+            creditsPerRequest = 0;
+          }
+
+          if (creditsPerRequest > 0 && isFree) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: '当前模型需要积分，请先订阅套餐后再使用。前往「设置 → 订阅套餐」开通即可。',
+            });
+          }
+        } else if (isFree) {
+          // No model info but free user: still allow (basic path); model list already filtered
+        }
       }
 
       const timingContext =

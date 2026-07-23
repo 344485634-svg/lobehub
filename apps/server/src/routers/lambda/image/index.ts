@@ -71,12 +71,46 @@ export const imageRouter = router({
     .mutation(async ({ input, ctx }) => {
       const { getSubscriptionPlan } = await import('@/business/server/user');
       const { Plans } = await import('@lobechat/types');
+      const { AiModelModel } = await import('@/database/models/aiModel');
       const plan = await getSubscriptionPlan(ctx.userId);
-      if (!plan || plan === Plans.Free) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: '当前账号未订阅套餐，暂无法使用图片生成。请先订阅套餐，或联系管理员开通。',
-        });
+      const isFree = !plan || plan === Plans.Free;
+      const providerId = (input as any).provider;
+      const modelId = (input as any).model;
+      if (isFree && providerId && modelId) {
+        let creditsPerRequest = 0;
+        try {
+          const m = await new AiModelModel(ctx.serverDB, ctx.userId).findByIdAndProvider(
+            modelId,
+            providerId,
+          );
+          if (m) creditsPerRequest = Number((m.pricing as any)?.creditsPerRequest ?? 0) || 0;
+          if (!m) {
+            const { eq: eq2 } = await import('drizzle-orm');
+            const { users: usersTable } = await import('@/database/schemas');
+            const admins = await ctx.serverDB
+              .select({ id: usersTable.id })
+              .from(usersTable)
+              .where(eq2(usersTable.role, 'admin'))
+              .limit(3);
+            for (const a of admins) {
+              const am = await new AiModelModel(ctx.serverDB, a.id).findByIdAndProvider(
+                modelId,
+                providerId,
+              );
+              if (am) {
+                creditsPerRequest = Number((am.pricing as any)?.creditsPerRequest ?? 0) || 0;
+                break;
+              }
+            }
+          }
+        } catch {}
+        if (creditsPerRequest > 0) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message:
+              '当前图片模型需要积分，请先订阅套餐后再使用。前往「设置 → 订阅套餐」开通即可。',
+          });
+        }
       }
 
       const { userId, serverDB, asyncTaskModel, fileService, generationTopicModel } = ctx;
