@@ -346,19 +346,19 @@ export class AiInfraRepos {
         const sub = await new SubscriptionModel(this.db, this.userId).getCurrentSubscription();
 
         if (sub) {
-          // Paid/active subscription: only models on the plan allowlist
+          // Active subscription: only models on the plan allowlist
           const plan = await new PlanModel(this.db, this.userId).findById(sub.planId);
           const list =
             (plan?.allowedModels as Array<{ modelId: string; providerId: string }>) || [];
-          const allow = new Set(list.map((m) => `${m.providerId}::${m.modelId}`));
-          allModels = allModels.filter((m) => allow.has(`${m.providerId}::${m.id}`));
-        } else {
-          // Free users (no subscription): only "basic" models — creditsPerRequest is 0 / missing
-          allModels = allModels.filter((m) => {
-            const credits = Number((m as any)?.pricing?.creditsPerRequest ?? 0);
-            return !Number.isFinite(credits) || credits <= 0;
-          });
+          // If plan configured an allowlist, apply it; empty allowlist means none
+          if (list.length > 0) {
+            const allow = new Set(list.map((m) => `${m.providerId}::${m.modelId}`));
+            allModels = allModels.filter((m) => allow.has(`${m.providerId}::${m.id}`));
+          }
         }
+        // Free / unsubscribed users: keep ALL admin-enabled models visible so they can
+        // preview and switch in the model picker. Usage is gated at send time when
+        // creditsPerRequest > 0 (prompt to subscribe).
 
         const providerIdsWithModels = new Set(allModels.map((m) => m.providerId));
         enabledAiProviders = enabledAiProviders.filter((p) => providerIdsWithModels.has(p.id));
