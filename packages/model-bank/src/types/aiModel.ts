@@ -535,6 +535,13 @@ export const UpdateAiModelSchema = z.object({
     .optional(),
   contextWindowTokens: z.number().nullish(),
   displayName: z.string().nullish(),
+  // Closed product: per-request credit cost (stored under pricing.creditsPerRequest)
+  pricing: z
+    .object({
+      creditsPerRequest: z.number().min(0).optional(),
+    })
+    .passthrough()
+    .optional(),
   settings: AiModelSettingsSchema.optional(),
   type: AiModelTypeSchema.optional(),
 });

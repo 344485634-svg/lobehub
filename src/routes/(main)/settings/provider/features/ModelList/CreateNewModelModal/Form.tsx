@@ -1,7 +1,7 @@
 import { Input } from '@lobehub/ui';
 import { Select } from '@lobehub/ui/base-ui';
 import type { FormInstance } from 'antd';
-import { Checkbox, Form } from 'antd';
+import { Checkbox, Form, InputNumber } from 'antd';
 import type { AiModelType } from 'model-bank';
 import { memo, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -79,10 +79,13 @@ const ModelConfigForm = memo<ModelConfigFormProps>(
           colon={false}
           disabled={disabled}
           form={formInstance}
-          initialValues={initialValues}
           labelCol={{ span: 4 }}
           style={{ marginTop: 16 }}
           wrapperCol={isMobile ? { span: 18 } : { offset: 1, span: 18 }}
+          initialValues={{
+            ...initialValues,
+            creditsPerRequest: (initialValues as any)?.pricing?.creditsPerRequest ?? 0,
+          }}
         >
           <Form.Item
             extra={t('providerModels.item.modelConfig.id.extra')}
@@ -181,6 +184,13 @@ const ModelConfigForm = memo<ModelConfigFormProps>(
             valuePropName={'checked'}
           >
             <Checkbox />
+          </Form.Item>
+          <Form.Item
+            extra="用户每次调用该模型扣除的积分点（0 表示不扣）"
+            label="积分/次"
+            name="creditsPerRequest"
+          >
+            <InputNumber min={0} placeholder="0" style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item
             extra={t('providerModels.item.modelConfig.type.extra')}

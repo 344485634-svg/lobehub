@@ -32,9 +32,20 @@ const ModelConfigFooter = memo<ModelConfigFooterProps>(({ formRef, id }) => {
           const form = formRef.current;
           if (!editingProvider || !id || !form) return;
           const data = form.getFieldsValue();
+          const { creditsPerRequest, ...rest } = data || {};
+          const payload = {
+            ...rest,
+            pricing: {
+              ...(rest as any).pricing,
+              creditsPerRequest:
+                typeof creditsPerRequest === 'number'
+                  ? creditsPerRequest
+                  : Number(creditsPerRequest) || 0,
+            },
+          };
 
           setLoading(true);
-          await updateAiModelsConfig(id, editingProvider, data);
+          await updateAiModelsConfig(id, editingProvider, payload);
           setLoading(false);
 
           close();

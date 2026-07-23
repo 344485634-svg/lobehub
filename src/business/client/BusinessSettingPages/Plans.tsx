@@ -280,17 +280,19 @@ const PlansPage: FC = () => {
                     )}
                   </Flexbox>
 
-                  <div style={{ fontSize: 12, marginBottom: 16, opacity: 0.75 }}>
-                    可用模型 {models.length} 个
-                    {models.length > 0 && (
-                      <div style={{ marginTop: 4 }}>
-                        {models
-                          .slice(0, 3)
-                          .map((m) => m.displayName || m.modelId)
-                          .join('、')}
-                        {models.length > 3 ? '…' : ''}
-                      </div>
-                    )}
+                  <div style={{ fontSize: 13, marginBottom: 16 }}>
+                    <div style={{ fontWeight: 600, marginBottom: 6 }}>可用模型</div>
+                    <Flexbox gap={6}>
+                      {models.length ? (
+                        models.map((m) => (
+                          <div key={`${m.providerId}-${m.modelId}`}>
+                            ✓ {m.displayName || m.modelId}
+                          </div>
+                        ))
+                      ) : (
+                        <div style={{ opacity: 0.5 }}>暂未配置可用模型</div>
+                      )}
+                    </Flexbox>
                   </div>
 
                   <Button

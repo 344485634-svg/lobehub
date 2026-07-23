@@ -154,6 +154,8 @@ const ModelItem = memo<ModelItemProps>(
     const content = [
       releasedAt && t('providerModels.item.releasedAt', { releasedAt }),
       ...formatPricing(),
+      typeof (pricing as any)?.creditsPerRequest === 'number' &&
+        `积分/次: ${(pricing as any).creditsPerRequest}`,
     ].filter(Boolean) as string[];
 
     const { message } = App.useApp();
