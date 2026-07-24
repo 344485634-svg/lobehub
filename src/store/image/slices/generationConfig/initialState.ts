@@ -1,11 +1,12 @@
 import type { ModelParamsSchema, RuntimeImageGenParams } from 'model-bank';
-import { extractDefaultValues, ModelProvider } from 'model-bank';
+import { extractDefaultValues } from 'model-bank';
 import { nanoBanana2Parameters } from 'model-bank/imageParameters';
 
 import { DEFAULT_IMAGE_CONFIG } from '@/const/settings';
 
-export const DEFAULT_AI_IMAGE_PROVIDER = ModelProvider.Google;
-export const DEFAULT_AI_IMAGE_MODEL = 'gemini-3.1-flash-image-preview:image';
+// Closed product: default to platform newapi image model
+export const DEFAULT_AI_IMAGE_PROVIDER = 'newapi';
+export const DEFAULT_AI_IMAGE_MODEL = 'doubao-seedream-5-0-260128';
 
 export interface GenerationConfigState {
   parameters: RuntimeImageGenParams;

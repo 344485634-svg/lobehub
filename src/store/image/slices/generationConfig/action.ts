@@ -30,16 +30,23 @@ import { adaptSizeToRatio, parseRatio } from '../../utils/size';
 export function getModelAndDefaults(model: string, provider: string) {
   const enabledImageModelList = aiProviderSelectors.enabledImageModelList(getAiInfraStoreState());
 
-  const providerItem = enabledImageModelList.find((providerItem) => providerItem.id === provider);
+  let providerItem = enabledImageModelList.find((providerItem) => providerItem.id === provider);
+  // Fallback to first enabled image provider/model when preferred ones missing
+  if (!providerItem || !providerItem.children?.length) {
+    providerItem = enabledImageModelList.find((p) => p.children?.length) as any;
+  }
   if (!providerItem) {
     throw new Error(
       `Provider "${provider}" not found in enabled image provider list. Available providers: ${enabledImageModelList.map((p) => p.id).join(', ')}`,
     );
   }
 
-  const activeModel = providerItem.children.find(
+  let activeModel = providerItem.children.find(
     (modelItem) => modelItem.id === model,
   ) as unknown as AIImageModelCard;
+  if (!activeModel) {
+    activeModel = providerItem.children[0] as unknown as AIImageModelCard;
+  }
   if (!activeModel) {
     throw new Error(
       `Model "${model}" not found in provider "${provider}". Available models: ${providerItem.children.map((m) => m.id).join(', ')}`,
@@ -372,6 +379,36 @@ export class GenerationConfigActionImpl {
 
   _initializeDefaultImageConfig = (): void => {
     const { defaultImageNum } = settingsSelectors.currentImageSettings(useUserStore.getState());
+    const enabledImageModelList = aiProviderSelectors.enabledImageModelList(getAiInfraStoreState());
+    const firstProvider = enabledImageModelList.find((p) => p.children?.length);
+    const firstModel = firstProvider?.children?.[0];
+
+    if (firstProvider && firstModel) {
+      try {
+        const { defaultValues, parametersSchema, initialActiveRatio } = prepareModelConfigState(
+          firstModel.id,
+          firstProvider.id,
+        );
+        this.#set(
+          {
+            model: firstModel.id,
+            provider: firstProvider.id,
+            parameters: defaultValues,
+            parametersSchema,
+            isAspectRatioLocked: false,
+            activeAspectRatio: initialActiveRatio,
+            imageNum: defaultImageNum,
+            isInit: true,
+          },
+          false,
+          `initializeImageConfig/fallback/${firstModel.id}/${firstProvider.id}`,
+        );
+        return;
+      } catch {
+        // fall through
+      }
+    }
+
     this.#set({ imageNum: defaultImageNum, isInit: true }, false, 'initializeImageConfig/default');
   };
 
