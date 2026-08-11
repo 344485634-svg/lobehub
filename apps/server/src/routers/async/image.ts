@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import { ASYNC_TASK_TIMEOUT } from '@lobechat/business-config/server';
 import { ENABLE_BUSINESS_FEATURES } from '@lobechat/business-const';
 import {
@@ -121,6 +123,13 @@ export const imageRouter = router({
       // Use AbortController to prevent resource leaks
       const abortController = new AbortController();
       let timeoutId: ReturnType<typeof setTimeout> | null = null;
+      // Heartbeat: refresh updatedAt periodically while the task is still
+      // Processing so the timeout checker (based on updatedAt staleness) doesn't
+      // mis-mark a long-running image generation as TaskTimeout. The outer
+      // ASYNC_TASK_TIMEOUT timer remains the real kill switch.
+      const heartbeatId = setInterval(() => {
+        void asyncTaskModel.update(taskId, { status: AsyncTaskStatus.Processing }).catch(() => {});
+      }, 60_000);
 
       const isEditingImage =
         Boolean((params as any).imageUrl) ||
@@ -175,9 +184,6 @@ export const imageRouter = router({
 
           const { modelUsage } = response;
 
-          // Check if operation has been cancelled
-          checkAbortSignal(signal);
-
           log('Image generation successful: %O', {
             height: response.height,
             imageUrl: response.imageUrl.startsWith('data:')
@@ -223,8 +229,6 @@ export const imageRouter = router({
               authHeaders,
             );
 
-            checkAbortSignal(signal);
-
             log('Uploading image for generation');
             const uploadResult = await generationService.uploadImageForGeneration(
               image,
@@ -244,10 +248,7 @@ export const imageRouter = router({
           } catch (downloadError: any) {
             // Treat any network-level fetch failure as a transient CDN error.
             // Abort signals (user cancellation) are re-thrown as-is.
-            const isAbortError =
-              downloadError?.name === 'AbortError' ||
-              downloadError?.name === 'TimeoutError' ||
-              abortController.signal.aborted;
+            const isAbortError = downloadError?.name === 'AbortError';
 
             const isFetchError =
               !isAbortError &&
@@ -268,6 +269,10 @@ export const imageRouter = router({
             // Use the CDN URL directly; no local copy or thumbnail this time.
             uploadedImageUrl = imageUrl;
             thumbnailImageUrl = imageUrl;
+            // Deterministic hash from the URL so the globalFiles primary key is
+            // unique (an undefined fileHash → `default` would collide across
+            // fallback files and break the insert).
+            fileHash = createHash('md5').update(imageUrl).digest('hex');
             // Infer extension from URL path (e.g. ".png" → "png")
             const urlExt = imageUrl.split('?')[0].split('.').pop();
             if (urlExt && /^[a-z0-9]{2,5}$/.test(urlExt)) fileExtension = urlExt;
@@ -346,6 +351,7 @@ export const imageRouter = router({
               modelUsage,
               pricingContext: runtimeOptions.pricingContext,
               provider,
+              serverDB: ctx.serverDB,
               userId: ctx.userId,
               workspaceId,
             });
@@ -368,6 +374,7 @@ export const imageRouter = router({
           clearTimeout(timeoutId);
           timeoutId = null;
         }
+        clearInterval(heartbeatId);
 
         return result;
       } catch (error: any) {
@@ -375,6 +382,7 @@ export const imageRouter = router({
         if (timeoutId) {
           clearTimeout(timeoutId);
         }
+        clearInterval(heartbeatId);
 
         log('Async image generation failed: %O', {
           error: error.message || error,
@@ -402,6 +410,30 @@ export const imageRouter = router({
         });
 
         log('Task status updated to Error: %s, errorType: %s', taskId, errorType);
+
+        // Refund precharged image credits on failure
+        try {
+          const task = await asyncTaskModel.findById(taskId);
+          const precharge = (task as any)?.metadata?.precharge;
+          if (precharge?.amount) {
+            await chargeAfterGenerate({
+              isError: true,
+              metadata: {
+                asyncTaskId: taskId,
+                generationBatchId,
+                topicId: generationTopicId,
+                modelId: model,
+              },
+              prechargeResult: precharge,
+              provider,
+              serverDB: ctx.serverDB,
+              userId: ctx.userId,
+              workspaceId,
+            });
+          }
+        } catch (refundError) {
+          console.error('[image-async] Failed to refund precharge on error:', refundError);
+        }
 
         return {
           message: `Image generation ${taskId} failed: ${errorMessage}`,
