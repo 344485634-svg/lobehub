@@ -57,6 +57,16 @@ export class SubscriptionModel {
     });
   }
 
+  async getLatestExpiredSubscription(): Promise<UserSubscriptionItem | undefined> {
+    return this.db.query.userSubscriptions.findFirst({
+      orderBy: desc(userSubscriptions.expiresAt),
+      where: and(
+        eq(userSubscriptions.userId, this.userId),
+        eq(userSubscriptions.status, 'expired'),
+      ),
+    });
+  }
+
   async getHistory(): Promise<UserSubscriptionItem[]> {
     return this.db.query.userSubscriptions.findMany({
       orderBy: desc(userSubscriptions.createdAt),

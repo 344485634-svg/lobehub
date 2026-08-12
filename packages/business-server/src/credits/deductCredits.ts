@@ -1,4 +1,4 @@
-import { and, eq, isNotNull, lt, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, lt, sql } from 'drizzle-orm';
 
 import { CreditLedgerModel } from '@/database/models/creditReferral';
 import { PlanModel } from '@/database/models/plan';
@@ -79,44 +79,61 @@ export async function getLedgerBuckets(
 }
 
 /**
- * For past-due subscriptions still marked 'active': flip them to 'expired' and
- * record a ledger row for the forfeited plan credits so users can see in their
- * usage history why their plan credits vanished. Top-up and reward balances
- * (user-owned) are untouched.
+ * For past-due subscriptions (still 'active' OR already flipped to 'expired'):
+ * ensure each is marked 'expired' and has a ledger row recording the forfeited
+ * plan credits, so users can see in their usage history why plan credits
+ * vanished. Idempotent — skips subscriptions that already have a 'plan_expired'
+ * ledger entry, so it also backfills legacy subscriptions that expired before
+ * this function existed. Top-up and reward balances (user-owned) are untouched.
  */
 export async function forfeitExpiredPlanCredits(
   db: LobeChatDatabase,
   userId: string,
 ): Promise<void> {
   const now = new Date();
-  const expired = await db
+  const pastDue = await db
     .select({
       id: userSubscriptions.id,
       planId: userSubscriptions.planId,
       quotaUsage: userSubscriptions.quotaUsage,
+      status: userSubscriptions.status,
     })
     .from(userSubscriptions)
     .where(
       and(
         eq(userSubscriptions.userId, userId),
-        eq(userSubscriptions.status, 'active'),
+        inArray(userSubscriptions.status, ['active', 'expired']),
         isNotNull(userSubscriptions.expiresAt),
         lt(userSubscriptions.expiresAt, now),
       ),
     );
 
-  if (expired.length === 0) return;
+  if (pastDue.length === 0) return;
 
-  for (const sub of expired) {
+  // Idempotency: skip subscriptions we already wrote a 'plan_expired' row for.
+  const alreadyRecorded = await db
+    .select({ subId: sql<string>`${creditLedgers.meta}->>'subscriptionId'` })
+    .from(creditLedgers)
+    .where(and(eq(creditLedgers.userId, userId), eq(creditLedgers.reason, 'plan_expired')));
+  const recordedSet = new Set(
+    alreadyRecorded.map((r) => r.subId).filter((s): s is string => Boolean(s)),
+  );
+
+  for (const sub of pastDue) {
+    // Flip stale 'active' rows to 'expired' (no-op for already-expired ones).
+    if (sub.status === 'active') {
+      await db
+        .update(userSubscriptions)
+        .set({ status: 'expired', updatedAt: now })
+        .where(eq(userSubscriptions.id, sub.id));
+    }
+
+    if (recordedSet.has(sub.id)) continue;
+
     const plan = await new PlanModel(db, userId).findById(sub.planId);
     const planLimit = num(plan?.credits ?? (plan?.quotas as Record<string, unknown>)?.credits ?? 0);
     const planUsed = num((sub.quotaUsage as Record<string, number> | null)?.credits ?? 0);
     const forfeit = Math.max(0, planLimit - planUsed);
-
-    await db
-      .update(userSubscriptions)
-      .set({ status: 'expired', updatedAt: now })
-      .where(eq(userSubscriptions.id, sub.id));
 
     if (forfeit > 0) {
       const buckets = await getLedgerBuckets(db, userId);
