@@ -79,6 +79,20 @@ export class SubscriptionModel {
     const { page = 1, pageSize = 20, userId, planId, status } = opts;
     const offset = (page - 1) * pageSize;
 
+    // Lazily expire past-due active subscriptions so the admin list reflects
+    // real state even for users who haven't triggered getCurrentSubscription.
+    const now = new Date();
+    await db
+      .update(userSubscriptions)
+      .set({ status: 'expired', updatedAt: new Date() })
+      .where(
+        and(
+          eq(userSubscriptions.status, 'active'),
+          isNotNull(userSubscriptions.expiresAt),
+          lt(userSubscriptions.expiresAt, now),
+        ),
+      );
+
     const conditions = [];
     if (userId) conditions.push(eq(userSubscriptions.userId, userId));
     if (planId) conditions.push(eq(userSubscriptions.planId, planId));
