@@ -30,6 +30,7 @@ export async function createVolcengineImage(
     ['imageUrls', 'image'],
     ['imageUrl', 'image'],
     ['cfg', 'guidance_scale'],
+    ['aspectRatio', 'size'],
   ]);
 
   const userInput: Record<string, any> = Object.fromEntries(

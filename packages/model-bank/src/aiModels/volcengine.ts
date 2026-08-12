@@ -1094,7 +1094,10 @@ const volcengineImageModels: AIImageModelCard[] = [
     enabled: true,
     id: 'doubao-seedream-5-0-260128',
     parameters: {
-      height: { default: 2048, max: 16_384, min: 480, step: 1 },
+      aspectRatio: {
+        default: '1:1',
+        enum: ['1:1', '4:3', '3:4', '16:9', '9:16', '3:2', '2:3', '21:9'],
+      },
       imageUrls: { default: [], maxCount: 14, maxFileSize: 10 * 1024 * 1024 },
       prompt: {
         default: '',
@@ -1102,7 +1105,6 @@ const volcengineImageModels: AIImageModelCard[] = [
       promptExtend: { default: 'off', enum: ['off', 'standard'] },
       watermark: { default: false },
       webSearch: { default: false },
-      width: { default: 2048, max: 16_384, min: 480, step: 1 },
     },
     pricing: {
       currency: 'CNY',
@@ -1118,7 +1120,10 @@ const volcengineImageModels: AIImageModelCard[] = [
     enabled: true,
     id: 'doubao-seedream-4-5-251128',
     parameters: {
-      height: { default: 2048, max: 16_384, min: 480, step: 1 },
+      aspectRatio: {
+        default: '1:1',
+        enum: ['1:1', '4:3', '3:4', '16:9', '9:16', '3:2', '2:3', '21:9'],
+      },
       imageUrls: { default: [], maxCount: 14, maxFileSize: 10 * 1024 * 1024 },
       prompt: {
         default: '',
@@ -1141,14 +1146,16 @@ const volcengineImageModels: AIImageModelCard[] = [
     enabled: true,
     id: 'doubao-seedream-4-0-250828',
     parameters: {
-      height: { default: 2048, max: 16_384, min: 240, step: 1 },
+      aspectRatio: {
+        default: '1:1',
+        enum: ['1:1', '4:3', '3:4', '16:9', '9:16', '3:2', '2:3', '21:9'],
+      },
       imageUrls: { default: [], maxCount: 10, maxFileSize: 10 * 1024 * 1024 },
       prompt: {
         default: '',
       },
       promptExtend: { default: 'off', enum: ['off', 'standard', 'fast'] },
       watermark: { default: false },
-      width: { default: 2048, max: 16_384, min: 240, step: 1 },
     },
     pricing: {
       currency: 'CNY',
