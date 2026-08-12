@@ -1,3 +1,4 @@
+import { PLAN_ALLOWED_MODELS_ENABLED } from '@lobechat/business-const';
 import { and, desc, eq, gt, isNull, or } from 'drizzle-orm';
 
 import { subscriptionPlans, userSubscriptions } from '@/database/schemas';
@@ -17,6 +18,8 @@ export async function loadPlanDiscountRate(
   providerId: string,
   modelId: string,
 ): Promise<number> {
+  // Per-plan model discount is soft-disabled; subscribers always pay full price.
+  if (!PLAN_ALLOWED_MODELS_ENABLED) return 1;
   try {
     const [row] = await db
       .select({ allowedModels: subscriptionPlans.allowedModels })

@@ -16,6 +16,15 @@ export const ENABLE_BUSINESS_FEATURES = process.env.ENABLE_BUSINESS_FEATURES ===
  */
 export const AGENT_ONBOARDING_ENABLED = false;
 
+/**
+ * Master switch for the per-plan "allowed models + model discount" feature.
+ *
+ * Soft-disabled: plan cards no longer list allowed models and planDiscount
+ * always returns 1.0 (no model discount). The allowedModels column / admin
+ * config are left intact; flip to true to revive the feature.
+ */
+export const PLAN_ALLOWED_MODELS_ENABLED = false;
+
 export const OFFICIAL_PROVIDER_DISABLE_ERROR = 'The official provider cannot be disabled.';
 
 export const isOfficialProvider = (id: string) =>
