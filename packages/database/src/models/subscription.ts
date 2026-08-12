@@ -1,4 +1,4 @@
-import { and, count, desc, eq, sql } from 'drizzle-orm';
+import { and, count, desc, eq, gt, isNotNull, isNull, lt, or } from 'drizzle-orm';
 
 import type { LobeChatDatabase } from '@/core/db/client';
 
@@ -29,9 +29,31 @@ export class SubscriptionModel {
   // ===== User-level methods =====
 
   async getCurrentSubscription(): Promise<UserSubscriptionItem | undefined> {
+    const now = new Date();
+
+    // Lazily flip subscriptions whose term has ended to 'expired', so a stale
+    // row that still has status 'active' after expiresAt can no longer surface
+    // as the current subscription (e.g. shown as "生效中" in the UI).
+    await this.db
+      .update(userSubscriptions)
+      .set({ status: 'expired', updatedAt: new Date() })
+      .where(
+        and(
+          eq(userSubscriptions.userId, this.userId),
+          eq(userSubscriptions.status, 'active'),
+          isNotNull(userSubscriptions.expiresAt),
+          lt(userSubscriptions.expiresAt, now),
+        ),
+      );
+
     return this.db.query.userSubscriptions.findFirst({
       orderBy: desc(userSubscriptions.createdAt),
-      where: and(eq(userSubscriptions.userId, this.userId), eq(userSubscriptions.status, 'active')),
+      where: and(
+        eq(userSubscriptions.userId, this.userId),
+        eq(userSubscriptions.status, 'active'),
+        // lifetime subscriptions (no expiresAt) stay valid; dated ones must not be past due
+        or(isNull(userSubscriptions.expiresAt), gt(userSubscriptions.expiresAt, now)),
+      ),
     });
   }
 
