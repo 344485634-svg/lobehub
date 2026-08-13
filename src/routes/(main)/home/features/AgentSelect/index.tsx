@@ -60,7 +60,7 @@ const AgentSelect = memo(() => {
 
   const displayMeta = isInboxDisplay ? inboxMeta : (sidebarItem ?? agentMapMeta);
 
-  const fallbackTitle = isInboxDisplay ? 'LM Studio' : t('defaultSession', { ns: 'common' });
+  const fallbackTitle = isInboxDisplay ? 'ChatLM' : t('defaultSession', { ns: 'common' });
   const displayTitle = displayMeta?.title || fallbackTitle;
   const displayAvatar =
     (typeof displayMeta?.avatar === 'string' ? displayMeta.avatar : undefined) ||

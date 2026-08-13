@@ -75,7 +75,7 @@ const InboxWelcome = memo(() => {
         </Text>
         <Flexbox width={'min(100%, 640px)'}>
           <Markdown fontSize={fontSize} variant={'chat'}>
-            {isInbox ? t('guide.defaultMessageWithoutCreate', { appName: 'LM Studio' }) : message}
+            {isInbox ? t('guide.defaultMessageWithoutCreate', { appName: 'ChatLM' }) : message}
           </Markdown>
         </Flexbox>
         {openingQuestions.length > 0 && (

@@ -17,7 +17,7 @@ const AgentInfo = memo(() => {
   // Scope the welcome to the conversation's agent, not the global
   // `activeAgentId`. In the multi-tab desktop app `activeAgentId` is shared and
   // can momentarily point at another tab's agent (or the inbox), which used to
-  // flash this card back to the inbox "LM Studio" identity.
+  // flash this card back to the inbox "ChatLM" identity.
   const agentId = useConversationStore(contextSelectors.agentId) || '';
   const inboxAgentId = useAgentStore(builtinAgentSelectors.inboxAgentId);
   const isInbox = !!inboxAgentId && agentId === inboxAgentId;
@@ -29,7 +29,7 @@ const AgentInfo = memo(() => {
   const fontSize = useUserStore(userGeneralSettingsSelectors.fontSize);
 
   const displayTitle = isInbox
-    ? meta.title || 'LM Studio'
+    ? meta.title || 'ChatLM'
     : meta.title || t('defaultSession', { ns: 'common' });
 
   const message = useMemo(() => {

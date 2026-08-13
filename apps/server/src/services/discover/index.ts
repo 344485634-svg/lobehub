@@ -131,7 +131,7 @@ export class DiscoverService {
     const deviceId = await getDeviceId();
 
     const { client_id, client_secret } = await this.market.registerClient({
-      clientName: `LobeHub ${isDesktop ? 'Desktop' : 'Web'}`,
+      clientName: `ChatLM ${isDesktop ? 'Desktop' : 'Web'}`,
       clientType: isDesktop ? 'desktop' : 'web',
       deviceId,
       platform: isDesktop ? process.platform : userAgent,
@@ -1177,7 +1177,7 @@ export class DiscoverService {
         avatar: typeof composioTool.icon === 'string' ? composioTool.icon : '',
         category: undefined,
         createdAt: '',
-        description: `LobeHub Mcp Server: ${composioTool.label}`,
+        description: `ChatLM Mcp Server: ${composioTool.label}`,
         homepage: 'https://composio.dev',
         identifier: composioTool.identifier,
         manifest: undefined,

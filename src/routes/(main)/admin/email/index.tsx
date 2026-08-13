@@ -141,7 +141,7 @@ const AdminEmailConfigPage: FC = () => {
           </Form.Item>
 
           <Form.Item label="发件人 From" name="from">
-            <Input placeholder="LM Studio <noreply@your-domain.com>" />
+            <Input placeholder="ChatLM <noreply@your-domain.com>" />
           </Form.Item>
 
           <Flexbox horizontal gap={12}>

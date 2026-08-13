@@ -9,7 +9,7 @@ export default {
   'alert.cloud.title': '{{name}} beta is live',
   'agentOnboardingPromo.actionLabel': 'Try it now',
   'agentOnboardingPromo.description':
-    'Set up your agent teams in a quick chat with LM Studio. Your existing agents remain unchanged.',
+    'Set up your agent teams in a quick chat with ChatLM. Your existing agents remain unchanged.',
   'agentOnboardingPromo.title': 'Quick Wizard',
   'appLoading.appIdle': 'Ready to start',
   'appLoading.appInitializing': 'Application is starting...',
@@ -32,10 +32,10 @@ export default {
   'batchDelete': 'Batch Delete',
   'blog': 'Product Blog',
   'messengerBanner.dismiss': 'Dismiss',
-  'messengerBanner.title': 'Talk to LM Studio on your favorite messaging apps',
+  'messengerBanner.title': 'Talk to ChatLM on your favorite messaging apps',
   'branching': 'Create Subtopic',
   'branchingDisable':
-    'The "Sub-topic" feature is unavailable in the current mode. To use this feature, please switch to Postgres/Pglite DB mode or use LM Studio Cloud.',
+    'The "Sub-topic" feature is unavailable in the current mode. To use this feature, please switch to Postgres/Pglite DB mode or use ChatLM Cloud.',
   'branchingRequiresSavedTopic':
     'Current topic is not saved, please save it first to use subtopic feature',
   'cancel': 'Cancel',
@@ -125,7 +125,7 @@ export default {
   'cmdk.askAIHeadingEmpty': 'Choose an AI feature',
   'cmdk.askAgentHeading': 'Ask Agent',
   'cmdk.askAgentPlaceholder': 'Ask {{agent}} something...',
-  'cmdk.askLobeAI': 'Ask LM Studio',
+  'cmdk.askLobeAI': 'Ask ChatLM',
   'cmdk.community': 'Community',
   'cmdk.communitySupport': 'Community Support',
   'cmdk.contactUs': 'Contact Us',
@@ -214,7 +214,7 @@ export default {
 
   'cmdk.noResults': 'No Results found',
 
-  'cmdk.openSettings': 'Open Settings',
+  'cmdk.openSettings': 'Open Personal Center',
 
   'cmdk.pages': 'Pages',
 
@@ -269,7 +269,7 @@ export default {
   'cmdk.search.topics': 'Topics',
   'cmdk.searchPlaceholder': 'Enter a command or search...',
   'cmdk.sendToAgent': 'Send to {{agent}}',
-  'cmdk.settings': 'Settings',
+  'cmdk.settings': 'Personal Center',
   'cmdk.starOnGitHub': 'Star us on GitHub',
   'cmdk.submitIssue': 'Submit Issue',
   'cmdk.tasks': 'Tasks',
@@ -536,7 +536,7 @@ export default {
   'taskTemplate.action.connect.short': 'Connect',
   'taskTemplate.action.connecting': 'Waiting for authorization…',
   'taskTemplate.action.create.error': 'Failed to create task. Please try again.',
-  'taskTemplate.action.create.success': 'Scheduled task added. Find it in LM Studio.',
+  'taskTemplate.action.create.success': 'Scheduled task added. Find it in ChatLM.',
   'taskTemplate.action.createButton': 'Add task',
   'taskTemplate.action.creating': 'Creating...',
   'taskTemplate.action.dismiss.error': 'Failed to dismiss. Please try again.',
@@ -605,7 +605,7 @@ export default {
   'userPanel.myUsage': 'My Usage',
   'userPanel.plans': 'Subscription Plans',
   'userPanel.profile': 'Account',
-  'userPanel.setting': 'Settings',
+  'userPanel.setting': 'Personal Center',
   'userPanel.upgradePlan': 'Upgrade Plan',
   'userPanel.usages': 'Usage',
   'userPanel.workspaceSetting': 'Workspace Settings',

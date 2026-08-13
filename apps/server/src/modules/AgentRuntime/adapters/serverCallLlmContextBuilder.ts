@@ -395,7 +395,7 @@ export const buildServerCallLlmContext = async ({
             );
             for (const tool of COMPOSIO_APP_TYPES) {
               officialTools.push({
-                description: `LobeHub Mcp Server: ${tool.label}`,
+                description: `ChatLM Mcp Server: ${tool.label}`,
                 enabled: enabledPlugins.includes(tool.identifier),
                 identifier: tool.identifier,
                 installed: connectedComposioIds.has(tool.identifier),

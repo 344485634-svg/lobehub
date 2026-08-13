@@ -378,15 +378,15 @@ export default {
     'Start the background daemon to keep the device online and listening for remote operations.',
   'devices.connectWizard.cli.connectTitle': 'Start the daemon',
   'devices.connectWizard.cli.installDesc':
-    'Install the LM Studio CLI globally with your preferred package manager to enable device connectivity and management.',
+    'Install the ChatLM CLI globally with your preferred package manager to enable device connectivity and management.',
   'devices.connectWizard.cli.installTitle': 'Install the CLI',
   'devices.connectWizard.cli.loginDesc':
     'Complete OAuth authorization in your browser to link the CLI with your account.',
   'devices.connectWizard.cli.loginTitle': 'Sign in',
-  'devices.connectWizard.desktop.downloadLink': 'Download LM Studio Desktop',
+  'devices.connectWizard.desktop.downloadLink': 'Download ChatLM Desktop',
   'devices.connectWizard.desktop.step1': 'Download the desktop app',
   'devices.connectWizard.desktop.step1Desc':
-    'Visit the LM Studio downloads page and get the app for your operating system.',
+    'Visit the ChatLM downloads page and get the app for your operating system.',
   'devices.connectWizard.desktop.step2': 'Sign in and open the device gateway',
   'devices.connectWizard.desktop.step2Desc':
     "After signing in, click the device gateway icon in the top-right corner and confirm it's turned on.",
@@ -397,10 +397,10 @@ export default {
     'Only device metadata is registered — your data is never accessed.',
   'devices.connectWizard.method.cli': 'Via CLI',
   'devices.connectWizard.method.desktop': 'Via Desktop',
-  'devices.connectWizard.subtitle': 'Choose how to connect your computer to LM Studio.',
+  'devices.connectWizard.subtitle': 'Choose how to connect your computer to ChatLM.',
   'devices.connectWizard.title': 'Connect Device',
   'devices.empty.desc':
-    'Once connected, LM Studio agents can read/write files, run commands, and call system tools directly on your computer.',
+    'Once connected, ChatLM agents can read/write files, run commands, and call system tools directly on your computer.',
   'devices.empty.methodCli.desc':
     'Install the CLI in your terminal — great for servers or headless machines.',
   'devices.empty.methodCli.title': 'Connect via CLI',
@@ -433,16 +433,16 @@ export default {
   'downloads.desktop.title': 'Desktop App',
   'downloads.messenger.cta': 'Open Messenger settings',
   'downloads.messenger.desc':
-    'Connect LM Studio to the messaging platforms you already use, with quick setup or your own bot configuration.',
+    'Connect ChatLM to the messaging platforms you already use, with quick setup or your own bot configuration.',
   'downloads.messenger.quickSetup': 'Quick setup',
   'downloads.messenger.quickSetupTooltip':
-    'You can chat with the official LM Studio account on this platform or manually set up your own.',
+    'You can chat with the official ChatLM account on this platform or manually set up your own.',
   'downloads.messenger.title': 'Messenger integration',
   'downloads.mobile.cta': 'Get Mobile App',
   'downloads.mobile.desc':
-    'Start conversations from your phone and keep LM Studio available when you are away from the desk.',
+    'Start conversations from your phone and keep ChatLM available when you are away from the desk.',
   'downloads.mobile.title': 'Mobile App',
-  'downloads.title': 'Discover more ways to use LM Studio',
+  'downloads.title': 'Discover more ways to use ChatLM',
   'checkingPermissions': 'Checking permissions...',
   'danger.reset.action': 'Reset Now',
   'danger.reset.confirm': 'Reset all settings?',
@@ -551,7 +551,7 @@ export default {
   'memory.effort.medium': 'Medium — Balanced behavior',
   'memory.effort.title': 'Aggressiveness',
   'memory.enabled.desc':
-    'Allow LM Studio to extract preferences and info from conversations and use them later. You can view, edit, or clear memory anytime.',
+    'Allow ChatLM to extract preferences and info from conversations and use them later. You can view, edit, or clear memory anytime.',
   'memory.enabled.title': 'Enable Memory',
   'memory.manageEntry': 'Manage memories',
   'memory.title': 'Memory Settings',
@@ -562,7 +562,7 @@ export default {
   'notification.inbox.desc': 'Show notifications in the in-app inbox',
   'notification.inbox.title': 'Inbox Notifications',
   'notification.push.desc':
-    'Send push notifications to your mobile devices (LM Studio mobile app required)',
+    'Send push notifications to your mobile devices (ChatLM mobile app required)',
   'notification.push.title': 'Mobile Push Notifications',
   'notification.category.billing.title': 'Billing',
   'notification.category.generation.title': 'Generation',
@@ -651,7 +651,7 @@ export default {
   'settingAgent.tag.title': 'Tag',
   'settingAgent.title': 'Agent info',
   'settingAppearance.appTray.desc':
-    'Show the LM Studio icon in the system tray or macOS menu bar. Disabling it also removes tray menu access.',
+    'Show the ChatLM icon in the system tray or macOS menu bar. Disabling it also removes tray menu access.',
   'settingAppearance.appTray.title': 'Show App Tray',
   'settingAppearance.animationMode.agile': 'Agile',
   'settingAppearance.animationMode.desc':
@@ -880,7 +880,7 @@ export default {
   'settingSelfIteration.enabled.desc':
     'Allow this assistant to review recent signals and improve its own skills when the self-iteration workflow runs.',
   'settingSelfIteration.enabled.managedDesc':
-    'Always on for LM Studio while Self-Iteration is available.',
+    'Always on for ChatLM while Self-Iteration is available.',
   'settingSelfIteration.enabled.title': 'Enable Self-Iteration',
   'settingSelfIteration.title': 'Self-Iteration',
   'settingSystem.oauth.info.desc': 'Logged in',
@@ -932,7 +932,7 @@ export default {
   'settingSystemTools.tools.grep.desc': 'GNU grep - standard text search tool',
   'settingSystemTools.tools.kimi.desc': 'Kimi CLI - Moonshot AI agentic coding CLI',
   'settingSystemTools.tools.mdfind.desc': 'macOS Spotlight search (fast indexed search)',
-  'settingSystemTools.tools.lobehub.desc': 'LM Studio CLI - manage and connect to LM Studio services',
+  'settingSystemTools.tools.lobehub.desc': 'ChatLM CLI - manage and connect to ChatLM services',
   'settingSystemTools.tools.bun.desc': 'Bun - fast JavaScript runtime and package manager',
   'settingSystemTools.tools.bunx.desc': 'bunx - Bun package runner for executing npm packages',
   'settingSystemTools.tools.node.desc': 'Node.js - JavaScript runtime for executing JS/TS',
@@ -982,7 +982,7 @@ export default {
   'skillStore.search': 'Search skills by name or keyword, press Enter to search…',
   'skillStore.tabs.community': 'Community',
   'skillStore.tabs.custom': 'Custom',
-  'skillStore.tabs.lobehub': 'LM Studio',
+  'skillStore.tabs.lobehub': 'ChatLM',
   'skillStore.tabs.mcp': 'MCP',
   'skillStore.tabs.skills': 'Skills',
   'skillStore.title': 'Skill Store',
@@ -2231,7 +2231,7 @@ When I am ___, I need ___
   'workspace.general.url.title': 'Workspace URL',
   'workspace.slugBrandApply.button': 'Apply',
   'workspace.slugBrandApply.mailBody':
-    'Hi LM Studio team,\n\nI would like to request the workspace URL "{{slug}}" (https://lobehub.com/{{slug}}).\n\n- Brand / organization I represent:\n- Official website / domain:\n- My role in the organization:\n- Organization email (please reply from this address):\n\nThanks!',
+    'Hi ChatLM team,\n\nI would like to request the workspace URL "{{slug}}" (https://lobehub.com/{{slug}}).\n\n- Brand / organization I represent:\n- Official website / domain:\n- My role in the organization:\n- Organization email (please reply from this address):\n\nThanks!',
   'workspace.slugBrandApply.mailButton': 'Apply via email',
   'workspace.slugBrandApply.mailSubject': 'Workspace URL brand request: {{slug}}',
   'workspace.slugBrandApply.modalCreateTip':
@@ -2804,7 +2804,7 @@ When I am ___, I need ___
     'Manage connections to your desktop devices. List online devices, activate a device for remote operations, and check connection status.',
   'tools.builtins.lobe-remote-device.title': 'Remote Device',
   'tools.builtins.lobe-skill-store.description':
-    'Browse and install agent skills from the LM Studio marketplace. Use this when you need extended capabilities or want to install a specific skill.',
+    'Browse and install agent skills from the ChatLM marketplace. Use this when you need extended capabilities or want to install a specific skill.',
   'tools.builtins.lobe-skill-store.title': 'Skill Store',
   'tools.builtins.lobe-skills.description': 'Activate and use reusable skill packages',
   'tools.builtins.lobe-skills.title': 'Skills',
@@ -2833,8 +2833,8 @@ When I am ___, I need ___
     'Browser automation CLI for AI agents. Use when tasks involve website or Electron interaction such as navigation, form filling, clicking, screenshot capture, scraping data, login flows, and end-to-end app testing.',
   'tools.builtins.lobe-agent-browser.title': 'Agent Browser',
   'tools.builtins.lobehub.description':
-    'Manage the LM Studio platform via CLI — knowledge bases, memory, agents, files, search, generation, and more.',
-  'tools.builtins.lobehub.title': 'LM Studio',
+    'Manage the ChatLM platform via CLI — knowledge bases, memory, agents, files, search, generation, and more.',
+  'tools.builtins.lobehub.title': 'ChatLM',
   'tools.builtins.task.description':
     'Task management and execution — create, track, review, and complete tasks via CLI.',
   'tools.builtins.task.title': 'Task',
@@ -3026,7 +3026,7 @@ When I am ___, I need ___
   'tools.lobehubSkill.disconnected': 'Disconnected',
 
   'tools.lobehubSkill.error': 'Error',
-  // LM Studio Skill Providers i18n
+  // ChatLM Skill Providers i18n
   'tools.lobehubSkill.providers.github.description':
     'GitHub is a platform for version control and collaboration, enabling developers to host, review, and manage code repositories.',
   'tools.lobehubSkill.providers.github.readme':

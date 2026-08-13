@@ -395,7 +395,7 @@ export const MarketAuthProvider = ({ children, isDesktop }: MarketAuthProviderPr
    */
   const signIn = useCallback(async (scene: MarketAuthScene = 'default'): Promise<number | null> => {
     if (!useUserStore.getState().isSignedIn) {
-      throw new Error('LobeChat session required');
+      throw new Error('ChatLM session required');
     }
     setAuthScene(scene);
     return new Promise<number | null>((resolve, reject) => {
@@ -649,6 +649,14 @@ export const MarketAuthProvider = ({ children, isDesktop }: MarketAuthProviderPr
 
       // Refresh failed, need to re-authenticate
       console.info('[MarketAuth] Token refresh failed, triggering signIn...');
+      // 白标部署不提供 LobeHub 社区沙箱，禁用 sandbox scene 的社区授权弹窗，
+      // 避免出现「试用社区沙箱 / 创建社区个人档案」等原品牌社区授权提示。
+      if (scene === 'sandbox') {
+        console.warn(
+          '[MarketAuth] Sandbox authorization is disabled in this white-label deployment',
+        );
+        return false;
+      }
       try {
         const accountId = await signIn(scene);
         if (accountId !== null) {

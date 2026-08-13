@@ -263,7 +263,7 @@ export const ERROR_PATTERNS: ErrorPattern[] = [
   {
     code: AgentRuntimeErrorType.InsufficientQuota,
     match: sub('Monthly request limit exceeded'),
-    note: 'LM Studio cloud monthly quota',
+    note: 'ChatLM cloud monthly quota',
   },
   {
     code: AgentRuntimeErrorType.InsufficientQuota,

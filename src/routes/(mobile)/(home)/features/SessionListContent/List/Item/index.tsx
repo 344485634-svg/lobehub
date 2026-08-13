@@ -53,7 +53,7 @@ const SessionItem = memo<SessionItemProps>(({ id }) => {
       ];
     });
 
-  // Only hide the model tag for the inbox session itself (LM Studio)
+  // Only hide the model tag for the inbox session itself (ChatLM)
   const showModel = sessionType === 'agent' && model && id !== INBOX_SESSION_ID;
 
   const handleDoubleClick = () => {

@@ -54,21 +54,21 @@ const AskAgentCommands = memo(() => {
   // Only show when user types "@"
   if (!isAtMention) return null;
 
-  // Check if LM Studio matches the query
+  // Check if ChatLM matches the query
   const showLobeAI = !mentionQuery || 'lobe ai'.includes(mentionQuery);
 
   return (
     <Command.Group heading={t('cmdk.mentionAgent')}>
-      {/* @LM Studio option */}
+      {/* @ChatLM option */}
       {showLobeAI && (
         <Command.Item
           value="@lobe-ai"
           onMouseDown={preventDefault}
-          onSelect={() => handleAgentSelect(inboxAgentId, 'LM Studio', DEFAULT_INBOX_AVATAR)}
+          onSelect={() => handleAgentSelect(inboxAgentId, 'ChatLM', DEFAULT_INBOX_AVATAR)}
         >
           <Avatar emojiScaleWithBackground avatar={DEFAULT_INBOX_AVATAR} shape="square" size={18} />
           <div className={styles.itemContent}>
-            <div className={styles.itemLabel}>@LM Studio</div>
+            <div className={styles.itemLabel}>@ChatLM</div>
           </div>
         </Command.Item>
       )}

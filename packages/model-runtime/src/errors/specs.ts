@@ -178,7 +178,7 @@ export const ERROR_CODE_SPECS: SpecMap = {
     httpStatus: 402,
     retryable: false,
     countAsFailure: false,
-    description: 'LobeHub Cloud free-plan usage limit reached.',
+    description: 'ChatLM free-plan usage limit reached.',
   },
   [ChatErrorType.InsufficientBudgetForModel]: {
     code: ChatErrorType.InsufficientBudgetForModel,
@@ -189,7 +189,7 @@ export const ERROR_CODE_SPECS: SpecMap = {
     httpStatus: 402,
     retryable: false,
     countAsFailure: false,
-    description: 'LobeHub Cloud balance is positive but below the model’s estimated cost.',
+    description: "ChatLM balance is positive but below the model's estimated cost.",
   },
 
   // ─── 3xxx Capacity ────────────────────────────────────────────────────
@@ -315,7 +315,7 @@ export const ERROR_CODE_SPECS: SpecMap = {
     httpStatus: 404,
     retryable: false,
     countAsFailure: false,
-    description: 'Requested LobeHub Cloud model has been deprecated / removed.',
+    description: 'Requested ChatLM model has been deprecated / removed.',
   },
 
   // ─── 5xxx Safety ──────────────────────────────────────────────────────

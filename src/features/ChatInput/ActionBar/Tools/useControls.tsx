@@ -21,8 +21,6 @@ import {
   MoreHorizontal,
   Package,
   Pin,
-  Settings,
-  Store,
   Trash2,
   Wrench,
   Zap,
@@ -33,7 +31,6 @@ import { useTranslation } from 'react-i18next';
 
 import { CustomConnectorModal } from '@/features/Connectors';
 import DevModal from '@/features/PluginDevModal';
-import { createSkillStoreModal } from '@/features/SkillStore';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import { useCheckPluginsIsInstalled } from '@/hooks/useCheckPluginsIsInstalled';
 import { useFetchInstalledPlugins } from '@/hooks/useFetchInstalledPlugins';
@@ -68,7 +65,7 @@ const SKILL_ICON_SIZE = 18;
 const CLOSE_TOOL_DETAIL_POPOVER_EVENT = 'lobe-chat-tool-detail-popover-close';
 
 const officialTag = (
-  <Tooltip placement={'top'} title={'LM Studio'}>
+  <Tooltip placement={'top'} title={'ChatLM'}>
     <Tag color={'success'} icon={<Icon icon={BadgeCheck} />} size={'small'} />
   </Tooltip>
 );
@@ -1597,37 +1594,9 @@ export const useControls = ({ closeDropdown }: { closeDropdown?: () => void } = 
     />
   );
 
-  const marketFooter =
-    allSkillItems.length > 0 || fixedItems.length > 0 ? (
-      <>
-        <button
-          aria-label={t('plus.addSkills', { ns: 'chat' })}
-          className={cx(styles.addSkillRow)}
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            closeDropdown?.();
-            createSkillStoreModal();
-          }}
-        >
-          <Icon icon={Store} size={SKILL_ICON_SIZE} />
-          <span className={cx(styles.addSkillLabel)}>{t('plus.addSkills', { ns: 'chat' })}</span>
-        </button>
-        <button
-          aria-label={t('tools.plugins.management')}
-          className={cx(styles.addSkillRow)}
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            closeDropdown?.();
-            navigate('/settings/connector');
-          }}
-        >
-          <Icon icon={Settings} size={SKILL_ICON_SIZE} />
-          <span className={cx(styles.addSkillLabel)}>{t('tools.plugins.management')}</span>
-        </button>
-      </>
-    ) : undefined;
+  const marketFooter = undefined; // 商业化：不展示技能商店 / 连接器管理入口
+  // kept for layout stability when lists are empty
+  void (allSkillItems.length > 0 || fixedItems.length > 0);
 
   const marketItems: ItemType[] = [
     ...(pinnedItems.length > 0

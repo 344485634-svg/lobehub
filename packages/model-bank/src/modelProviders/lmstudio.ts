@@ -4,10 +4,10 @@ import type { ModelProviderCard } from '@/types/llm';
 const LMStudio: ModelProviderCard = {
   chatModels: [],
   description:
-    'LM Studio is a desktop app for developing and experimenting with LLMs on your computer.',
+    'ChatLM is a desktop app for developing and experimenting with LLMs on your computer.',
   id: 'lmstudio',
   modelsUrl: 'https://lmstudio.ai/models',
-  name: 'LM Studio',
+  name: 'ChatLM',
   settings: {
     defaultShowBrowserRequest: true,
     proxyUrl: {

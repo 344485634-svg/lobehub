@@ -81,7 +81,7 @@ const Content = memo(() => {
     [availableTabs, t],
   );
 
-  const displayTitle = isInbox ? 'LM Studio' : meta.title || t('defaultSession', { ns: 'common' });
+  const displayTitle = isInbox ? 'ChatLM' : meta.title || t('defaultSession', { ns: 'common' });
 
   return (
     <SettingsModalLayout

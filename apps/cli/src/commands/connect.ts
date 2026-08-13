@@ -183,23 +183,32 @@ export function registerConnectCommand(program: Command) {
       else log.warn('No connect service is installed.');
     });
 
-  serviceCmd.command('start').description('Start the installed connect service').action(() => {
-    const started = startConnectService();
-    if (started) log.info(`Started ${CONNECT_SERVICE_NAME}.`);
-    else log.warn('No connect service is installed.');
-  });
+  serviceCmd
+    .command('start')
+    .description('Start the installed connect service')
+    .action(() => {
+      const started = startConnectService();
+      if (started) log.info(`Started ${CONNECT_SERVICE_NAME}.`);
+      else log.warn('No connect service is installed.');
+    });
 
-  serviceCmd.command('stop').description('Stop the installed connect service').action(() => {
-    const stopped = stopConnectService();
-    if (stopped) log.info(`Stopped ${CONNECT_SERVICE_NAME}.`);
-    else log.warn('No connect service is installed.');
-  });
+  serviceCmd
+    .command('stop')
+    .description('Stop the installed connect service')
+    .action(() => {
+      const stopped = stopConnectService();
+      if (stopped) log.info(`Stopped ${CONNECT_SERVICE_NAME}.`);
+      else log.warn('No connect service is installed.');
+    });
 
-  serviceCmd.command('restart').description('Restart the installed connect service').action(() => {
-    const restarted = restartConnectService();
-    if (restarted) log.info(`Restarted ${CONNECT_SERVICE_NAME}.`);
-    else log.warn('No connect service is installed.');
-  });
+  serviceCmd
+    .command('restart')
+    .description('Restart the installed connect service')
+    .action(() => {
+      const restarted = restartConnectService();
+      if (restarted) log.info(`Restarted ${CONNECT_SERVICE_NAME}.`);
+      else log.warn('No connect service is installed.');
+    });
 
   serviceCmd
     .command('status')
@@ -367,7 +376,7 @@ async function runConnect(options: ConnectOptions, isDaemonChild: boolean) {
   };
 
   // Print device info
-  info('─── LobeHub CLI ───');
+  info('─── ChatLM CLI ───');
   info(`  Device ID : ${client.currentDeviceId}`);
   info(`  Hostname  : ${os.hostname()}`);
   info(`  Platform  : ${process.platform}`);

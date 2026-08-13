@@ -61,7 +61,7 @@ const getComposioMetas = (s: ToolStoreState): LobeToolMeta[] =>
       identifier: server.identifier,
       meta: {
         avatar: '☁️',
-        description: `LobeHub Mcp Server: ${server.label}`,
+        description: `ChatLM Mcp Server: ${server.label}`,
         tags: ['composio', 'mcp'],
         title: server.label,
       },
@@ -179,7 +179,12 @@ const allMetaList = (s: ToolStoreState): LobeToolMetaWithAvailability[] => {
     .agentSkillMetaList(s)
     .map((meta) => ({ ...meta, availableInWeb: true }));
 
-  return [...skillMetas, ...agentSkillMetas, ...builtinMetas, ...getComposioMetasWithAvailability(s)];
+  return [
+    ...skillMetas,
+    ...agentSkillMetas,
+    ...builtinMetas,
+    ...getComposioMetasWithAvailability(s),
+  ];
 };
 
 /**

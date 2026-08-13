@@ -20,7 +20,7 @@ const Inbox = memo(() => {
 
   return (
     <Link
-      aria-label={'LM Studio'}
+      aria-label={'ChatLM'}
       to={AGENT_CHAT_URL(inboxAgentId, mobile)}
       onClick={(e) => {
         e.preventDefault();
@@ -31,7 +31,7 @@ const Inbox = memo(() => {
         active={isInboxActive}
         avatar={DEFAULT_INBOX_AVATAR}
         key={'inbox'}
-        title={'LM Studio'}
+        title={'ChatLM'}
         styles={{
           container: {
             gap: 12,

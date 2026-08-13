@@ -44,7 +44,7 @@ const AgentListContent = memo<AgentListContentProps>(({ hideInbox, onMoreClick }
   if (!isInit) return <SkeletonList rows={6} />;
 
   // Always render the default SessionList so the "+ Create Agent" entry is visible
-  // even when the user has only the built-in LM Studio inbox.
+  // even when the user has only the built-in ChatLM inbox.
   return (
     <>
       {!hideInbox && <InboxItem style={{ minHeight: 36 }} />}

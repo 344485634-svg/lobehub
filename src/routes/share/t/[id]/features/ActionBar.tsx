@@ -17,7 +17,7 @@ const ActionBar = memo<ActionBarProps>(({ data }) => {
   const isGroup = !!data?.groupId;
   const isInboxAgent = !isGroup && data?.agentMeta?.slug === 'inbox';
   const agentOrGroupTitle =
-    data?.groupMeta?.title || (isInboxAgent ? 'LM Studio' : data?.agentMeta?.title);
+    data?.groupMeta?.title || (isInboxAgent ? 'ChatLM' : data?.agentMeta?.title);
   const agentMarketIdentifier = data?.agentMeta?.marketIdentifier;
 
   // Build group avatars for GroupAvatar component

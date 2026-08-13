@@ -42,7 +42,7 @@ export function createProgram() {
 
   program
     .name('lh')
-    .description('LobeHub CLI - manage and connect to LobeHub services')
+    .description('ChatLM CLI - manage and connect to ChatLM services')
     .version(cliVersion);
 
   const internalToolWorker = program

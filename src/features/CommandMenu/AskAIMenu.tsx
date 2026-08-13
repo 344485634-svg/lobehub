@@ -62,7 +62,7 @@ const AskAIMenu = memo(() => {
       <Command.Item value="lobe-ai" onSelect={handleAskLobeAI}>
         <Avatar emojiScaleWithBackground avatar={DEFAULT_INBOX_AVATAR} shape="square" size={18} />
         <div className={styles.itemContent}>
-          <div className={styles.itemLabel}>LM Studio</div>
+          <div className={styles.itemLabel}>ChatLM</div>
         </div>
       </Command.Item>
       <Command.Item value="agent-builder" onSelect={handleAgentBuilder}>

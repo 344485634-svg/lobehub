@@ -69,7 +69,7 @@ const AgentList = memo<AgentListProps>(({ activeAgentId, error, onRetry, onSelec
           DEFAULT_INBOX_AVATAR,
         backgroundColor: inboxMeta?.backgroundColor || undefined,
         id: inboxAgentId,
-        title: inboxMeta?.title || 'LM Studio',
+        title: inboxMeta?.title || 'ChatLM',
       });
       seen.add(inboxAgentId);
     }

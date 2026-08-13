@@ -93,7 +93,7 @@ const LEGACY_DEVICE_CLIENT = Symbol('legacy-device-client');
  * run on the user's device.
  */
 const LEGACY_FALLBACK_NOTE =
-  "Note: the user's device client is outdated and does not support on-device skill execution, so this command ran in the cloud sandbox instead. Tell the user to update their LobeHub app to run skills on their device.";
+  "Note: the user's device client is outdated and does not support on-device skill execution, so this command ran in the cloud sandbox instead. Tell the user to update their ChatLM app to run skills on their device.";
 
 const LH_COMMAND_PATTERN = /(?:^|&&|\|\||;)\s*lh(?:\s|$)/;
 
@@ -386,7 +386,7 @@ class SkillServerRuntimeService implements SkillRuntimeService {
 
           return fail(
             `Failed to prepare skill "${archive.name}" on the user's device: ${prepared.error ?? 'unknown error'}. ` +
-              'Do not retry elsewhere — report this to the user (their LobeHub app may need an update).',
+              'Do not retry elsewhere — report this to the user (their ChatLM app may need an update).',
           );
         }
         runDir = prepared.extractedDir;

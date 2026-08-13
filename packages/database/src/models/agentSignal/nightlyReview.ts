@@ -166,7 +166,7 @@ export class AgentSignalNightlyReviewModel {
    * Expects:
    * - `windowStart` and `windowEnd` are UTC instants for the user's local review date
    * - Message `agentId` wins when present; topic `agentId` covers legacy messages
-   * - Virtual agents are excluded except the product-owned LM Studio inbox agent
+   * - Virtual agents are excluded except the product-owned ChatLM inbox agent
    *
    * Returns:
    * - Agent targets with message/topic/failure counts

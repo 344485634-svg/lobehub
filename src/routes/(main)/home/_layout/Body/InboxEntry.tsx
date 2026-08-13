@@ -50,7 +50,7 @@ const InboxEntry = memo(() => {
     inboxAgentId ? operationSelectors.isAgentVisiblyRunning(inboxAgentId) : () => false,
   );
 
-  const title = inboxMeta.title || 'LM Studio';
+  const title = inboxMeta.title || 'ChatLM';
   const avatar = inboxMeta.avatar || DEFAULT_INBOX_AVATAR;
   const url = AGENT_CHAT_URL(inboxAgentId, false);
 

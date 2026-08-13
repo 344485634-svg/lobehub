@@ -56,7 +56,7 @@ const DevtoolsLayout = () => {
       },
     });
 
-    // Seed the Aggregate-preview agent meta so its turns read as "LM Studio"
+    // Seed the Aggregate-preview agent meta so its turns read as "ChatLM"
     // (avatar + name) instead of the unresolved-agent fallback.
     const previousAgentMap = useAgentStore.getState().agentMap;
     useAgentStore.setState({
