@@ -442,6 +442,7 @@ export default {
   'downloads.mobile.desc':
     'Start conversations from your phone and keep ChatLM available when you are away from the desk.',
   'downloads.mobile.title': 'Mobile App',
+  'downloads.mobile.upcomingTip': 'Our mobile app is coming soon — stay tuned!',
   'downloads.title': 'Discover more ways to use ChatLM',
   'checkingPermissions': 'Checking permissions...',
   'danger.reset.action': 'Reset Now',

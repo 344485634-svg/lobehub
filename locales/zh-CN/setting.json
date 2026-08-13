@@ -357,6 +357,7 @@
   "downloads.mobile.cta": "获取移动应用",
   "downloads.mobile.desc": "在手机上发起对话，即使离开桌面也能随时使用 ChatLM。",
   "downloads.mobile.title": "移动应用",
+  "downloads.mobile.upcomingTip": "移动端应用即将上线，敬请期待！",
   "downloads.title": "探索 ChatLM 的更多使用方式",
   "group.aiConfig": "智能体",
   "group.common": "通用",
