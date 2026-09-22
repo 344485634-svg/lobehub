@@ -72,6 +72,27 @@ const AuthErrorBoundary = () => {
 };
 
 export const authRoutes: RouteObject[] = [
+  // Legal documents render standalone, OUTSIDE AuthShell: they are full-page
+  // documents, not sign-in cards — AuthShell's dark centered column would
+  // squeeze them and paint their text white-on-white.
+  {
+    element: (
+      <Suspense fallback={null}>
+        <Outlet />
+      </Suspense>
+    ),
+    children: [
+      {
+        element: lazyElement(() => import('@/routes/auth/terms')),
+        path: 'terms',
+      },
+      {
+        element: lazyElement(() => import('@/routes/auth/privacy')),
+        path: 'privacy',
+      },
+    ],
+    errorElement: <AuthErrorBoundary />,
+  },
   {
     children: [
       {
