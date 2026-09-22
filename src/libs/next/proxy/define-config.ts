@@ -199,6 +199,8 @@ export function defineConfig() {
     '/signin',
     '/signup',
     '/auth-error',
+    '/privacy',
+    '/terms',
     '/verify-email',
     '/reset-password',
     // oauth
