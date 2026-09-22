@@ -99,6 +99,8 @@ export default {
   'betterAuth.signin.emailSent.title': 'Check your inbox',
   'betterAuth.signin.emailStep.title': 'Sign In',
   'betterAuth.signin.error': 'Sign in failed, please check your email and password',
+  'betterAuth.signin.invalidOrigin':
+    'Sign-in blocked by origin check. Open the app at the address it runs on (e.g. http://localhost:3010), hard-refresh, and try again.',
   'betterAuth.signin.forgotPassword': 'Forgot password?',
   'betterAuth.signin.forgotPasswordError': 'Failed to send password reset link',
   'betterAuth.signin.forgotPasswordSent': 'Password reset link sent, please check your email',

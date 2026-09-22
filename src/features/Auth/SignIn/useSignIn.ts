@@ -238,9 +238,13 @@ export const useSignIn = () => {
         // Wrong password is the most common sign-in failure. Keep the error
         // pinned inline on the field (persistent, with retry context) rather
         // than a toast that vanishes in 3s (ux Read §1.1 / Same-Page Error).
+        const errorMessage =
+          result.error.code === 'INVALID_ORIGIN'
+            ? t('betterAuth.signin.invalidOrigin')
+            : result.error.message || t('betterAuth.signin.error');
         form.setFields([
           {
-            errors: [result.error.message || t('betterAuth.signin.error')],
+            errors: [errorMessage],
             name: 'password',
           },
         ]);
