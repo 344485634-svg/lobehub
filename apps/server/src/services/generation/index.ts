@@ -58,10 +58,12 @@ export async function fetchImageFromUrl(
     // ssrfSafeFetch blocks private/link-local IPs at connect time and on every redirect hop.
     // See GHSA-53h9-fmjf-frwr / #16536.
     const response = await ssrfSafeFetch(url, {
-      // 30 s hard cap: CDN DNS round-robin can land on a dead node;
-      // without a timeout Node.js hangs until OS-level ETIMEDOUT (~minutes).
+      // 90 s hard cap: CDN DNS round-robin can land on a dead node; without a
+      // timeout Node.js hangs until OS-level ETIMEDOUT (~minutes). 30 s proved
+      // too tight for large images over slow networks — the provider had
+      // already generated the image, so give the fetch more headroom.
       headers: fetchHeaders,
-      signal: AbortSignal.timeout(30_000),
+      signal: AbortSignal.timeout(90_000),
     });
     if (!response.ok) {
       throw new Error(

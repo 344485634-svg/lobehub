@@ -166,10 +166,37 @@ export const categorizeImageGenerationError = ({
     };
   }
 
-  if (error.message?.includes('timeout') || error.name === 'TimeoutError') {
+  // AbortSignal.timeout fires as TimeoutError — thrown by the image-DOWNLOAD
+  // leg (fetchImageFromUrl). The provider DID generate the image; only
+  // fetching the asset failed, so say that instead of the misleading
+  // "TaskTimeout" (which reads as if generation itself timed out).
+  if (error.name === 'TimeoutError') {
+    return {
+      errorMessage: 'The model generated the image, but downloading it timed out. Please retry.',
+      errorType: AsyncTaskErrorType.ServerError,
+    };
+  }
+
+  if (error.message?.includes('timeout')) {
     return {
       errorMessage: AsyncTaskErrorType.Timeout,
       errorType: AsyncTaskErrorType.Timeout,
+    };
+  }
+
+  // Storage/S3 connectivity failures (e.g. RustFS down) must map to ServerError,
+  // not Timeout — even if the abort signal has already fired.
+  const isStorageError =
+    error.message?.includes('socket hang up') ||
+    error.message?.includes('ECONNRESET') ||
+    error.message?.includes('ECONNREFUSED') ||
+    error.message?.includes('ENOTFOUND') ||
+    error.message?.includes('EPIPE');
+
+  if (isStorageError) {
+    return {
+      errorMessage: error.message || AsyncTaskErrorType.ServerError,
+      errorType: AsyncTaskErrorType.ServerError,
     };
   }
 
