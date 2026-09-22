@@ -325,10 +325,12 @@ describe('useSignIn', () => {
       expect(mockMessageError).not.toHaveBeenCalled();
     });
 
-    it('should redirect to verify-email on 403', async () => {
+    it('should redirect to verify-email on 403 EMAIL_NOT_VERIFIED', async () => {
       mockSignInEmail.mockImplementation(async (_data: any, opts: any) => {
-        opts.onError({ error: { status: 403 } });
-        return { error: { message: 'Email not verified', status: 403 } };
+        opts.onError({ error: { status: 403, code: 'EMAIL_NOT_VERIFIED' } });
+        return {
+          error: { message: 'Email not verified', status: 403, code: 'EMAIL_NOT_VERIFIED' },
+        };
       });
 
       mockFetch.mockResolvedValueOnce({
@@ -349,6 +351,32 @@ describe('useSignIn', () => {
       expect(mockNavigate).toHaveBeenCalledWith(
         expect.stringContaining('/verify-email?email=user%40example.com'),
       );
+    });
+
+    it('should NOT redirect to verify-email on 403 without EMAIL_NOT_VERIFIED code (e.g. banned)', async () => {
+      mockSignInEmail.mockImplementation(async (_data: any, opts: any) => {
+        opts.onError({ error: { status: 403, code: 'BAN_USER' } });
+        return { error: { message: 'Banned', status: 403, code: 'BAN_USER' } };
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        json: async () => ({ exists: true, hasPassword: true }),
+        ok: true,
+      });
+
+      const { result } = renderHook(() => useSignIn());
+
+      await act(async () => {
+        await result.current.handleCheckUser({ email: 'user@example.com' });
+      });
+
+      await act(async () => {
+        await result.current.handleSignIn({ password: 'password' });
+      });
+
+      expect(mockNavigate).not.toHaveBeenCalledWith(expect.stringContaining('/verify-email'));
+      // Banned users must see the error inline, not be routed to verification
+      expect(mockSetFields).toHaveBeenCalledWith([{ errors: ['Banned'], name: 'password' }]);
     });
   });
 

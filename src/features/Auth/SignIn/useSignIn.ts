@@ -211,7 +211,13 @@ export const useSignIn = () => {
         {
           onError: (ctx) => {
             console.error('Sign in error:', ctx.error);
-            if (ctx.error.status === 403) {
+            // Only a genuine EMAIL_NOT_VERIFIED rejection should route to the
+            // verification page — better-auth also uses 403 for e.g. banned
+            // users, which must surface as an error, not a verify redirect.
+            if (
+              ctx.error.status === 403 &&
+              (ctx.error as { code?: string }).code === 'EMAIL_NOT_VERIFIED'
+            ) {
               navigate(
                 `/verify-email?email=${encodeURIComponent(email)}&callbackUrl=${encodeURIComponent(callbackUrl)}`,
               );
@@ -224,7 +230,11 @@ export const useSignIn = () => {
         },
       );
 
-      if (result.error && result.error.status !== 403) {
+      const isVerifyEmailRedirect =
+        result.error?.status === 403 &&
+        (result.error as { code?: string }).code === 'EMAIL_NOT_VERIFIED';
+
+      if (result.error && !isVerifyEmailRedirect) {
         // Wrong password is the most common sign-in failure. Keep the error
         // pinned inline on the field (persistent, with retry context) rather
         // than a toast that vanishes in 3s (ux Read §1.1 / Same-Page Error).
