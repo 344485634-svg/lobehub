@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import {
   type EmailSmtpConfig,
   type ShouqianbaConfig,
-  type StorageImgbbConfig,
+  type StorageImageHostConfig,
   SYSTEM_CONFIG_KEYS,
   systemConfigs,
 } from '../schemas/systemConfig';
@@ -74,13 +74,13 @@ export class SystemConfigModel {
     );
   }
 
-  async getImgbbConfig(): Promise<StorageImgbbConfig | undefined> {
-    return this.get<StorageImgbbConfig>(SYSTEM_CONFIG_KEYS.storageImgbb);
+  async getImageHostConfig(): Promise<StorageImageHostConfig | undefined> {
+    return this.get<StorageImageHostConfig>(SYSTEM_CONFIG_KEYS.storageImgbb);
   }
 
-  async setImgbbConfig(value: StorageImgbbConfig, updatedBy?: string) {
+  async setImageHostConfig(value: StorageImageHostConfig, updatedBy?: string) {
     return this.set(SYSTEM_CONFIG_KEYS.storageImgbb, value as unknown as Record<string, unknown>, {
-      description: 'imgbb image-host configuration for public reference media',
+      description: 'image-host configuration for public reference media',
       updatedBy,
     });
   }

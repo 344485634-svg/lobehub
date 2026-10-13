@@ -25,14 +25,18 @@ export const SYSTEM_CONFIG_KEYS = {
   storageImgbb: 'storage.imgbb',
 } as const;
 
-/** imgbb 图床配置:视频参考图等非公网素材经此转公网 URL 提交给网关 */
-export type StorageImgbbConfig = {
+export type ImageHostProvider = 'imgbb' | 'see';
+
+/** 图床配置:视频参考图等非公网素材经此转公网 URL 提交给网关 */
+export type StorageImageHostConfig = {
+  /** 服务商;缺省 imgbb(兼容旧数据) */
+  provider?: ImageHostProvider;
   enabled: boolean;
-  /** imgbb API key (https://api.imgbb.com/); stored encrypted */
+  /** 服务商 API Key/Token; stored encrypted */
   apiKey?: string;
   /** Whether an API key is already saved (response field only) */
   hasApiKey?: boolean;
-  /** Upload expiration in seconds; 0 = never expire (default) */
+  /** imgbb 专用:上传有效期(秒);0 = 永不过期(默认);s.ee 忽略此字段 */
   expiration?: number;
 };
 

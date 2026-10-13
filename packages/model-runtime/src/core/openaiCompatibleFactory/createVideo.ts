@@ -271,7 +271,7 @@ export async function createOpenAICompatibleVideo(
       if (media.startsWith('data:')) {
         throw new Error(
           '参考图无法被视频网关获取：图片存储在非公开的本地/内网地址。' +
-            '请联系管理员在「管理后台 → 存储配置」启用 imgbb 图床转存（推荐），' +
+            '请联系管理员在「管理后台 → 存储配置」启用图床转存（国内网络建议选择 S.EE），' +
             '或将 S3_PUBLIC_DOMAIN 配置为公网可达的地址（参考图会以公网 URL 提交给网关），' +
             '或先使用公网图片 URL 进行测试。',
         );

@@ -1,7 +1,7 @@
 'use client';
 
 import { Flexbox, Input } from '@lobehub/ui';
-import { Button, InputNumber, Switch } from '@lobehub/ui/base-ui';
+import { Button, InputNumber, Select, Switch } from '@lobehub/ui/base-ui';
 import { App, Card, Form } from 'antd';
 import { type FC, useEffect, useState } from 'react';
 import useSWR from 'swr';
@@ -13,6 +13,7 @@ const AdminStorageConfigPage: FC = () => {
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const provider = Form.useWatch('provider', form) || 'imgbb';
 
   const { data, isLoading, mutate } = useSWR('admin-storage-config', () =>
     lambdaClient.admin.getStorageConfig.query(),
@@ -24,6 +25,7 @@ const AdminStorageConfigPage: FC = () => {
       apiKey: '',
       enabled: data.enabled,
       expiration: data.expiration,
+      provider: data.provider || 'imgbb',
     });
   }, [data, form]);
 
@@ -34,7 +36,8 @@ const AdminStorageConfigPage: FC = () => {
       await lambdaClient.admin.updateStorageConfig.mutate({
         apiKey: values.apiKey || undefined,
         enabled: values.enabled,
-        expiration: values.expiration ?? 0,
+        expiration: provider === 'imgbb' ? (values.expiration ?? 0) : 0,
+        provider: values.provider,
       });
       message.success('存储配置已保存');
       form.setFieldValue('apiKey', '');
@@ -64,8 +67,9 @@ const AdminStorageConfigPage: FC = () => {
       <div>
         <div style={{ fontSize: 18, fontWeight: 600 }}>存储配置</div>
         <div style={{ color: 'var(--lobe-color-text-secondary)', fontSize: 13, marginTop: 4 }}>
-          配置 imgbb 图床（api.imgbb.com 免费申请 Key）。启用后，视频参考图等无法被模型网关直接
-          访问的本地图片会自动转存为公网 URL 再提交。
+          配置免费图床。启用后，视频参考图等无法被模型网关直接访问的本地图片会自动转存为公网 URL
+          再提交。国内网络建议选择 S.EE（原 SM.MS，token 在 s.ee 的「工具 → API
+          Token」页生成）；imgbb 会封禁大陆 IP 注册的账号。
         </div>
       </div>
 
@@ -75,24 +79,35 @@ const AdminStorageConfigPage: FC = () => {
             <Switch />
           </Form.Item>
 
-          <Form.Item
-            label="imgbb API Key"
-            name="apiKey"
-            tooltip={data?.hasApiKey ? '已配置 API Key，留空则保留原 Key' : '尚未配置 API Key'}
-          >
-            <Input
-              placeholder={data?.hasApiKey ? '••••••••（留空保留）' : 'imgbb API Key'}
-              type="password"
+          <Form.Item label="图床服务商" name="provider">
+            <Select
+              options={[
+                { label: 'S.EE（原 SM.MS，国内可直连，推荐）', value: 'see' },
+                { label: 'imgbb（海外，部分地区账号会被封）', value: 'imgbb' },
+              ]}
             />
           </Form.Item>
 
           <Form.Item
-            label="图片有效期（秒）"
-            name="expiration"
-            tooltip="0 表示永久有效；最大 15552000（180 天，imgbb 上限）"
+            label={provider === 'see' ? 'S.EE API Token' : 'imgbb API Key'}
+            name="apiKey"
+            tooltip={data?.hasApiKey ? '已配置，留空则保留原 Key' : '尚未配置'}
           >
-            <InputNumber max={15_552_000} min={0} step={86_400} style={{ width: 240 }} />
+            <Input
+              placeholder={data?.hasApiKey ? '••••••••（留空保留）' : '粘贴 API Key / Token'}
+              type="password"
+            />
           </Form.Item>
+
+          {provider === 'imgbb' && (
+            <Form.Item
+              label="图片有效期（秒）"
+              name="expiration"
+              tooltip="0 表示永久有效；最大 15552000（180 天，imgbb 上限）"
+            >
+              <InputNumber max={15_552_000} min={0} step={86_400} style={{ width: 240 }} />
+            </Form.Item>
+          )}
 
           <Flexbox horizontal gap={12}>
             <Button loading={saving} type="primary" onClick={handleSave}>

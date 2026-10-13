@@ -17,7 +17,7 @@ import type {
   EmailSmtpConfig,
   ReferralPolicyConfig,
   ShouqianbaConfig,
-  StorageImgbbConfig,
+  StorageImageHostConfig,
 } from '@/database/schemas/systemConfig';
 import { SYSTEM_CONFIG_KEYS } from '@/database/schemas/systemConfig';
 import { router } from '@/libs/trpc/lambda';
@@ -26,7 +26,7 @@ import { KeyVaultsGateKeeper } from '@/server/modules/KeyVaultsEncrypt';
 import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
 import { EmailService } from '@/server/services/email';
 import { SkillImporter } from '@/server/services/skill';
-import { uploadImageToImgbb } from '@/server/services/storage/imgbb';
+import { uploadImageToImageHost } from '@/server/services/storage/imageHost';
 
 import { ShouqianbaClient } from '../../services/payment/shouqianba';
 
@@ -946,14 +946,15 @@ export const adminRouter = router({
       return { success: true as const };
     }),
 
-  // ===== Storage (imgbb image host) Configuration =====
+  // ===== Storage (image host) Configuration =====
   getStorageConfig: adminProcedure.query(async ({ ctx }) => {
     const model = new SystemConfigModel(ctx.serverDB);
-    const cfg = (await model.getImgbbConfig()) || ({} as Partial<StorageImgbbConfig>);
+    const cfg = (await model.getImageHostConfig()) || ({} as Partial<StorageImageHostConfig>);
     return {
       enabled: cfg.enabled ?? false,
       expiration: cfg.expiration ?? 0,
       hasApiKey: Boolean(cfg.apiKey),
+      provider: cfg.provider ?? ('imgbb' as const),
     };
   }),
 
@@ -963,26 +964,32 @@ export const adminRouter = router({
         apiKey: z.string().optional(), // empty = keep existing
         enabled: z.boolean(),
         expiration: z.number().int().min(0).max(15_552_000).optional(),
+        provider: z.enum(['imgbb', 'see']).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const model = new SystemConfigModel(ctx.serverDB);
-      const existing = (await model.getImgbbConfig()) || ({} as Partial<StorageImgbbConfig>);
+      const existing =
+        (await model.getImageHostConfig()) || ({} as Partial<StorageImageHostConfig>);
       const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
 
       let apiKey = existing.apiKey;
+      // 服务商切换后旧 Key 不再适用,要求重新填写
+      const provider = input.provider ?? existing.provider ?? 'imgbb';
+      if (provider !== (existing.provider ?? 'imgbb')) apiKey = undefined;
       if (input.apiKey) {
         apiKey = await gateKeeper.encrypt(input.apiKey);
       }
 
-      const next: StorageImgbbConfig = {
+      const next: StorageImageHostConfig = {
         apiKey,
         enabled: input.enabled,
         expiration: input.expiration ?? existing.expiration ?? 0,
         hasApiKey: Boolean(apiKey),
+        provider,
       };
 
-      await model.setImgbbConfig(next, ctx.userId);
+      await model.setImageHostConfig(next, ctx.userId);
       return { success: true as const };
     }),
 
@@ -993,7 +1000,10 @@ export const adminRouter = router({
       'base64',
     );
     try {
-      const url = await uploadImageToImgbb(ctx.serverDB, { buffer: PNG_1PX, mime: 'image/png' });
+      const url = await uploadImageToImageHost(ctx.serverDB, {
+        buffer: PNG_1PX,
+        mime: 'image/png',
+      });
       return { message: `图床配置校验通过：${url}`, success: true as const };
     } catch (error: any) {
       throw new TRPCError({ code: 'BAD_REQUEST', message: error?.message || '校验失败' });

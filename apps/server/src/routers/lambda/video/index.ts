@@ -37,7 +37,10 @@ import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
 import { FileService } from '@/server/services/file';
 import { fetchImageFromUrl } from '@/server/services/generation';
 import { processBackgroundVideoPolling } from '@/server/services/generation/videoBackgroundPolling';
-import { loadImgbbPlainConfig, uploadImageToImgbb } from '@/server/services/storage/imgbb';
+import {
+  loadImageHostPlainConfig,
+  uploadImageToImageHost,
+} from '@/server/services/storage/imageHost';
 import { AsyncTaskStatus, AsyncTaskType } from '@/types/asyncTask';
 
 import { createVideoTaskSubmitError } from './error';
@@ -217,20 +220,20 @@ export const videoRouter = router({
         };
 
         // Lazy: only hit the DB when a reference URL actually needs re-hosting.
-        let imgbb: Awaited<ReturnType<typeof loadImgbbPlainConfig>> | undefined;
-        let imgbbChecked = false;
-        const getImgbb = async () => {
-          if (!imgbbChecked) {
-            imgbbChecked = true;
-            imgbb = await loadImgbbPlainConfig(serverDB).catch(() => undefined);
+        let imageHost: Awaited<ReturnType<typeof loadImageHostPlainConfig>> | undefined;
+        let imageHostChecked = false;
+        const getImageHost = async () => {
+          if (!imageHostChecked) {
+            imageHostChecked = true;
+            imageHost = await loadImageHostPlainConfig(serverDB).catch(() => undefined);
           }
-          return imgbb;
+          return imageHost;
         };
 
         // When the resolved URL is still not gateway-fetchable (local S3/presigned
         // URLs, /f/ proxy paths, inline data: URIs) re-host the image on the
-        // admin-configured public image host (imgbb) so reference2video gateways
-        // receive a valid public HTTP(S) URL. No-op when imgbb is not configured —
+        // admin-configured public image host so reference2video gateways receive a
+        // valid public HTTP(S) URL. No-op when no image host is configured —
         // model-runtime then falls back to base64 and the gateway rejects it with
         // its own error, same as before.
         const ensurePublicRefUrl = async (value: unknown): Promise<string | undefined> => {
@@ -238,7 +241,7 @@ export const videoRouter = router({
           if (resolved && isGatewayFetchableUrl(resolved)) return resolved;
 
           const src = typeof value === 'string' && value.startsWith('data:') ? value : resolved;
-          if (!src || !(await getImgbb())) return resolved;
+          if (!src || !(await getImageHost())) return resolved;
 
           try {
             let buffer: Buffer;
@@ -257,8 +260,8 @@ export const videoRouter = router({
                 ({ buffer, mimeType: mime } = await fetchImageFromUrl(src));
               }
             }
-            const url = await uploadImageToImgbb(serverDB, { buffer, mime });
-            log('Re-hosted non-public reference image to imgbb: %s', url);
+            const url = await uploadImageToImageHost(serverDB, { buffer, mime });
+            log('Re-hosted non-public reference image: %s', url);
             return url;
           } catch (error: any) {
             throw new TRPCError({
@@ -284,7 +287,7 @@ export const videoRouter = router({
           ).filter(Boolean);
           if (urls.length) updates.imageUrls = urls;
         }
-        // mediaUrl is a video reference — imgbb hosts images only, so just resolve it.
+        // mediaUrl is a video reference — image hosts don't accept videos, so just resolve it.
         if (typeof (params as any).mediaUrl === 'string' && (params as any).mediaUrl) {
           const url = await resolvePublic(
             (configForDatabase as any).mediaUrl ?? (params as any).mediaUrl,
