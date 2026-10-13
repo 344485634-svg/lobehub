@@ -2,6 +2,7 @@ import { isDesktop } from '@lobechat/const';
 import { Avatar } from '@lobehub/ui';
 import {
   BellIcon,
+  Brain,
   ChartColumnBigIcon,
   Coins,
   CreditCard,
@@ -9,7 +10,6 @@ import {
   EllipsisIcon,
   EthernetPort,
   Gift,
-  KeyboardIcon,
   KeyIcon,
   Map,
   MonitorSmartphoneIcon,
@@ -57,7 +57,7 @@ export const useCategory = () => {
   const { t: tAuth } = useTranslation('auth');
   const { t: tSubscription } = useTranslation('subscription');
   const mobile = useServerConfigStore((s) => s.isMobile);
-  const { hideDocs } = useServerConfigStore(featureFlagsSelectors);
+  const { hideDocs, showProvider } = useServerConfigStore(featureFlagsSelectors);
   const [avatar, username] = useUserStore((s) => [
     userProfileSelectors.userAvatar(s),
     userProfileSelectors.nickName(s),
@@ -83,11 +83,12 @@ export const useCategory = () => {
         key: SettingsTabs.Profile,
         label: username || tAuth('tab.profile'),
       },
-      {
-        icon: ChartColumnBigIcon,
-        key: SettingsTabs.Stats,
-        label: tAuth('tab.stats'),
-      },
+      // 数据统计：商业化场景下用量已由「用量明细」覆盖，隐藏冗余 stats 页
+      // {
+      //   icon: ChartColumnBigIcon,
+      //   key: SettingsTabs.Stats,
+      //   label: tAuth('tab.stats'),
+      // },
       {
         icon: PaletteIcon,
         key: SettingsTabs.Appearance,
@@ -97,11 +98,6 @@ export const useCategory = () => {
         icon: MonitorSmartphoneIcon,
         key: SettingsTabs.Devices,
         label: t('tab.devices'),
-      },
-      !mobile && {
-        icon: KeyboardIcon,
-        key: SettingsTabs.Hotkey,
-        label: t('tab.hotkey'),
       },
       enableBusinessFeatures && {
         icon: BellIcon,
@@ -135,10 +131,14 @@ export const useCategory = () => {
       });
     }
 
-    // Agent group — closed product: managed in Admin console only.
-    // Personal settings no longer expose provider/skill/connector/memory/creds.
+    // Agent group — closed product defaults to Admin console only, but the
+    // showProvider feature flag can still surface it for BYO-key users.
     const agentItems: CategoryItem[] = [
-      // intentionally empty for closed product
+      showProvider && {
+        icon: Brain,
+        key: SettingsTabs.Provider,
+        label: t('tab.provider'),
+      },
     ].filter(Boolean) as CategoryItem[];
 
     if (agentItems.length > 0) {
@@ -191,6 +191,7 @@ export const useCategory = () => {
     tSubscription,
     enableBusinessFeatures,
     hideDocs,
+    showProvider,
     mobile,
     isDevMode,
     avatarUrl,

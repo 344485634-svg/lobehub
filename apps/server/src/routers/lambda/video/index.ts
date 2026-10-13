@@ -35,7 +35,9 @@ import { authedProcedure, router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
 import { FileService } from '@/server/services/file';
+import { fetchImageFromUrl } from '@/server/services/generation';
 import { processBackgroundVideoPolling } from '@/server/services/generation/videoBackgroundPolling';
+import { loadImgbbPlainConfig, uploadImageToImgbb } from '@/server/services/storage/imgbb';
 import { AsyncTaskStatus, AsyncTaskType } from '@/types/asyncTask';
 
 import { createVideoTaskSubmitError } from './error';
@@ -81,47 +83,15 @@ export const videoRouter = router({
   createVideo: videoCreateProcedure
     .input(createVideoInputSchema)
     .mutation(async ({ input, ctx }) => {
-      const { getSubscriptionPlan } = await import('@/business/server/user');
-      const { Plans } = await import('@lobechat/types');
-      const { AiModelModel } = await import('@/database/models/aiModel');
-      const plan = await getSubscriptionPlan(ctx.userId);
-      const isFree = !plan || plan === Plans.Free;
-      const providerId = (input as any).provider;
-      const modelId = (input as any).model;
-      if (isFree && providerId && modelId) {
-        let creditsPerRequest = 0;
-        try {
-          const m = await new AiModelModel(ctx.serverDB, ctx.userId).findByIdAndProvider(
-            modelId,
-            providerId,
-          );
-          if (m) creditsPerRequest = Number((m.pricing as any)?.creditsPerRequest ?? 0) || 0;
-          if (!m) {
-            const { eq: eq2 } = await import('drizzle-orm');
-            const { users: usersTable } = await import('@/database/schemas');
-            const admins = await ctx.serverDB
-              .select({ id: usersTable.id })
-              .from(usersTable)
-              .where(eq2(usersTable.role, 'admin'))
-              .limit(3);
-            for (const a of admins) {
-              const am = await new AiModelModel(ctx.serverDB, a.id).findByIdAndProvider(
-                modelId,
-                providerId,
-              );
-              if (am) {
-                creditsPerRequest = Number((am.pricing as any)?.creditsPerRequest ?? 0) || 0;
-                break;
-              }
-            }
-          }
-        } catch {}
-        if (creditsPerRequest > 0) {
-          throw new TRPCError({
-            code: 'FORBIDDEN',
-            message: '积分不足：当前视频模型需订阅套餐后使用，请前往「设置 → 订阅套餐」开通。',
-          });
-        }
+      {
+        const { checkModelAccess } = await import('@/business/server/checkModelAccess');
+        const denied = await checkModelAccess(
+          ctx.serverDB,
+          ctx.userId,
+          input.provider,
+          input.model,
+        );
+        if (denied) throw new TRPCError({ code: 'FORBIDDEN', message: denied });
       }
 
       const { userId, serverDB, asyncTaskModel, fileService, generationTopicModel } = ctx;
@@ -212,12 +182,32 @@ export const videoRouter = router({
       let generationParams = params;
       {
         const updates: Record<string, unknown> = {};
+
+        // True when a remote gateway can download this URL directly — public
+        // http(s), not localhost/intranet (mirrors model-runtime's isPublicHttpUrl).
+        const isGatewayFetchableUrl = (url: string): boolean => {
+          if (!/^https?:\/\//i.test(url)) return false;
+          try {
+            const host = new URL(url).hostname.toLowerCase();
+            return !(
+              host === 'localhost' ||
+              host === '127.0.0.1' ||
+              host === '0.0.0.0' ||
+              host === '::1' ||
+              host.endsWith('.local') ||
+              host.startsWith('10.') ||
+              host.startsWith('192.168.') ||
+              /^172\.(?:1[6-9]|2\d|3[01])\./.test(host)
+            );
+          } catch {
+            return false;
+          }
+        };
+
         const resolvePublic = async (value: unknown): Promise<string | undefined> => {
           if (typeof value !== 'string' || !value) return undefined;
-          // Already a public http(s) URL that is not localhost/proxy — keep
-          if (/^https?:\/\//i.test(value) && !/localhost|127\.0\.0\.1/.test(value)) {
-            return value;
-          }
+          if (value.startsWith('data:')) return undefined;
+          if (isGatewayFetchableUrl(value)) return value;
           try {
             const full = await fileService.getFullFileUrl(value);
             return full || undefined;
@@ -226,22 +216,75 @@ export const videoRouter = router({
           }
         };
 
+        // Lazy: only hit the DB when a reference URL actually needs re-hosting.
+        let imgbb: Awaited<ReturnType<typeof loadImgbbPlainConfig>> | undefined;
+        let imgbbChecked = false;
+        const getImgbb = async () => {
+          if (!imgbbChecked) {
+            imgbbChecked = true;
+            imgbb = await loadImgbbPlainConfig(serverDB).catch(() => undefined);
+          }
+          return imgbb;
+        };
+
+        // When the resolved URL is still not gateway-fetchable (local S3/presigned
+        // URLs, /f/ proxy paths, inline data: URIs) re-host the image on the
+        // admin-configured public image host (imgbb) so reference2video gateways
+        // receive a valid public HTTP(S) URL. No-op when imgbb is not configured —
+        // model-runtime then falls back to base64 and the gateway rejects it with
+        // its own error, same as before.
+        const ensurePublicRefUrl = async (value: unknown): Promise<string | undefined> => {
+          const resolved = await resolvePublic(value);
+          if (resolved && isGatewayFetchableUrl(resolved)) return resolved;
+
+          const src = typeof value === 'string' && value.startsWith('data:') ? value : resolved;
+          if (!src || !(await getImgbb())) return resolved;
+
+          try {
+            let buffer: Buffer;
+            let mime: string | undefined;
+            if (src.startsWith('data:')) {
+              ({ buffer, mimeType: mime } = await fetchImageFromUrl(src));
+            } else {
+              // Our own storage object — read bytes directly instead of fetching
+              // over HTTP (ssrfSafeFetch would block the localhost S3 endpoint).
+              const key = await fileService.getKeyFromFullUrl(src);
+              if (key) {
+                buffer = Buffer.from(await fileService.getFileByteArray(key));
+                const meta = await fileService.getFileMetadata(key).catch(() => undefined);
+                if (meta?.contentType?.startsWith('image/')) mime = meta.contentType;
+              } else {
+                ({ buffer, mimeType: mime } = await fetchImageFromUrl(src));
+              }
+            }
+            const url = await uploadImageToImgbb(serverDB, { buffer, mime });
+            log('Re-hosted non-public reference image to imgbb: %s', url);
+            return url;
+          } catch (error: any) {
+            throw new TRPCError({
+              code: 'INTERNAL_SERVER_ERROR',
+              message: error?.message || '参考图转存图床失败，请稍后重试',
+            });
+          }
+        };
+
         if (typeof params.imageUrl === 'string' && params.imageUrl) {
-          const url = await resolvePublic(configForDatabase.imageUrl ?? params.imageUrl);
+          const url = await ensurePublicRefUrl(configForDatabase.imageUrl ?? params.imageUrl);
           if (url) updates.imageUrl = url;
         }
         if (typeof params.endImageUrl === 'string' && params.endImageUrl) {
-          const url = await resolvePublic(configForDatabase.endImageUrl ?? params.endImageUrl);
+          const url = await ensurePublicRefUrl(configForDatabase.endImageUrl ?? params.endImageUrl);
           if (url) updates.endImageUrl = url;
         }
         if (Array.isArray((params as any).imageUrls) && (params as any).imageUrls.length > 0) {
           const src = ((configForDatabase as any).imageUrls ??
             (params as any).imageUrls) as string[];
           const urls = (
-            await Promise.all(src.map(async (v) => (await resolvePublic(v)) || v))
+            await Promise.all(src.map(async (v) => (await ensurePublicRefUrl(v)) || v))
           ).filter(Boolean);
           if (urls.length) updates.imageUrls = urls;
         }
+        // mediaUrl is a video reference — imgbb hosts images only, so just resolve it.
         if (typeof (params as any).mediaUrl === 'string' && (params as any).mediaUrl) {
           const url = await resolvePublic(
             (configForDatabase as any).mediaUrl ?? (params as any).mediaUrl,
@@ -261,15 +304,25 @@ export const videoRouter = router({
         throw new TRPCError({ code: 'FORBIDDEN', message: 'Invalid generation topic' });
       }
 
-      const { errorBatch, prechargeResult } = await chargeBeforeGenerate({
-        generationTopicId,
-        model,
-        params,
-        provider,
-        userId,
-        workspaceId: wsId,
-      });
-      if (errorBatch) return errorBatch;
+      let prechargeResult: Record<string, unknown> | undefined;
+      try {
+        const charge = await chargeBeforeGenerate({
+          generationTopicId,
+          model,
+          params,
+          provider,
+          serverDB,
+          userId,
+          workspaceId: wsId,
+        });
+        if (charge.errorBatch) return charge.errorBatch;
+        prechargeResult = charge.prechargeResult as any;
+      } catch (e: any) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: e?.message || '积分不足，无法生成视频',
+        });
+      }
 
       // Generate a one-time token for webhook callback verification
       const webhookToken = randomBytes(32).toString('hex');
@@ -441,6 +494,7 @@ export const videoRouter = router({
               model: resolvedModelId,
               prechargeResult,
               provider,
+              serverDB,
               userId,
               workspaceId: wsId,
             });

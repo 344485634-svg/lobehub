@@ -52,10 +52,14 @@ import WorkspaceSlugSettingsStoragePage from '@/routes/(main)/[workspaceSlug]/se
 import WorkspaceSlugSettingsUsagePage from '@/routes/(main)/[workspaceSlug]/settings/usage';
 import AdminDashboardPage from '@/routes/(main)/admin';
 import DesktopAdminLayout from '@/routes/(main)/admin/_layout';
+import AdminChangelogPage from '@/routes/(main)/admin/changelog';
 import AdminConnectorPage from '@/routes/(main)/admin/connector';
+import AdminCouponsPage from '@/routes/(main)/admin/coupons';
 import AdminCredsPage from '@/routes/(main)/admin/creds';
 import AdminEmailPage from '@/routes/(main)/admin/email';
+import AdminLegalPage from '@/routes/(main)/admin/legal';
 import AdminMemoryPage from '@/routes/(main)/admin/memory';
+import AdminNotificationPage from '@/routes/(main)/admin/notification';
 import AdminPaymentPage from '@/routes/(main)/admin/payment';
 import AdminPlansPage from '@/routes/(main)/admin/plans';
 import AdminPlanEditPage from '@/routes/(main)/admin/plans/[id]/edit';
@@ -64,8 +68,10 @@ import {
   ProviderDetailPage as AdminProviderDetailPage,
   ProviderLayout as AdminProviderLayout,
 } from '@/routes/(main)/admin/provider';
+import AdminReferralPage from '@/routes/(main)/admin/referral';
 import AdminServiceModelPage from '@/routes/(main)/admin/service-model';
 import AdminSkillsPage from '@/routes/(main)/admin/skills';
+import AdminStoragePage from '@/routes/(main)/admin/storage';
 import AdminSubscriptionsPage from '@/routes/(main)/admin/subscriptions';
 import AdminUsersPage from '@/routes/(main)/admin/users';
 import AdminUserDetailPage from '@/routes/(main)/admin/users/[id]';
@@ -572,8 +578,32 @@ export const sharedMainAreaChildren: RouteObject[] = [
         path: 'email',
       },
       {
+        element: <AdminStoragePage />,
+        path: 'storage',
+      },
+      {
         element: <AdminPaymentPage />,
         path: 'payment',
+      },
+      {
+        element: <AdminCouponsPage />,
+        path: 'coupons',
+      },
+      {
+        element: <AdminReferralPage />,
+        path: 'referral',
+      },
+      {
+        element: <AdminNotificationPage />,
+        path: 'notification',
+      },
+      {
+        element: <AdminLegalPage />,
+        path: 'legal',
+      },
+      {
+        element: <AdminChangelogPage />,
+        path: 'changelog',
       },
       {
         element: redirectElement('/admin/provider'),

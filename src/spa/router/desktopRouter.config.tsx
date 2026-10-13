@@ -649,10 +649,52 @@ export const sharedMainAreaChildren: RouteObject[] = [
       },
       {
         element: dynamicElement(
+          () => import('@/routes/(main)/admin/storage'),
+          'Desktop > Admin > Storage',
+        ),
+        path: 'storage',
+      },
+      {
+        element: dynamicElement(
           () => import('@/routes/(main)/admin/payment'),
           'Desktop > Admin > Payment',
         ),
         path: 'payment',
+      },
+      {
+        element: dynamicElement(
+          () => import('@/routes/(main)/admin/coupons'),
+          'Desktop > Admin > Coupons',
+        ),
+        path: 'coupons',
+      },
+      {
+        element: dynamicElement(
+          () => import('@/routes/(main)/admin/referral'),
+          'Desktop > Admin > Referral',
+        ),
+        path: 'referral',
+      },
+      {
+        element: dynamicElement(
+          () => import('@/routes/(main)/admin/notification'),
+          'Desktop > Admin > Notification',
+        ),
+        path: 'notification',
+      },
+      {
+        element: dynamicElement(
+          () => import('@/routes/(main)/admin/legal'),
+          'Desktop > Admin > Legal',
+        ),
+        path: 'legal',
+      },
+      {
+        element: dynamicElement(
+          () => import('@/routes/(main)/admin/changelog'),
+          'Desktop > Admin > Changelog',
+        ),
+        path: 'changelog',
       },
       // Legacy redirects
       {

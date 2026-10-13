@@ -1,9 +1,8 @@
 import { and, count, desc, eq, ilike, or } from 'drizzle-orm';
 
-import type { LobeChatDatabase } from '@/core/db/client';
-
 import type { NewSubscriptionPlan, SubscriptionPlanItem } from '../schemas/subscriptionPlan';
 import { subscriptionPlans } from '../schemas/subscriptionPlan';
+import type { LobeChatDatabase } from '../type';
 
 export class PlanModel {
   private userId: string;

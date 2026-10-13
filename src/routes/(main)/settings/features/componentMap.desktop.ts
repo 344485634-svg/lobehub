@@ -17,7 +17,7 @@ import Hotkey from '../hotkey';
 import Memory from '../memory';
 import Messenger from '../messenger';
 import Profile from '../profile';
-import Provider from '../provider';
+import { ProviderLayout as Provider } from '../provider';
 import Proxy from '../proxy';
 import Security from '../security';
 import ServiceModel from '../service-model';

@@ -17,6 +17,7 @@ import type {
   EmailSmtpConfig,
   ReferralPolicyConfig,
   ShouqianbaConfig,
+  StorageImgbbConfig,
 } from '@/database/schemas/systemConfig';
 import { SYSTEM_CONFIG_KEYS } from '@/database/schemas/systemConfig';
 import { router } from '@/libs/trpc/lambda';
@@ -25,6 +26,7 @@ import { KeyVaultsGateKeeper } from '@/server/modules/KeyVaultsEncrypt';
 import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
 import { EmailService } from '@/server/services/email';
 import { SkillImporter } from '@/server/services/skill';
+import { uploadImageToImgbb } from '@/server/services/storage/imgbb';
 
 import { ShouqianbaClient } from '../../services/payment/shouqianba';
 
@@ -943,6 +945,60 @@ export const adminRouter = router({
       await model.setEmailConfig(next, ctx.userId);
       return { success: true as const };
     }),
+
+  // ===== Storage (imgbb image host) Configuration =====
+  getStorageConfig: adminProcedure.query(async ({ ctx }) => {
+    const model = new SystemConfigModel(ctx.serverDB);
+    const cfg = (await model.getImgbbConfig()) || ({} as Partial<StorageImgbbConfig>);
+    return {
+      enabled: cfg.enabled ?? false,
+      expiration: cfg.expiration ?? 0,
+      hasApiKey: Boolean(cfg.apiKey),
+    };
+  }),
+
+  updateStorageConfig: adminProcedure
+    .input(
+      z.object({
+        apiKey: z.string().optional(), // empty = keep existing
+        enabled: z.boolean(),
+        expiration: z.number().int().min(0).max(15_552_000).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const model = new SystemConfigModel(ctx.serverDB);
+      const existing = (await model.getImgbbConfig()) || ({} as Partial<StorageImgbbConfig>);
+      const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
+
+      let apiKey = existing.apiKey;
+      if (input.apiKey) {
+        apiKey = await gateKeeper.encrypt(input.apiKey);
+      }
+
+      const next: StorageImgbbConfig = {
+        apiKey,
+        enabled: input.enabled,
+        expiration: input.expiration ?? existing.expiration ?? 0,
+        hasApiKey: Boolean(apiKey),
+      };
+
+      await model.setImgbbConfig(next, ctx.userId);
+      return { success: true as const };
+    }),
+
+  testStorageConfig: adminProcedure.mutation(async ({ ctx }) => {
+    // 1x1 transparent PNG; verifies the configured key end-to-end
+    const PNG_1PX = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+      'base64',
+    );
+    try {
+      const url = await uploadImageToImgbb(ctx.serverDB, { buffer: PNG_1PX, mime: 'image/png' });
+      return { message: `图床配置校验通过：${url}`, success: true as const };
+    } catch (error: any) {
+      throw new TRPCError({ code: 'BAD_REQUEST', message: error?.message || '校验失败' });
+    }
+  }),
 
   testEmailConfig: adminProcedure
     .input(z.object({ to: z.string().email() }))

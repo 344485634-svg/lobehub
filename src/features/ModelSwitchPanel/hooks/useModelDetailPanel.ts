@@ -50,6 +50,12 @@ interface TextPriceSummary {
 const BRANDING_CREDIT_UNIT = 1_000_000;
 const MILLION_SCALE_UNITS = new Set<PricingUnit['unit']>(['millionCharacters', 'millionTokens']);
 
+/** Map pricing unit names to the admin-configured credit fields on the model pricing. */
+const CREDIT_FIELD_MAP: Partial<Record<PricingUnitName, string>> = {
+  textInput: 'creditsPerMillionInputTokens',
+  textOutput: 'creditsPerMillionOutputTokens',
+};
+
 interface FormatPricingRateOptions {
   isCreditPricing?: boolean;
   unit?: PricingUnit['unit'];
@@ -74,11 +80,25 @@ const formatPricingRate = (
 };
 
 const getFormattedUnitPrice = (
-  pricing: Pricing,
+  pricing: Pricing & Record<string, unknown>,
   unitName: PricingUnitName,
   isCreditPricing: boolean,
 ): FormattedUnitPrice => {
   const currency = pricing.currency as ModelPriceCurrency | undefined;
+
+  // Closed-product: admin-configured credits (creditsPerMillionInputTokens /
+  // creditsPerMillionOutputTokens) take precedence over the USD `units` when
+  // present. Display them directly as credits, not money.
+  const creditField = CREDIT_FIELD_MAP[unitName];
+  const creditRate =
+    creditField && typeof pricing[creditField] === 'number'
+      ? (pricing[creditField] as number)
+      : undefined;
+
+  if (isCreditPricing && typeof creditRate === 'number') {
+    return { current: formatNumber(creditRate) };
+  }
+
   const currentRate = getUnitRateByName(pricing, unitName);
   const originalRate = getOriginalUnitRateByName(pricing, unitName);
 
@@ -98,10 +118,12 @@ const getFormattedUnitPrice = (
 };
 
 const getPrice = (pricing: Pricing, isCreditPricing: boolean): TextPriceSummary => {
+  // Pricing lacks an index signature, so widen for the credit-field lookups
+  const widePricing = pricing as Pricing & Record<string, unknown>;
   return {
-    cachedInput: getFormattedUnitPrice(pricing, 'textInput_cacheRead', isCreditPricing),
-    input: getFormattedUnitPrice(pricing, 'textInput', isCreditPricing),
-    output: getFormattedUnitPrice(pricing, 'textOutput', isCreditPricing),
+    cachedInput: getFormattedUnitPrice(widePricing, 'textInput_cacheRead', isCreditPricing),
+    input: getFormattedUnitPrice(widePricing, 'textInput', isCreditPricing),
+    output: getFormattedUnitPrice(widePricing, 'textOutput', isCreditPricing),
   };
 };
 
@@ -167,6 +189,7 @@ const formatUnitRate = (
   unit: PricingUnit,
   currency?: ModelPriceCurrency,
   isCreditPricing?: boolean,
+  pricing?: Pricing & Record<string, unknown>,
 ): FormattedUnitPrice => {
   const formatRate = (rate: number) =>
     formatPricingRate(rate, currency, { isCreditPricing, unit: unit.unit });
@@ -175,6 +198,16 @@ const formatUnitRate = (
 
   if (unit.strategy === 'fixed') {
     const fixedUnit = unit as FixedPricingUnit;
+    // Closed-product: admin-configured credits (creditsPerMillionInputTokens /
+    // creditsPerMillionOutputTokens) take precedence over the USD `units.rate`.
+    const creditField = CREDIT_FIELD_MAP[unit.name];
+    const creditRate =
+      pricing && creditField && typeof pricing[creditField] === 'number'
+        ? (pricing[creditField] as number)
+        : undefined;
+    if (isCreditPricing && typeof creditRate === 'number') {
+      return { current: formatNumber(creditRate) };
+    }
     return {
       current: formatRate(fixedUnit.rate),
       original:
@@ -309,14 +342,25 @@ export const useModelDetailPanel = ({
     () => applyBusinessModelPricing({ model: modelId, pricing, provider }),
     [applyBusinessModelPricing, modelId, pricing, provider],
   );
-  const isCreditPricing = provider === BRANDING_PROVIDER;
+  // Closed-product: show credits (admin-configured creditsPerMillion*) for any
+  // provider whose pricing carries those fields — not just the branding provider.
+  const creditPricing = displayPricing as (Pricing & Record<string, unknown>) | undefined;
+  const isFieldCreditPricing =
+    !!creditPricing &&
+    (typeof creditPricing.creditsPerMillionInputTokens === 'number' ||
+      typeof creditPricing.creditsPerMillionOutputTokens === 'number');
+  const isBrandingProvider = provider === BRANDING_PROVIDER;
+  const isCreditPricing = isBrandingProvider || isFieldCreditPricing;
   const hasPricing = !!displayPricing;
   const formatPrice = displayPricing ? getPrice(displayPricing, isCreditPricing) : null;
+  // Field-credit providers have no admin field for cached input, so a USD unit
+  // rate would be misleading next to credit rates — hide it there. Branding
+  // provider prices units in credits already, so keep showing it.
   const hasCachedInputPricing = displayPricing
-    ? !!getCachedTextInputUnitRate(displayPricing)
+    ? (isBrandingProvider || !isFieldCreditPricing) && !!getCachedTextInputUnitRate(displayPricing)
     : false;
   const pricingGroups = useMemo(
-    () => (displayPricing ? groupPricingUnits(displayPricing.units) : []),
+    () => (displayPricing ? groupPricingUnits(displayPricing.units || []) : []),
     [displayPricing],
   );
 
@@ -380,8 +424,14 @@ export const useModelDetailPanel = ({
 
   const formatUnitPrice = useCallback(
     (unit: PricingUnit) =>
-      formatUnitRate(unit, displayPricing?.currency as ModelPriceCurrency, isCreditPricing),
-    [displayPricing?.currency, isCreditPricing],
+      formatUnitRate(
+        unit,
+        displayPricing?.currency as ModelPriceCurrency,
+        isCreditPricing,
+        // Pricing lacks an index signature; widen for credit-field lookups
+        displayPricing as (Pricing & Record<string, unknown>) | undefined,
+      ),
+    [displayPricing, isCreditPricing],
   );
 
   const getUnitPriceSuffix = useCallback(
