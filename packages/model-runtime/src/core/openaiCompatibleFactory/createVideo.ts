@@ -264,10 +264,17 @@ export async function createOpenAICompatibleVideo(
       seen.add(url);
       const media = await resolveMediaUrl(url, type);
       if (!media) return;
-      // 本地/内网图片在这里已转为 base64 data: URL 兜底发送。此前曾因"部分网关
-      // 只收 HTTP(S)"而静默跳过,但那会让参考图无声丢失(用户完全无法感知)。
-      // 若网关拒绝 data:,任务会以明确的网关错误失败——比默默忽略参考图更好;
-      // 生产环境的对象存储应配置公网可达域名,使参考图走公网 URL。
+      // liuma 等网关的 reference_contents[].media_url 只接受公网 HTTP(S) URL
+      // (已实测拒绝 base64 data:)。本地/内网存储的图片无法被网关拉取,曾经
+      // 被静默跳过(参考图无声消失)或发出去被网关 400(晦涩难懂)。这里改为
+      // 快速失败并给出可操作的原因。
+      if (media.startsWith('data:')) {
+        throw new Error(
+          '参考图无法被视频网关获取：图片存储在非公开的本地/内网地址。' +
+            '请将 S3_PUBLIC_DOMAIN 配置为公网可达的地址（参考图会以公网 URL 提交给网关），' +
+            '或先使用公网图片 URL 进行测试。',
+        );
+      }
       referenceContents.push({ media_url: media, name, type });
     };
 

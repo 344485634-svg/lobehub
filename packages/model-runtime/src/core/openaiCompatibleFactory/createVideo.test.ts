@@ -153,21 +153,16 @@ describe('createOpenAICompatibleVideo', () => {
       expect(body.mode).toBe('reference2video');
     });
 
-    it('should inline local image references as data URLs for remote gateways', async () => {
+    it('should fail fast with an actionable message for local image references', async () => {
+      // 本地图(localhost RustFS 等)无法被远程网关拉取;曾先后被静默跳过或
+      // 发送 base64 被网关 400,现在应快速失败并告诉用户原因
       const imgBuf = new Uint8Array([1, 2, 3]);
-      global.fetch = vi
-        .fn()
-        .mockResolvedValueOnce({
-          // 1st call: fetchImageAsDataUrl 取回本地图
-          arrayBuffer: async () => imgBuf.buffer,
-          headers: { get: () => 'image/jpeg' },
-          ok: true,
-        })
-        .mockResolvedValueOnce({
-          // 2nd call: video POST
-          json: async () => ({ id: 'video-task-local-ref' }),
-          ok: true,
-        });
+      global.fetch = vi.fn().mockResolvedValueOnce({
+        // 服务端能取到本地图(内联为 data:),但网关拉不到
+        arrayBuffer: async () => imgBuf.buffer,
+        headers: { get: () => 'image/jpeg' },
+        ok: true,
+      });
 
       const payload: CreateVideoPayload = {
         model: 'minimax-h3',
@@ -177,12 +172,11 @@ describe('createOpenAICompatibleVideo', () => {
         },
       };
 
-      await createOpenAICompatibleVideo(payload, mockVllmOptions);
-
-      const body = JSON.parse((global.fetch as any).mock.calls[1][1].body);
-      // 本地图不能被静默丢掉:内联为 data: URL 发送,网关若不接受会显式报错
-      expect(body.reference_contents[0].media_url).toMatch(/^data:image\/jpeg;base64,/);
-      expect(body.mode).toBe('reference2video');
+      await expect(createOpenAICompatibleVideo(payload, mockVllmOptions)).rejects.toThrow(
+        /参考图无法被视频网关获取/,
+      );
+      // 未向网关发出请求(只有取图那一次调用)
+      expect(global.fetch).toHaveBeenCalledTimes(1);
     });
 
     it('should pass resolution to the gateway body', async () => {
