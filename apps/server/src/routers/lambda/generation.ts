@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import { withScopedPermission } from '@/business/server/trpc-middlewares/rbacPermission';
 import { wsCompatProcedure } from '@/business/server/trpc-middlewares/workspaceAuth';
+import { refundPrechargedTaskOnce } from '@/business/server/video-generation/refundPrechargedTask';
 import { AsyncTaskModel } from '@/database/models/asyncTask';
 import { GenerationModel } from '@/database/models/generation';
 import { router } from '@/libs/trpc/lambda';
@@ -82,6 +83,9 @@ export const generationRouter = router({
         result.generation = generation;
       } else if (asyncTask.status === AsyncTaskStatus.Error) {
         result.error = error as AsyncTaskError;
+        // The timeout check above can fail a task outside the async route's
+        // error path — make sure its precharge is refunded (exactly once).
+        await refundPrechargedTaskOnce(ctx.serverDB, ctx.userId, asyncTask);
       }
 
       return result;

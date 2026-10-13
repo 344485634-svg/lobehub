@@ -823,22 +823,50 @@
     {
       "idx": 117,
       "version": "7",
+      "when": 1783200000000,
+      "tag": "0117_strange_multiple_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 118,
+      "version": "7",
       "when": 1784729930820,
       "tag": "0117_next_raider",
       "breakpoints": true
     },
     {
-      "idx": 118,
+      "idx": 119,
       "version": "7",
       "when": 1784784675004,
       "tag": "0118_narrow_vertigo",
       "breakpoints": true
     },
     {
-      "idx": 119,
+      "idx": 120,
       "version": "7",
       "when": 1784787604550,
       "tag": "0119_curvy_lord_tyger",
+      "breakpoints": true
+    },
+    {
+      "idx": 121,
+      "version": "7",
+      "when": 1785200000000,
+      "tag": "0120_credit_referral_topup",
+      "breakpoints": true
+    },
+    {
+      "idx": 122,
+      "version": "7",
+      "when": 1785300000000,
+      "tag": "0121_coupons",
+      "breakpoints": true
+    },
+    {
+      "idx": 123,
+      "version": "7",
+      "when": 1785400000000,
+      "tag": "0122_credit_ledger_decimal",
       "breakpoints": true
     }
   ],

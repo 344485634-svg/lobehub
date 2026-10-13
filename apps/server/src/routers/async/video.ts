@@ -1,9 +1,5 @@
-import { ASYNC_TASK_TIMEOUT } from '@lobechat/business-config/server';
+import { ASYNC_TASK_VIDEO_TIMEOUT } from '@lobechat/business-config/server';
 import { ENABLE_BUSINESS_FEATURES } from '@lobechat/business-const';
-import {
-  buildMappedBusinessModelFields,
-  resolveBusinessModelMapping,
-} from '@lobechat/business-model-runtime';
 import {
   AsyncTaskError,
   AsyncTaskErrorType,
@@ -14,7 +10,7 @@ import debug from 'debug';
 import { z } from 'zod';
 
 import { getProviderContentPolicyErrorMessage } from '@/business/server/getProviderContentPolicyErrorMessage';
-import { chargeAfterGenerate } from '@/business/server/video-generation/chargeAfterGenerate';
+import { refundPrechargedTaskOnce } from '@/business/server/video-generation/refundPrechargedTask';
 import { AsyncTaskModel } from '@/database/models/asyncTask';
 import { GenerationModel } from '@/database/models/generation';
 import { asyncAuthedProcedure, asyncRouter as router } from '@/libs/trpc/async';
@@ -131,7 +127,6 @@ export const videoRouter = router({
       asyncTaskId,
       generationBatchId,
       generationId,
-      generationTopicId,
       inferenceId,
       model,
       prechargeResult,
@@ -149,8 +144,6 @@ export const videoRouter = router({
       model,
       provider,
     });
-
-    const { resolvedModelId } = await resolveBusinessModelMapping(provider, model);
 
     const abortController = new AbortController();
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -216,36 +209,8 @@ export const videoRouter = router({
           status: AsyncTaskStatus.Success,
         });
 
-        if (ENABLE_BUSINESS_FEATURES && prechargeResult) {
-          try {
-            await chargeAfterGenerate({
-              computePriceParams: {
-                generateAudio: (batch?.config as any)?.generateAudio,
-                resolution: (batch?.config as any)?.resolution,
-              },
-              latency: duration,
-              metadata: {
-                asyncTaskId,
-                generationBatchId,
-                topicId: generationTopicId,
-                ...buildMappedBusinessModelFields({
-                  provider,
-                  requestedModelId: resolvedModelId === model ? undefined : model,
-                  resolvedModelId,
-                }),
-              },
-              model: resolvedModelId,
-              prechargeResult,
-              provider,
-              usage: undefined,
-              userId: ctx.userId,
-              workspaceId,
-            });
-            log('Charge completed successfully for asyncTask: %s', asyncTaskId);
-          } catch (chargeError) {
-            console.error('[video-async] Failed to charge after generate:', chargeError);
-          }
-        }
+        // The precharge stays as the final charge on success; chargeAfterGenerate
+        // only refunds (isError), which the catch path below handles.
 
         log('Async video generation completed successfully: %s', asyncTaskId);
         return { success: true };
@@ -254,7 +219,7 @@ export const videoRouter = router({
       timeoutId = setTimeout(() => {
         log('Video generation timeout, aborting operation: %s', asyncTaskId);
         abortController.abort();
-      }, ASYNC_TASK_TIMEOUT);
+      }, ASYNC_TASK_VIDEO_TIMEOUT);
 
       const result = await pollingPromise(abortController.signal);
 
@@ -299,25 +264,15 @@ export const videoRouter = router({
 
       if (prechargeResult && ENABLE_BUSINESS_FEATURES) {
         try {
-          await chargeAfterGenerate({
-            isError: true,
-            metadata: {
-              asyncTaskId,
-              generationBatchId,
-              topicId: generationTopicId,
-              ...buildMappedBusinessModelFields({
-                provider,
-                requestedModelId: resolvedModelId === model ? undefined : model,
-                resolvedModelId,
-              }),
-            },
-            model: resolvedModelId,
-            prechargeResult,
-            provider,
-            userId: ctx.userId,
-            workspaceId,
+          // Shares the atomic claim with the lambda getGenerationStatus path so
+          // a task failed by both sides can't be refunded twice.
+          const refunded = await refundPrechargedTaskOnce(ctx.serverDB, ctx.userId, {
+            id: asyncTaskId,
+            metadata: { precharge: prechargeResult },
           });
-          log('Precharge refunded successfully for asyncTask: %s', asyncTaskId);
+          if (refunded) {
+            log('Precharge refunded successfully for asyncTask: %s', asyncTaskId);
+          }
         } catch (refundError) {
           console.error('[video-async] Failed to refund precharge on error:', refundError);
         }

@@ -1,4 +1,4 @@
-import { ASYNC_TASK_TIMEOUT } from '@lobechat/business-config/server';
+import { ASYNC_TASK_TIMEOUT, ASYNC_TASK_VIDEO_TIMEOUT } from '@lobechat/business-config/server';
 import type { UserMemoryExtractionMetadata } from '@lobechat/types';
 import {
   AsyncTaskError,
@@ -6,7 +6,7 @@ import {
   AsyncTaskStatus,
   AsyncTaskType,
 } from '@lobechat/types';
-import { and, eq, inArray, lt, or, sql } from 'drizzle-orm';
+import { and, eq, inArray, lt, ne, or, sql } from 'drizzle-orm';
 
 import type { AsyncTaskSelectItem, NewAsyncTaskItem } from '../schemas';
 import { asyncTasks } from '../schemas';
@@ -140,7 +140,12 @@ export class AsyncTaskModel {
   };
 
   /**
-   * make the task status to be `error` if the task is not finished in 20 seconds
+   * make the task status to be `error` if the task is not finished in time
+   *
+   * Video tasks get a longer window (30 min): real generations run 10+ minutes
+   * (e.g. minimax-h3 768p ≈ 11 min) and nothing refreshes `updated_at` while
+   * the gateway pollers wait — the generic 10-min window killed in-flight
+   * videos the gateway was still rendering.
    */
   checkTimeoutTasks = async (ids: string[]) => {
     const tasks = await this.db
@@ -154,7 +159,16 @@ export class AsyncTaskModel {
             eq(asyncTasks.status, AsyncTaskStatus.Pending),
             eq(asyncTasks.status, AsyncTaskStatus.Processing),
           ),
-          lt(asyncTasks.createdAt, new Date(Date.now() - ASYNC_TASK_TIMEOUT)),
+          or(
+            and(
+              eq(asyncTasks.type, AsyncTaskType.VideoGeneration),
+              lt(asyncTasks.updatedAt, new Date(Date.now() - ASYNC_TASK_VIDEO_TIMEOUT)),
+            ),
+            and(
+              ne(asyncTasks.type, AsyncTaskType.VideoGeneration),
+              lt(asyncTasks.updatedAt, new Date(Date.now() - ASYNC_TASK_TIMEOUT)),
+            ),
+          ),
         ),
       );
 
