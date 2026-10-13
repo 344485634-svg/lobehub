@@ -25,18 +25,18 @@ export const SYSTEM_CONFIG_KEYS = {
   storageImgbb: 'storage.imgbb',
 } as const;
 
-export type ImageHostProvider = 'imgbb' | 'see';
+export type ImageHostProvider = 'imgbb' | 'scdn';
 
 /** 图床配置:视频参考图等非公网素材经此转公网 URL 提交给网关 */
 export type StorageImageHostConfig = {
-  /** 服务商;缺省 imgbb(兼容旧数据) */
+  /** 服务商;缺省 imgbb(兼容旧数据)。scdn = img.scdn.io 免登录匿名上传,无需 Key */
   provider?: ImageHostProvider;
   enabled: boolean;
-  /** 服务商 API Key/Token; stored encrypted */
+  /** 服务商 API Key(imgbb 需要;scdn 不需要); stored encrypted */
   apiKey?: string;
   /** Whether an API key is already saved (response field only) */
   hasApiKey?: boolean;
-  /** imgbb 专用:上传有效期(秒);0 = 永不过期(默认);s.ee 忽略此字段 */
+  /** imgbb 专用:上传有效期(秒);0 = 永不过期(默认);其他服务商忽略此字段 */
   expiration?: number;
 };
 

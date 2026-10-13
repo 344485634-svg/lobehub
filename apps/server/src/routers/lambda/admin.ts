@@ -954,7 +954,7 @@ export const adminRouter = router({
       enabled: cfg.enabled ?? false,
       expiration: cfg.expiration ?? 0,
       hasApiKey: Boolean(cfg.apiKey),
-      provider: cfg.provider ?? ('imgbb' as const),
+      provider: cfg.provider === 'scdn' ? ('scdn' as const) : ('imgbb' as const),
     };
   }),
 
@@ -964,7 +964,7 @@ export const adminRouter = router({
         apiKey: z.string().optional(), // empty = keep existing
         enabled: z.boolean(),
         expiration: z.number().int().min(0).max(15_552_000).optional(),
-        provider: z.enum(['imgbb', 'see']).optional(),
+        provider: z.enum(['imgbb', 'scdn']).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {

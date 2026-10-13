@@ -68,8 +68,7 @@ const AdminStorageConfigPage: FC = () => {
         <div style={{ fontSize: 18, fontWeight: 600 }}>存储配置</div>
         <div style={{ color: 'var(--lobe-color-text-secondary)', fontSize: 13, marginTop: 4 }}>
           配置免费图床。启用后，视频参考图等无法被模型网关直接访问的本地图片会自动转存为公网 URL
-          再提交。国内网络建议选择 S.EE（原 SM.MS，token 在 s.ee 的「工具 → API
-          Token」页生成）；imgbb 会封禁大陆 IP 注册的账号。
+          再提交。推荐 img.scdn.io：免费、国内可直连、无需注册。
         </div>
       </div>
 
@@ -82,34 +81,41 @@ const AdminStorageConfigPage: FC = () => {
           <Form.Item label="图床服务商" name="provider">
             <Select
               options={[
-                { label: 'S.EE（原 SM.MS，国内可直连，推荐）', value: 'see' },
-                { label: 'imgbb（海外，部分地区账号会被封）', value: 'imgbb' },
+                { label: 'img.scdn.io（免费，国内可直连，无需注册）', value: 'scdn' },
+                { label: 'imgbb（海外，需 API Key，部分地区账号会被封）', value: 'imgbb' },
               ]}
             />
           </Form.Item>
 
-          <Form.Item
-            label={provider === 'see' ? 'S.EE API Token' : 'imgbb API Key'}
-            name="apiKey"
-            tooltip={data?.hasApiKey ? '已配置，留空则保留原 Key' : '尚未配置'}
-          >
-            <Input
-              placeholder={data?.hasApiKey ? '••••••••（留空保留）' : '粘贴 API Key / Token'}
-              type="password"
-            />
-          </Form.Item>
-
           {provider === 'imgbb' && (
-            <Form.Item
-              label="图片有效期（秒）"
-              name="expiration"
-              tooltip="0 表示永久有效；最大 15552000（180 天，imgbb 上限）"
-            >
-              <InputNumber max={15_552_000} min={0} step={86_400} style={{ width: 240 }} />
-            </Form.Item>
+            <>
+              <Form.Item
+                label="imgbb API Key"
+                name="apiKey"
+                tooltip={data?.hasApiKey ? '已配置，留空则保留原 Key' : '尚未配置'}
+              >
+                <Input
+                  placeholder={data?.hasApiKey ? '••••••••（留空保留）' : 'imgbb API Key'}
+                  type="password"
+                />
+              </Form.Item>
+              <Form.Item
+                label="图片有效期（秒）"
+                name="expiration"
+                tooltip="0 表示永久有效；最大 15552000（180 天，imgbb 上限）"
+              >
+                <InputNumber max={15_552_000} min={0} step={86_400} style={{ width: 240 }} />
+              </Form.Item>
+            </>
           )}
 
-          <Flexbox horizontal gap={12}>
+          {provider === 'scdn' && (
+            <div style={{ color: 'var(--lobe-color-text-secondary)', fontSize: 13 }}>
+              img.scdn.io 为免登录匿名上传，无需填写任何 Key，直接保存并校验即可。
+            </div>
+          )}
+
+          <Flexbox horizontal gap={12} style={{ marginTop: 16 }}>
             <Button loading={saving} type="primary" onClick={handleSave}>
               保存配置
             </Button>
