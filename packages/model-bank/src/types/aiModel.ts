@@ -73,16 +73,18 @@ export interface ModelAbilities {
   vision?: boolean;
 }
 
-const AiModelAbilitiesSchema = z.object({
-  audio: z.boolean().optional(),
-  // files: z.boolean().optional(),
-  functionCall: z.boolean().optional(),
-  imageOutput: z.boolean().optional(),
-  reasoning: z.boolean().optional(),
-  search: z.boolean().optional(),
-  video: z.boolean().optional(),
-  vision: z.boolean().optional(),
-});
+const AiModelAbilitiesSchema = z
+  .object({
+    audio: z.boolean().optional(),
+    // files: z.boolean().optional(),
+    functionCall: z.boolean().optional(),
+    imageOutput: z.boolean().optional(),
+    reasoning: z.boolean().optional(),
+    search: z.boolean().optional(),
+    video: z.boolean().optional(),
+    vision: z.boolean().optional(),
+  })
+  .passthrough();
 
 // Language model configuration parameters
 export interface LLMParams {
@@ -395,12 +397,14 @@ export const DisabledParamTypeSchema = z.enum([
   'presence_penalty',
 ]);
 
-export const AiModelSettingsSchema = z.object({
-  disabledParams: z.array(DisabledParamTypeSchema).optional(),
-  extendParams: z.array(ExtendParamsTypeSchema).optional(),
-  searchImpl: ModelSearchImplementTypeSchema.optional(),
-  searchProvider: z.string().optional(),
-});
+export const AiModelSettingsSchema = z
+  .object({
+    disabledParams: z.array(z.string()).optional(),
+    extendParams: z.array(z.string()).optional(),
+    searchImpl: z.string().optional(),
+    searchProvider: z.string().optional(),
+  })
+  .passthrough();
 
 export interface AIChatModelCard extends AIBaseModelCard {
   abilities?: ModelAbilities;
@@ -489,9 +493,17 @@ export interface LobeDefaultAiModelListItem extends AiFullModelCard {
 // create
 export const CreateAiModelSchema = z.object({
   abilities: AiModelAbilitiesSchema.optional(),
+  config: z
+    .object({
+      deploymentName: z.string().optional(),
+    })
+    .optional(),
   contextWindowTokens: z.number().optional(),
   displayName: z.string().optional(),
   id: z.string(),
+  // Closed-product credit pricing (optional on create). Loose object so
+  // existing unit-based Pricing shapes can also be stored.
+  pricing: z.record(z.string(), z.any()).optional(),
   providerId: z.string(),
   releasedAt: z.string().optional(),
   settings: AiModelSettingsSchema.optional(),
@@ -526,6 +538,9 @@ export interface AiProviderModelListItem {
 }
 
 // Update
+// pricing is stored as free-form JSON on ai_models.pricing (may include
+// model-bank `units` plus closed-product credit fields). Keep validation loose
+// so admin/credit edits never fail on existing upstream pricing shapes.
 export const UpdateAiModelSchema = z.object({
   abilities: AiModelAbilitiesSchema.optional(),
   config: z
@@ -535,13 +550,10 @@ export const UpdateAiModelSchema = z.object({
     .optional(),
   contextWindowTokens: z.number().nullish(),
   displayName: z.string().nullish(),
-  // Closed product: per-request credit cost (stored under pricing.creditsPerRequest)
-  pricing: z
-    .object({
-      creditsPerRequest: z.number().min(0).optional(),
-    })
-    .passthrough()
-    .optional(),
+  // free-form JSON on ai_models.parameters (e.g. per-model video resolution
+  // config: { resolution: { default, enum } }). Loose like pricing.
+  parameters: z.record(z.string(), z.any()).optional(),
+  pricing: z.record(z.string(), z.any()).optional(),
   settings: AiModelSettingsSchema.optional(),
   type: AiModelTypeSchema.optional(),
 });

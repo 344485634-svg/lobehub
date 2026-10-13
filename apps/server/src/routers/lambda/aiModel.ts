@@ -112,7 +112,9 @@ export const aiModelRouter = router({
       if (existingModel) throwDuplicateAiModelError(input.id);
 
       try {
-        const data = await ctx.aiModelModel.create(input);
+        // settings arrives as a zod passthrough object; the DB layer accepts it
+        // as unknown, but the inferred types don't line up structurally.
+        const data = await ctx.aiModelModel.create(input as any);
 
         return data?.id;
       } catch (error) {
@@ -172,7 +174,7 @@ export const aiModelRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      return ctx.aiModelModel.update(input.id, input.providerId, input.value);
+      return ctx.aiModelModel.update(input.id, input.providerId, input.value as any);
     }),
 
   updateAiModelOrder: aiModelProcedure
