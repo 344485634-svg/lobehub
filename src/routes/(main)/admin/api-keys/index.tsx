@@ -10,6 +10,8 @@ import { lambdaClient } from '@/libs/trpc/client';
 
 const AdminProvidersPage: FC = () => {
   const { message } = App.useApp();
+  // Fallback rate tiers when a model has no per-model resolution config.
+  const DEFAULT_VIDEO_RATES = ['480p', '720p', '1080p'];
   const [editId, setEditId] = useState<string | null>(null);
   const [modelsProviderId, setModelsProviderId] = useState<string | null>(null);
   const [pricingEdit, setPricingEdit] = useState<any | null>(null);
@@ -17,6 +19,12 @@ const AdminProvidersPage: FC = () => {
   const [pricingSaving, setPricingSaving] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [form] = Form.useForm();
+
+  // Rate inputs follow the ticked resolutions; fall back to the three
+  // generic tiers when the model has no per-model resolution config.
+  const watchedResolutions = Form.useWatch('supportedResolutions', pricingForm) as
+    string[] | undefined;
+  const rateKeys = watchedResolutions?.length ? watchedResolutions : DEFAULT_VIDEO_RATES;
 
   const { data, isLoading, mutate } = useSWR('admin-providers', () =>
     lambdaClient.admin.listProviders.query(),
@@ -177,15 +185,24 @@ const AdminProvidersPage: FC = () => {
     const p = row?.pricing || {};
     const byRes = p.videoCreditsPerSecondByResolution || {};
     const schemaResolutions: string[] = row?.parameters?.resolution?.enum ?? [];
+    const rateResolutions = schemaResolutions.length ? schemaResolutions : DEFAULT_VIDEO_RATES;
+
+    // Surface stored rates per configured resolution; legacy tables may use
+    // bare numeric keys ('480' instead of '480p').
+    const videoRateByRes: Record<string, number | undefined> = {};
+    for (const res of rateResolutions) {
+      const lower = res.toLowerCase();
+      const bare = lower.replace(/p$/, '');
+      videoRateByRes[res] = byRes[lower] ?? byRes[res] ?? byRes[bare] ?? undefined;
+    }
+
     pricingForm.setFieldsValue({
       creditsPerMillionInputTokens: p.creditsPerMillionInputTokens ?? 0,
       creditsPerMillionOutputTokens: p.creditsPerMillionOutputTokens ?? 0,
       creditsPerRequest: p.creditsPerRequest ?? 0,
       supportedResolutions: schemaResolutions,
       videoCreditsPerSecond: p.videoCreditsPerSecond ?? 0,
-      videoRate480p: byRes['480p'] ?? byRes['480'] ?? undefined,
-      videoRate720p: byRes['720p'] ?? byRes['720'] ?? undefined,
-      videoRate1080p: byRes['1080p'] ?? byRes['1080'] ?? undefined,
+      videoRateByRes,
     });
   };
 
@@ -208,13 +225,14 @@ const AdminProvidersPage: FC = () => {
       } else if (type === 'image') {
         payload.creditsPerRequest = Number(values.creditsPerRequest) || 0;
       } else if (type === 'video') {
+        // Rates keyed by the ticked resolutions (lowercased to match the
+        // billing lookup's normalizeVideoResolution), e.g. 768p / 2k.
         const byRes: Record<string, number> = {};
-        if (values.videoRate480p != null && values.videoRate480p !== '')
-          byRes['480p'] = Number(values.videoRate480p) || 0;
-        if (values.videoRate720p != null && values.videoRate720p !== '')
-          byRes['720p'] = Number(values.videoRate720p) || 0;
-        if (values.videoRate1080p != null && values.videoRate1080p !== '')
-          byRes['1080p'] = Number(values.videoRate1080p) || 0;
+        const rates = (values.videoRateByRes || {}) as Record<string, unknown>;
+        for (const res of rateKeys) {
+          const v = rates[res];
+          if (v != null && v !== '') byRes[res.toLowerCase()] = Number(v) || 0;
+        }
         payload.videoCreditsPerSecondByResolution = byRes;
         payload.videoCreditsPerSecond = Number(values.videoCreditsPerSecond) || 0;
         // optional legacy
@@ -524,15 +542,11 @@ const AdminProvidersPage: FC = () => {
                   style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}
                 />
               </Form.Item>
-              <Form.Item label="480p 积分/秒" name="videoRate480p">
-                <InputNumber min={0} placeholder="可选" style={{ width: '100%' }} />
-              </Form.Item>
-              <Form.Item label="720p 积分/秒" name="videoRate720p">
-                <InputNumber min={0} placeholder="例如 10" style={{ width: '100%' }} />
-              </Form.Item>
-              <Form.Item label="1080p 积分/秒" name="videoRate1080p">
-                <InputNumber min={0} placeholder="可选" style={{ width: '100%' }} />
-              </Form.Item>
+              {rateKeys.map((res) => (
+                <Form.Item key={res} label={`${res} 积分/秒`} name={['videoRateByRes', res]}>
+                  <InputNumber min={0} placeholder="可选" style={{ width: '100%' }} />
+                </Form.Item>
+              ))}
               <Form.Item
                 extra="当分辨率未命中上表时使用的默认每秒积分"
                 label="默认积分/秒（兜底）"
