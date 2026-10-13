@@ -197,8 +197,17 @@ export async function createOpenAICompatibleVideo(
 ): Promise<CreateVideoResponse> {
   const { model, params } = payload;
   const requestModel = resolveMappedModelId(model, options);
-  const { prompt, imageUrl, imageUrls, endImageUrl, mediaUrl, size, duration, aspectRatio } =
-    params;
+  const {
+    prompt,
+    imageUrl,
+    imageUrls,
+    endImageUrl,
+    mediaUrl,
+    size,
+    duration,
+    aspectRatio,
+    resolution,
+  } = params;
 
   log('Creating video with OpenAI-compatible API - model: %s, params: %O', requestModel, params);
 
@@ -255,16 +264,10 @@ export async function createOpenAICompatibleVideo(
       seen.add(url);
       const media = await resolveMediaUrl(url, type);
       if (!media) return;
-      // 远程网关不接受 data: 时,仅在图片且为 data 时仍发送(兼容旧网关);
-      // 若是 video 且非 http, resolveMediaUrl 已返回 null。
-      if (type === 'image' && media.startsWith('data:') && !isPublicHttpUrl(url)) {
-        // api.liuma.ai 明确要求 HTTP(S),data URL 会被拒。本地图无法被远程拉时跳过并提示。
-        log(
-          'Skip local image reference for remote gateway (media_url must be HTTP(S)): %s',
-          url.slice(0, 80),
-        );
-        return;
-      }
+      // 本地/内网图片在这里已转为 base64 data: URL 兜底发送。此前曾因"部分网关
+      // 只收 HTTP(S)"而静默跳过,但那会让参考图无声丢失(用户完全无法感知)。
+      // 若网关拒绝 data:,任务会以明确的网关错误失败——比默默忽略参考图更好;
+      // 生产环境的对象存储应配置公网可达域名,使参考图走公网 URL。
       referenceContents.push({ media_url: media, name, type });
     };
 
@@ -275,11 +278,17 @@ export async function createOpenAICompatibleVideo(
     await pushRef(endImageUrl, '尾帧', 'image');
     await pushRef(mediaUrl, '动作', 'video');
 
-    if (referenceContents.length > 0) body['reference_contents'] = referenceContents;
+    if (referenceContents.length > 0) {
+      body['reference_contents'] = referenceContents;
+      // liuma 网关的 minimax-h3 等参考生视频模型要求显式声明参考模式,
+      // 否则网关会忽略 reference_contents(文档:mode=reference2video)。
+      body['mode'] = 'reference2video';
+    }
 
-    // 网关用 aspect_ratio(非 size)和 duration(数字,非 seconds 字符串)
+    // 网关用 aspect_ratio(非 size)、duration(数字,非 seconds 字符串)、resolution
     if (aspectRatio) body['aspect_ratio'] = aspectRatio;
     if (duration !== undefined && duration !== null) body['duration'] = duration;
+    if (resolution) body['resolution'] = resolution;
   }
 
   log('OpenAI-compatible video API request body: %O', body);
