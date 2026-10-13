@@ -99,6 +99,11 @@ const ModelConfigFooter = memo<ModelConfigFooterProps>(({ formRef, id }) => {
                 default: (supportedResolutions as string[])[0],
                 enum: supportedResolutions,
               };
+              // `prompt` is the only mandatory key in the video schema parser —
+              // gateway models start from empty parameters and need it seeded.
+              if (!parameters.prompt) {
+                parameters.prompt = { default: '' };
+              }
             } else {
               delete parameters.resolution;
             }

@@ -814,6 +814,13 @@ export const adminRouter = router({
           default: input.resolutions[0],
           enum: input.resolutions,
         };
+        // The video page's schema parser requires the `prompt` key (the only
+        // mandatory one in VideoModelParamsMetaSchema) — gateway models start
+        // from an empty parameters object, and without it the whole schema
+        // fails to parse and falls back to the generic resolutions.
+        if (!parameters.prompt) {
+          parameters.prompt = { default: '' };
+        }
       }
 
       await aiModelModel.update(input.modelId, input.providerId, { parameters } as any);
