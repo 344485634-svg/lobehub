@@ -2,10 +2,7 @@ import { randomBytes } from 'node:crypto';
 
 import { BRANDING_PROVIDER } from '@lobechat/business-const';
 import { isLobeHubModelAvailable } from '@lobechat/business-model-bank/model-config';
-import {
-  buildMappedBusinessModelFields,
-  resolveBusinessModelMapping,
-} from '@lobechat/business-model-runtime';
+import { resolveBusinessModelMapping } from '@lobechat/business-model-runtime';
 import { ChatErrorType, RequestTrigger } from '@lobechat/types';
 import { TRPCError } from '@trpc/server';
 import debug from 'debug';
@@ -16,9 +13,9 @@ import { z } from 'zod';
 import { getProviderContentPolicyErrorMessage } from '@/business/server/getProviderContentPolicyErrorMessage';
 import { withScopedPermission } from '@/business/server/trpc-middlewares/rbacPermission';
 import { wsCompatProcedure } from '@/business/server/trpc-middlewares/workspaceAuth';
-import { chargeAfterGenerate } from '@/business/server/video-generation/chargeAfterGenerate';
 import { chargeBeforeGenerate } from '@/business/server/video-generation/chargeBeforeGenerate';
 import { getVideoFreeQuota } from '@/business/server/video-generation/getVideoFreeQuota';
+import { refundPrechargedTaskOnce } from '@/business/server/video-generation/refundPrechargedTask';
 import { AsyncTaskModel } from '@/database/models/asyncTask';
 import { GenerationTopicModel } from '@/database/models/generationTopic';
 import { UserModel } from '@/database/models/user';
@@ -178,129 +175,6 @@ export const videoRouter = router({
         }
       }
 
-      // Convert stored keys / proxy URLs to full URLs the model gateway can fetch.
-      // Remote gateways (api.liuma.ai) require media_url to be valid HTTP(S).
-      // Always resolve through fileService so localhost proxy URLs become S3/public URLs
-      // when available (not only in development).
-      let generationParams = params;
-      {
-        const updates: Record<string, unknown> = {};
-
-        // True when a remote gateway can download this URL directly — public
-        // http(s), not localhost/intranet (mirrors model-runtime's isPublicHttpUrl).
-        const isGatewayFetchableUrl = (url: string): boolean => {
-          if (!/^https?:\/\//i.test(url)) return false;
-          try {
-            const host = new URL(url).hostname.toLowerCase();
-            return !(
-              host === 'localhost' ||
-              host === '127.0.0.1' ||
-              host === '0.0.0.0' ||
-              host === '::1' ||
-              host.endsWith('.local') ||
-              host.startsWith('10.') ||
-              host.startsWith('192.168.') ||
-              /^172\.(?:1[6-9]|2\d|3[01])\./.test(host)
-            );
-          } catch {
-            return false;
-          }
-        };
-
-        const resolvePublic = async (value: unknown): Promise<string | undefined> => {
-          if (typeof value !== 'string' || !value) return undefined;
-          if (value.startsWith('data:')) return undefined;
-          if (isGatewayFetchableUrl(value)) return value;
-          try {
-            const full = await fileService.getFullFileUrl(value);
-            return full || undefined;
-          } catch {
-            return undefined;
-          }
-        };
-
-        // Lazy: only hit the DB when a reference URL actually needs re-hosting.
-        let imageHost: Awaited<ReturnType<typeof loadImageHostPlainConfig>> | undefined;
-        let imageHostChecked = false;
-        const getImageHost = async () => {
-          if (!imageHostChecked) {
-            imageHostChecked = true;
-            imageHost = await loadImageHostPlainConfig(serverDB).catch(() => undefined);
-          }
-          return imageHost;
-        };
-
-        // When the resolved URL is still not gateway-fetchable (local S3/presigned
-        // URLs, /f/ proxy paths, inline data: URIs) re-host the image on the
-        // admin-configured public image host so reference2video gateways receive a
-        // valid public HTTP(S) URL. No-op when no image host is configured —
-        // model-runtime then falls back to base64 and the gateway rejects it with
-        // its own error, same as before.
-        const ensurePublicRefUrl = async (value: unknown): Promise<string | undefined> => {
-          const resolved = await resolvePublic(value);
-          if (resolved && isGatewayFetchableUrl(resolved)) return resolved;
-
-          const src = typeof value === 'string' && value.startsWith('data:') ? value : resolved;
-          if (!src || !(await getImageHost())) return resolved;
-
-          try {
-            let buffer: Buffer;
-            let mime: string | undefined;
-            if (src.startsWith('data:')) {
-              ({ buffer, mimeType: mime } = await fetchImageFromUrl(src));
-            } else {
-              // Our own storage object — read bytes directly instead of fetching
-              // over HTTP (ssrfSafeFetch would block the localhost S3 endpoint).
-              const key = await fileService.getKeyFromFullUrl(src);
-              if (key) {
-                buffer = Buffer.from(await fileService.getFileByteArray(key));
-                const meta = await fileService.getFileMetadata(key).catch(() => undefined);
-                if (meta?.contentType?.startsWith('image/')) mime = meta.contentType;
-              } else {
-                ({ buffer, mimeType: mime } = await fetchImageFromUrl(src));
-              }
-            }
-            const url = await uploadImageToImageHost(serverDB, { buffer, mime });
-            log('Re-hosted non-public reference image: %s', url);
-            return url;
-          } catch (error: any) {
-            throw new TRPCError({
-              code: 'INTERNAL_SERVER_ERROR',
-              message: error?.message || '参考图转存图床失败，请稍后重试',
-            });
-          }
-        };
-
-        if (typeof params.imageUrl === 'string' && params.imageUrl) {
-          const url = await ensurePublicRefUrl(configForDatabase.imageUrl ?? params.imageUrl);
-          if (url) updates.imageUrl = url;
-        }
-        if (typeof params.endImageUrl === 'string' && params.endImageUrl) {
-          const url = await ensurePublicRefUrl(configForDatabase.endImageUrl ?? params.endImageUrl);
-          if (url) updates.endImageUrl = url;
-        }
-        if (Array.isArray((params as any).imageUrls) && (params as any).imageUrls.length > 0) {
-          const src = ((configForDatabase as any).imageUrls ??
-            (params as any).imageUrls) as string[];
-          const urls = (
-            await Promise.all(src.map(async (v) => (await ensurePublicRefUrl(v)) || v))
-          ).filter(Boolean);
-          if (urls.length) updates.imageUrls = urls;
-        }
-        // mediaUrl is a video reference — image hosts don't accept videos, so just resolve it.
-        if (typeof (params as any).mediaUrl === 'string' && (params as any).mediaUrl) {
-          const url = await resolvePublic(
-            (configForDatabase as any).mediaUrl ?? (params as any).mediaUrl,
-          );
-          if (url) updates.mediaUrl = url;
-        }
-
-        if (Object.keys(updates).length > 0) {
-          generationParams = { ...params, ...updates };
-          log('Resolved media URLs for gateway: %O', updates);
-        }
-      }
-
       // Step 0: Pre-charge (atomic budget deduction to prevent concurrent abuse)
       const generationTopic = await generationTopicModel.findById(generationTopicId);
       if (!generationTopic) {
@@ -393,119 +267,208 @@ export const videoRouter = router({
         };
       });
 
-      log('Database transaction completed. Calling model runtime for video generation.');
+      log(
+        'Database transaction completed. Returning batch to the client; submitting in background.',
+      );
 
-      // Step 2: Call model runtime to submit video generation task
-      try {
-        const modelRuntime = await initModelRuntimeFromDB(serverDB, userId, provider, wsId);
-
-        const callbackBaseUrl = process.env.WEBHOOK_PROXY_URL || appEnv.APP_URL;
-        const callbackUrl = `${callbackBaseUrl}/api/webhooks/video/${provider}?token=${webhookToken}`;
-        log('Using callback URL: %s', callbackUrl);
-
-        const response = await modelRuntime.createVideo(
+      // Step 2 runs in after(): media-URL resolution re-hosts non-public
+      // reference images on the configured image host (a multi-second upload)
+      // and the gateway round-trip adds more. The mutation returns as soon as
+      // the DB records exist so the client can render the batch immediately;
+      // failures surface as task errors (with precharge refund) in the feed.
+      after(async () => {
+        let generationParams = params;
+        try {
+          // Resolve stored keys / proxy URLs to full URLs the model gateway can
+          // fetch. Remote gateways (api.liuma.ai) require media_url to be valid
+          // HTTP(S) — non-public references get re-hosted on the image host.
           {
-            callbackUrl,
-            model: resolvedModelId,
-            params: generationParams,
-          },
-          { metadata: { trigger: RequestTrigger.Video } },
-        );
+            const updates: Record<string, unknown> = {};
 
-        log('Video task submitted successfully, inferenceId: %s', response?.inferenceId);
+            // True when a remote gateway can download this URL directly — public
+            // http(s), not localhost/intranet (mirrors model-runtime's isPublicHttpUrl).
+            const isGatewayFetchableUrl = (url: string): boolean => {
+              if (!/^https?:\/\//i.test(url)) return false;
+              try {
+                const host = new URL(url).hostname.toLowerCase();
+                return !(
+                  host === 'localhost' ||
+                  host === '127.0.0.1' ||
+                  host === '0.0.0.0' ||
+                  host === '::1' ||
+                  host.endsWith('.local') ||
+                  host.startsWith('10.') ||
+                  host.startsWith('192.168.') ||
+                  /^172\.(?:1[6-9]|2\d|3[01])\./.test(host)
+                );
+              } catch {
+                return false;
+              }
+            };
 
-        // Determine async strategy based on response:
-        // - useWebhook: provider registered a callback URL, wait for webhook
-        // - otherwise: use background polling to check status
-        const useWebhook = response && 'useWebhook' in response && response.useWebhook;
+            const resolvePublic = async (value: unknown): Promise<string | undefined> => {
+              if (typeof value !== 'string' || !value) return undefined;
+              if (value.startsWith('data:')) return undefined;
+              if (isGatewayFetchableUrl(value)) return value;
+              try {
+                const full = await fileService.getFullFileUrl(value);
+                return full || undefined;
+              } catch {
+                return undefined;
+              }
+            };
 
-        if (useWebhook) {
-          // Webhook-based provider (e.g. Volcengine): wait for callback
-          log('Webhook-based provider detected, waiting for callback');
+            // Lazy: only hit the DB when a reference URL actually needs re-hosting.
+            let imageHost: Awaited<ReturnType<typeof loadImageHostPlainConfig>> | undefined;
+            let imageHostChecked = false;
+            const getImageHost = async () => {
+              if (!imageHostChecked) {
+                imageHostChecked = true;
+                imageHost = await loadImageHostPlainConfig(serverDB).catch(() => undefined);
+              }
+              return imageHost;
+            };
+
+            // When the resolved URL is still not gateway-fetchable (local
+            // S3/presigned URLs, /f/ proxy paths, inline data: URIs) re-host the
+            // image on the admin-configured public image host. No-op when no
+            // image host is configured — model-runtime then falls back to base64
+            // and the gateway rejects it with its own error, same as before.
+            const ensurePublicRefUrl = async (value: unknown): Promise<string | undefined> => {
+              const resolved = await resolvePublic(value);
+              if (resolved && isGatewayFetchableUrl(resolved)) return resolved;
+
+              const src = typeof value === 'string' && value.startsWith('data:') ? value : resolved;
+              if (!src || !(await getImageHost())) return resolved;
+
+              let buffer: Buffer;
+              let mime: string | undefined;
+              if (src.startsWith('data:')) {
+                ({ buffer, mimeType: mime } = await fetchImageFromUrl(src));
+              } else {
+                // Our own storage object — read bytes directly instead of
+                // fetching over HTTP (ssrfSafeFetch would block the localhost
+                // S3 endpoint).
+                const key = await fileService.getKeyFromFullUrl(src);
+                if (key) {
+                  buffer = Buffer.from(await fileService.getFileByteArray(key));
+                  const meta = await fileService.getFileMetadata(key).catch(() => undefined);
+                  if (meta?.contentType?.startsWith('image/')) mime = meta.contentType;
+                } else {
+                  ({ buffer, mimeType: mime } = await fetchImageFromUrl(src));
+                }
+              }
+              const url = await uploadImageToImageHost(serverDB, { buffer, mime });
+              log('Re-hosted non-public reference image: %s', url);
+              return url;
+            };
+
+            if (typeof params.imageUrl === 'string' && params.imageUrl) {
+              const url = await ensurePublicRefUrl(configForDatabase.imageUrl ?? params.imageUrl);
+              if (url) updates.imageUrl = url;
+            }
+            if (typeof params.endImageUrl === 'string' && params.endImageUrl) {
+              const url = await ensurePublicRefUrl(
+                configForDatabase.endImageUrl ?? params.endImageUrl,
+              );
+              if (url) updates.endImageUrl = url;
+            }
+            if (Array.isArray((params as any).imageUrls) && (params as any).imageUrls.length > 0) {
+              const src = ((configForDatabase as any).imageUrls ??
+                (params as any).imageUrls) as string[];
+              const urls = (
+                await Promise.all(src.map(async (v) => (await ensurePublicRefUrl(v)) || v))
+              ).filter(Boolean);
+              if (urls.length) updates.imageUrls = urls;
+            }
+            // mediaUrl is a video reference — image hosts don't accept videos, so just resolve it.
+            if (typeof (params as any).mediaUrl === 'string' && (params as any).mediaUrl) {
+              const url = await resolvePublic(
+                (configForDatabase as any).mediaUrl ?? (params as any).mediaUrl,
+              );
+              if (url) updates.mediaUrl = url;
+            }
+
+            if (Object.keys(updates).length > 0) {
+              generationParams = { ...params, ...updates };
+              log('Resolved media URLs for gateway: %O', updates);
+            }
+          }
+
+          const modelRuntime = await initModelRuntimeFromDB(serverDB, userId, provider, wsId);
+
+          const callbackBaseUrl = process.env.WEBHOOK_PROXY_URL || appEnv.APP_URL;
+          const callbackUrl = `${callbackBaseUrl}/api/webhooks/video/${provider}?token=${webhookToken}`;
+          log('Using callback URL: %s', callbackUrl);
+
+          const response = await modelRuntime.createVideo(
+            {
+              callbackUrl,
+              model: resolvedModelId,
+              params: generationParams,
+            },
+            { metadata: { trigger: RequestTrigger.Video } },
+          );
+
+          log('Video task submitted successfully, inferenceId: %s', response?.inferenceId);
+
+          // Determine async strategy based on response:
+          // - useWebhook: provider registered a callback URL, wait for webhook
+          // - otherwise: poll the gateway inline (we are already in after())
+          const useWebhook = response && 'useWebhook' in response && response.useWebhook;
 
           await asyncTaskModel.update(asyncTaskId, {
             inferenceId: response?.inferenceId,
             status: AsyncTaskStatus.Processing,
           });
-        } else if (response) {
-          // Polling-based provider (e.g. OpenAI Sora): use background polling
-          log(
-            'Polling-based provider detected (inferenceId only), using after() for background polling',
-          );
 
-          await asyncTaskModel.update(asyncTaskId, {
-            inferenceId: response.inferenceId,
-            status: AsyncTaskStatus.Processing,
-          });
+          if (!useWebhook && response?.inferenceId) {
+            log('Polling-based provider detected, polling inline for task: %s', asyncTaskId);
+            const db = await getServerDB();
 
-          after(async () => {
-            log('After() hook executing background video polling for task: %s', asyncTaskId);
-
-            try {
-              const db = await getServerDB();
-
-              await processBackgroundVideoPolling(db, {
-                asyncTaskCreatedAt,
-                asyncTaskId,
-                generationBatchId: createdBatch.id,
-                generationId: createdGeneration.id,
-                generationTopicId,
-                inferenceId: response.inferenceId,
-                model,
-                prechargeResult,
-                provider,
-                userId,
-                workspaceId: wsId,
-              });
-
-              log('Background video polling completed for task: %s', asyncTaskId);
-            } catch (error) {
-              console.error('[video] Background polling failed:', error);
-            }
-          });
-
-          log('After() hook registered for background video polling: %s', asyncTaskId);
-        }
-      } catch (e) {
-        console.error('Failed to submit video generation task:', e);
-
-        const providerContentPolicyMessage = await getProviderContentPolicyErrorMessage({
-          error: e,
-          provider,
-          trigger: RequestTrigger.Video,
-          userId,
-        });
-        await asyncTaskModel.update(asyncTaskId, {
-          error: createVideoTaskSubmitError(e, providerContentPolicyMessage),
-          status: AsyncTaskStatus.Error,
-        });
-
-        if (prechargeResult) {
-          try {
-            await chargeAfterGenerate({
-              isError: true,
-              metadata: {
-                asyncTaskId,
-                generationBatchId: createdBatch.id,
-                topicId: generationTopicId,
-                ...buildMappedBusinessModelFields({
-                  provider,
-                  requestedModelId: resolvedModelId === model ? undefined : model,
-                  resolvedModelId,
-                }),
-              },
-              model: resolvedModelId,
+            await processBackgroundVideoPolling(db, {
+              asyncTaskCreatedAt,
+              asyncTaskId,
+              generationBatchId: createdBatch.id,
+              generationId: createdGeneration.id,
+              generationTopicId,
+              inferenceId: response.inferenceId,
+              model,
               prechargeResult,
               provider,
-              serverDB,
               userId,
               workspaceId: wsId,
             });
-          } catch (chargeError) {
-            console.error('[video] chargeAfterGenerate failed:', chargeError);
+
+            log('Background video polling completed for task: %s', asyncTaskId);
+          }
+        } catch (e) {
+          console.error('Failed to submit video generation task:', e);
+
+          const providerContentPolicyMessage = await getProviderContentPolicyErrorMessage({
+            error: e,
+            provider,
+            trigger: RequestTrigger.Video,
+            userId,
+          });
+          await asyncTaskModel.update(asyncTaskId, {
+            error: createVideoTaskSubmitError(e, providerContentPolicyMessage),
+            status: AsyncTaskStatus.Error,
+          });
+
+          if (prechargeResult) {
+            try {
+              const refunded = await refundPrechargedTaskOnce(serverDB, userId, {
+                id: asyncTaskId,
+                metadata: { precharge: prechargeResult },
+              });
+              if (refunded) log('Precharge refunded after submit failure: %s', asyncTaskId);
+            } catch (chargeError) {
+              console.error('[video] precharge refund failed:', chargeError);
+            }
           }
         }
-      }
+      });
 
       log('Video creation process completed: %O', {
         batchId: createdBatch.id,
