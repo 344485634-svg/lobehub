@@ -148,5 +148,27 @@ async function uploadToScdn(image: { buffer: Buffer; mime?: string }): Promise<s
   if (!url) {
     throw new Error(`参考图上传失败：图床未返回 URL（${text.slice(0, 200)}）`);
   }
+  return await canonicalizeScdnUrl(url);
+}
+
+/**
+ * scdn 的上传响应可能返回 CDN 后端直链（esaimg.cdn1.vip / edgeoneimg.cdn1.vip 等）。
+ * 有模型网关的下载器拉取这类后端域名失败（远程图片下载或CDN缓存失败），而主域名
+ * img.scdn.io 以相同路径提供同一文件、全球可达性最好——校验主域名能取到后再替换。
+ */
+async function canonicalizeScdnUrl(url: string): Promise<string> {
+  try {
+    const u = new URL(url);
+    if (u.protocol === 'https:' && u.hostname !== 'img.scdn.io' && u.pathname.startsWith('/i/')) {
+      const canonical = `https://img.scdn.io${u.pathname}`;
+      const head = await fetch(canonical, {
+        method: 'HEAD',
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (head.ok) return canonical;
+    }
+  } catch {
+    /* keep the original URL on any verification failure */
+  }
   return url;
 }
