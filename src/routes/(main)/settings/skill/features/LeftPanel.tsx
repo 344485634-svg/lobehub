@@ -12,6 +12,8 @@ import { createSkillStoreModal } from '@/features/SkillStore';
 import { openImportFromGithubModal } from '@/features/SkillStore/SkillList/ImportFromGithubModal';
 import { openImportFromUrlModal } from '@/features/SkillStore/SkillList/ImportFromUrlModal';
 import { openUploadSkillModal } from '@/features/SkillStore/SkillList/UploadSkillModal';
+import { useUserStore } from '@/store/user';
+import { authSelectors } from '@/store/user/selectors';
 
 import { type ToolDetailType } from './SkillDetail';
 import SkillList, { type SkillViewMode } from './SkillList';
@@ -56,6 +58,8 @@ const LeftPanel = memo<LeftPanelProps>(
   ({ onDeleteSelected, onSelect, selectedIdentifier, viewMode }) => {
     const { t } = useTranslation('setting');
     const [showAddConnector, setShowAddConnector] = useState(false);
+    // 商店入口仅对管理员保留(指向外部市场,需鉴权);普通用户隐藏
+    const isAdmin = useUserStore(authSelectors.isAdmin);
 
     const handleOpenStore = useCallback(() => {
       createSkillStoreModal();
@@ -135,7 +139,9 @@ const LeftPanel = memo<LeftPanelProps>(
                   <Button icon={Grid2x2Plus} size="small" />
                 </DropdownMenu>
               )}
-              <Button icon={<Icon icon={Store} />} size="small" onClick={handleOpenStore} />
+              {isAdmin && (
+                <Button icon={<Icon icon={Store} />} size="small" onClick={handleOpenStore} />
+              )}
             </div>
           </div>
 

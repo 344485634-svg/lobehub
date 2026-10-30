@@ -38,7 +38,7 @@ export interface LocalSystemToolOutput {
  * interface just requires them, so we fail loudly if one is ever reached.
  */
 const unsupported = (method: string) => (): Promise<never> =>
-  Promise.reject(new Error(`${method} is not supported by the ChatLM CLI`));
+  Promise.reject(new Error(`${method} is not supported by the ChatX CLI`));
 
 const DEFAULT_FILE_SEARCH_LIMIT = 100;
 

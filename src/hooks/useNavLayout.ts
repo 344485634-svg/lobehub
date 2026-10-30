@@ -54,12 +54,13 @@ export const useNavLayout = (): NavLayout => {
           title: t('tab.home'),
           url: '/',
         },
-        {
-          icon: getRouteById('tasks')!.icon,
-          key: SidebarTabKey.Tasks,
-          title: t('tab.tasks'),
-          url: '/tasks',
-        },
+        // 商业化：隐藏全局任务入口（Kanban/模板依赖 QStash & 市场，非主线）
+        // {
+        //   icon: getRouteById('tasks')!.icon,
+        //   key: SidebarTabKey.Tasks,
+        //   title: t('tab.tasks'),
+        //   url: '/tasks',
+        // },
         {
           icon: getRouteById('page')!.icon,
           key: SidebarTabKey.Pages,
@@ -92,13 +93,14 @@ export const useNavLayout = (): NavLayout => {
           title: t('tab.resource'),
           url: '/resource',
         },
-        {
-          hidden: !!activeWorkspaceSlug,
-          icon: getRouteById('memory')!.icon,
-          key: SidebarTabKey.Memory,
-          title: t('tab.memory'),
-          url: '/memory',
-        },
+        // 商业化默认隐藏记忆：依赖 embedding + QStash，且与积分产品主线无关
+        // {
+        //   hidden: !!activeWorkspaceSlug,
+        //   icon: getRouteById('memory')!.icon,
+        //   key: SidebarTabKey.Memory,
+        //   title: t('tab.memory'),
+        //   url: '/memory',
+        // },
       ] as NavItem[],
     [t, showMarket, activeWorkspaceSlug],
   );

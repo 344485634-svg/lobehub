@@ -4183,6 +4183,62 @@ const qwenImageModels: AIImageModelCard[] = [
 const qwenVideoModels: AIVideoModelCard[] = [
   {
     description:
+      '万相3.0 全能参考视频生成模型(All-in-One):统一支持文生视频、图生视频(首帧/首尾帧)与参考生视频(图/视频/音频/文件),最长 30 秒,输出 30fps,自适应长宽比。',
+    displayName: 'Wan3.0 Video',
+    enabled: true,
+    id: 'wan3.0-video',
+    parameters: {
+      aspectRatio: {
+        default: 'adaptive',
+        enum: ['adaptive', '21:9', '16:9', '4:3', '1:1', '3:4', '9:16'],
+      },
+      duration: { default: 5, max: 30, min: 2 },
+      imageUrls: { default: [] },
+      prompt: { default: '' },
+      promptExtend: { default: true },
+      resolution: {
+        default: '1080P',
+        enum: ['480P', '720P', '1080P'],
+      },
+      seed: { default: null },
+      watermark: { default: false },
+    },
+    pricing: {
+      currency: 'CNY',
+      units: [{ name: 'videoGeneration', rate: 1, strategy: 'fixed', unit: 'second' }],
+    },
+    type: 'video',
+  },
+  {
+    description:
+      '万相3.0 高速版(Prime):能力对齐标准版,端到端速度显著提升,适合对时延敏感的批量生成场景。',
+    displayName: 'Wan3.0 Video Prime',
+    enabled: true,
+    id: 'wan3.0-video-prime',
+    parameters: {
+      aspectRatio: {
+        default: 'adaptive',
+        enum: ['adaptive', '21:9', '16:9', '4:3', '1:1', '3:4', '9:16'],
+      },
+      duration: { default: 5, max: 30, min: 2 },
+      imageUrls: { default: [] },
+      prompt: { default: '' },
+      promptExtend: { default: true },
+      resolution: {
+        default: '1080P',
+        enum: ['480P', '720P', '1080P'],
+      },
+      seed: { default: null },
+      watermark: { default: false },
+    },
+    pricing: {
+      currency: 'CNY',
+      units: [{ name: 'videoGeneration', rate: 1, strategy: 'fixed', unit: 'second' }],
+    },
+    type: 'video',
+  },
+  {
+    description:
       'HappyHorse-1.0-I2V supports text-to-video generation, delivering highly faithful dynamic visuals. It can accurately understand textual semantics and produce high-quality videos that are smooth, natural, and rich in detail.',
     displayName: 'HappyHorse-1.0-I2V',
     enabled: true,

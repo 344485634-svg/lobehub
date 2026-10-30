@@ -5,7 +5,7 @@ import { isDesktop } from '@lobechat/const';
 import { useAnalytics } from '@lobehub/analytics/react';
 import { type MenuProps } from '@lobehub/ui';
 import { ActionIcon, DropdownMenu, Flexbox, Icon } from '@lobehub/ui';
-import { DiscordIcon, GithubIcon } from '@lobehub/ui/icons';
+import { GithubIcon } from '@lobehub/ui/icons';
 import {
   Book,
   CircleHelp,
@@ -351,15 +351,6 @@ const Footer = memo(() => {
         key: 'feedback',
         label: t('userPanel.feedback'),
         onClick: handleOpenFeedbackModal,
-      },
-      {
-        icon: <Icon icon={DiscordIcon} />,
-        key: 'discord',
-        label: (
-          <a href={SOCIAL_URL.discord} rel="noopener noreferrer" target="_blank">
-            {t('userPanel.discord')}
-          </a>
-        ),
       },
       {
         type: 'divider',

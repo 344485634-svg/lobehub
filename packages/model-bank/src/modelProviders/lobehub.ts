@@ -3,11 +3,11 @@ import type { ModelProviderCard } from '@/types/llm';
 const LobeHub: ModelProviderCard = {
   chatModels: [],
   description:
-    'ChatLM uses official APIs to access AI models and measures usage with Credits tied to model tokens.',
+    'ChatX uses official APIs to access AI models and measures usage with Credits tied to model tokens.',
   enabled: true,
   id: 'lobehub',
   modelsUrl: 'https://lobehub.com/zh/docs/usage/subscription/model-pricing',
-  name: 'ChatLM',
+  name: 'ChatX',
   settings: {
     modelEditable: false,
     showAddNewModel: false,

@@ -55,8 +55,13 @@ import DesktopAdminLayout from '@/routes/(main)/admin/_layout';
 import AdminConnectorPage from '@/routes/(main)/admin/connector';
 import AdminCredsPage from '@/routes/(main)/admin/creds';
 import AdminEmailPage from '@/routes/(main)/admin/email';
+import AdminLegalPage from '@/routes/(main)/admin/legal';
+import AdminChangelogPage from '@/routes/(main)/admin/changelog';
 import AdminMemoryPage from '@/routes/(main)/admin/memory';
+import AdminNotificationPage from '@/routes/(main)/admin/notification';
 import AdminPaymentPage from '@/routes/(main)/admin/payment';
+import AdminCouponsPage from '@/routes/(main)/admin/coupons';
+import AdminReferralPage from '@/routes/(main)/admin/referral';
 import AdminPlansPage from '@/routes/(main)/admin/plans';
 import AdminPlanEditPage from '@/routes/(main)/admin/plans/[id]/edit';
 import AdminPlanCreatePage from '@/routes/(main)/admin/plans/create';
@@ -575,6 +580,26 @@ export const sharedMainAreaChildren: RouteObject[] = [
         element: <AdminPaymentPage />,
         path: 'payment',
       },
+        {
+          element: <AdminCouponsPage />,
+          path: 'coupons',
+        },
+        {
+          element: <AdminReferralPage />,
+          path: 'referral',
+        },
+        {
+          element: <AdminNotificationPage />,
+          path: 'notification',
+        },
+        {
+          element: <AdminLegalPage />,
+          path: 'legal',
+        },
+        {
+          element: <AdminChangelogPage />,
+          path: 'changelog',
+        },
       {
         element: redirectElement('/admin/provider'),
         path: 'api-keys',

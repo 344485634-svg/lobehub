@@ -2600,7 +2600,7 @@ export class AgentRuntimeService {
       toolExecutionService: this.toolExecutionService,
       topicId: metadata?.topicId,
       tracingContextEngine,
-      userId: metadata?.userId,
+      userId: metadata?.userId || this.userId,
       workspaceId: this.workspaceId,
     };
 

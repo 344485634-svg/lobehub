@@ -335,7 +335,7 @@ export class AgentSliceActionImpl {
           // requested by the home input, a side-panel copilot, or another
           // open tab — must NOT hijack `activeAgentId` away from the routed
           // agent, which would otherwise flash the conversation header/welcome
-          // back to the inbox ("ChatLM") agent.
+          // back to the inbox ("ChatX") agent.
           if (!this.#get().activeAgentId) {
             this.#set({ activeAgentId: data.id }, false, 'fetchAgentConfig');
           }

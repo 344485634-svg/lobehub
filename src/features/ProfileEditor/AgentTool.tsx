@@ -22,7 +22,6 @@ import MarketAgentSkillPopoverContent from '@/features/ChatInput/ActionBar/Tools
 import MarketSkillIcon from '@/features/ChatInput/ActionBar/Tools/MarketSkillIcon';
 import ToolItem from '@/features/ChatInput/ActionBar/Tools/ToolItem';
 import ToolItemDetailPopover from '@/features/ChatInput/ActionBar/Tools/ToolItemDetailPopover';
-import { createSkillStoreModal } from '@/features/SkillStore';
 import { USER_HIDDEN_BUILTIN_SKILLS } from '@/helpers/skillFilters';
 import { useCheckPluginsIsInstalled } from '@/hooks/useCheckPluginsIsInstalled';
 import { useFetchInstalledPlugins } from '@/hooks/useFetchInstalledPlugins';
@@ -223,6 +222,7 @@ const AgentTool = memo<AgentToolProps>(
 
     // Filter out Composio tools and skills from builtinList (they are displayed separately)
     // Optionally filter out tools with availableInWeb: false based on config (e.g., LocalSystem is desktop-only)
+    // Also hide skill-store / market activators for closed-product branding.
     const filteredBuiltinList = useMemo(() => {
       // Cast to LobeToolMetaWithAvailability for type safety when filterAvailableInWeb is used
       type ListType = typeof builtinList;
@@ -242,6 +242,9 @@ const AgentTool = memo<AgentToolProps>(
 
       // Filter out skills (they are shown separately)
       list = list.filter((item) => !allSkillIdentifiers.has(item.identifier));
+
+      // Closed product: hide LobeHub market / skill-store related builtins
+      list = list.filter((item) => !USER_HIDDEN_BUILTIN_SKILLS.has(item.identifier));
 
       return list;
     }, [
@@ -631,44 +634,33 @@ const AgentTool = memo<AgentToolProps>(
       [userAgentSkillItems, customPluginItems, customConnectorItems],
     );
 
-    // All tab items (marketplace tab)
+    // All tab items — commercial product:
+    // only basic builtins + admin/platform skills. No LobeHub market / community / skill store.
     const allTabItems: ItemType[] = useMemo(
       () => [
-        // LobeHub group
         ...(builtinItems.length > 0
           ? [
               {
                 children: builtinItems,
-                key: 'lobehub',
-                label: t('skillStore.tabs.lobehub'),
+                key: 'basic',
+                label: t('tools.builtins.group', { defaultValue: '基础技能' }),
                 type: 'group' as const,
               },
             ]
           : []),
-        // Community group (Market Agent Skills + community plugins)
-        ...(communityGroupChildren.length > 0
+        // Admin-uploaded / platform skills (userAgentSkills from admin)
+        ...(userAgentSkillItems.length > 0
           ? [
               {
-                children: communityGroupChildren,
-                key: 'community',
-                label: t('skillStore.tabs.community'),
-                type: 'group' as const,
-              },
-            ]
-          : []),
-        // Custom group (User Agent Skills + custom plugins)
-        ...(customGroupChildren.length > 0
-          ? [
-              {
-                children: customGroupChildren,
-                key: 'custom',
-                label: t('skillStore.tabs.custom'),
+                children: userAgentSkillItems,
+                key: 'platform',
+                label: t('tools.platform.group', { defaultValue: '平台技能' }),
                 type: 'group' as const,
               },
             ]
           : []),
       ],
-      [builtinItems, communityGroupChildren, customGroupChildren, t],
+      [builtinItems, userAgentSkillItems, t],
     );
 
     const button = (
@@ -807,10 +799,6 @@ const AgentTool = memo<AgentToolProps>(
                 <PopoverContent
                   items={allTabItems}
                   onClose={() => setDropdownOpen(false)}
-                  onOpenStore={() => {
-                    setDropdownOpen(false);
-                    createSkillStoreModal();
-                  }}
                 />
               )}
               positionerProps={{

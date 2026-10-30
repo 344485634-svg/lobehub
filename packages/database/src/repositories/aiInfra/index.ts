@@ -330,44 +330,13 @@ export class AiInfraRepos {
     }
 
     // Closed product: further restrict models by current user's subscription allowlist.
-    // Admin users keep full enabled set for management convenience.
-    try {
-      const { eq: eq2 } = await import('drizzle-orm');
-      const { users: usersTable } = await import('../../schemas/user');
-      const userRow = await this.db
-        .select({ role: usersTable.role })
-        .from(usersTable)
-        .where(eq2(usersTable.id, this.userId))
-        .limit(1);
-      const role = userRow[0]?.role;
-      if (role !== 'admin') {
-        const { SubscriptionModel } = await import('../../models/subscription');
-        const { PlanModel } = await import('../../models/plan');
-        const sub = await new SubscriptionModel(this.db, this.userId).getCurrentSubscription();
-
-        if (sub) {
-          // Active subscription: only models on the plan allowlist
-          const plan = await new PlanModel(this.db, this.userId).findById(sub.planId);
-          const list =
-            (plan?.allowedModels as Array<{ modelId: string; providerId: string }>) || [];
-          // If plan configured an allowlist, apply it; empty allowlist means none
-          if (list.length > 0) {
-            const allow = new Set(list.map((m) => `${m.providerId}::${m.modelId}`));
-            allModels = allModels.filter((m) => allow.has(`${m.providerId}::${m.id}`));
-          }
-        }
-        // Free / unsubscribed users: keep ALL admin-enabled models visible so they can
-        // preview and switch in the model picker. Usage is gated at send time when
-        // creditsPerRequest > 0 (prompt to subscribe).
-
-        const providerIdsWithModels = new Set(allModels.map((m) => m.providerId));
-        enabledAiProviders = enabledAiProviders.filter((p) => providerIdsWithModels.has(p.id));
-        for (const pid of Object.keys(runtimeConfig)) {
-          if (!providerIdsWithModels.has(pid)) delete runtimeConfig[pid];
-        }
-      }
-    } catch (err) {
-      console.warn('[AiInfra] plan model allowlist filter failed:', err);
+    // Closed product: admin-enabled models are visible to ALL users (subscribed or not).
+    // Plan allowlist no longer restricts which models a user can see — access control
+    // (credits/subscription) is enforced at send time, not at model-list time.
+    const providerIdsWithModels = new Set(allModels.map((m) => m.providerId));
+    enabledAiProviders = enabledAiProviders.filter((p) => providerIdsWithModels.has(p.id));
+    for (const pid of Object.keys(runtimeConfig)) {
+      if (!providerIdsWithModels.has(pid)) delete runtimeConfig[pid];
     }
 
     // Merge env-level provider defaults (without reintroducing user personal keys)

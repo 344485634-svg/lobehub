@@ -18,7 +18,7 @@ const AdminPlanCreatePage: FC = () => {
   const [benefitInput, setBenefitInput] = useState('');
   const [benefits, setBenefits] = useState<string[]>([]);
   const [allowedModels, setAllowedModels] = useState<
-    Array<{ displayName?: string; modelId: string; providerId: string }>
+    Array<{ discountRate?: number; displayName?: string; modelId: string; providerId: string }>
   >([]);
 
   const { data: providers } = useSWR('admin-providers-for-plan', () =>
@@ -197,33 +197,86 @@ const AdminPlanCreatePage: FC = () => {
             </Flexbox>
           </Card>
 
-          <Card size="small" style={{ marginBottom: 24 }} title="可用模型" type="inner">
+          <Card size="small" style={{ marginBottom: 24 }} title="可用模型与折扣" type="inner">
             <div
               style={{ color: 'var(--lobe-color-text-secondary)', fontSize: 12, marginBottom: 8 }}
             >
-              仅管理员已启用的模型可选。用户前端只能看到并使用此处配置的模型。
+              仅管理员已启用的模型可选。可为每个模型单独配置积分折扣（留空=不打折）
             </div>
             <Select
               mode="multiple"
               options={modelOptions}
               placeholder="选择可用模型"
-              style={{ width: '100%' }}
+              style={{ marginBottom: 12, width: '100%' }}
               value={allowedModels.map((m) => `${m.providerId}::${m.modelId}`)}
               onChange={(vals) => {
-                const selected = (vals as string[]).map((v) => {
-                  const [providerId, modelId] = v.split('::');
-                  const found = (allModelsNested || []).find(
-                    (m) => m.providerId === providerId && m.modelId === modelId,
-                  );
-                  return {
-                    displayName: found?.displayName,
-                    modelId,
-                    providerId,
-                  };
+                const selectedKeys = vals as string[];
+                setAllowedModels((prev) => {
+                  const prevMap = Object.fromEntries(prev.map((m) => [`${m.providerId}::${m.modelId}`, m]));
+                  return selectedKeys.map((v) => {
+                    const [providerId, modelId] = v.split('::');
+                    const found = (allModelsNested || []).find(
+                      (m) => m.providerId === providerId && m.modelId === modelId,
+                    );
+                    const existing = prevMap[v];
+                    return {
+                      discountRate: existing?.discountRate,
+                      displayName: found?.displayName,
+                      modelId,
+                      providerId,
+                    };
+                  });
                 });
-                setAllowedModels(selected);
               }}
             />
+            {allowedModels.length > 0 && (
+              <Flexbox gap={8}>
+                <div style={{ color: 'var(--lobe-color-text-secondary)', fontSize: 12 }}>
+                  积分折扣配置（可选）：
+                </div>
+                {allowedModels.map((m, idx) => (
+                  <Flexbox
+                    horizontal
+                    gap={8}
+                    key={`${m.providerId}::${m.modelId}`}
+                    style={{ alignItems: 'center' }}
+                  >
+                    <span style={{ flex: 1, fontSize: 13 }}>
+                      {m.displayName || m.modelId}
+                      <span style={{ color: 'var(--lobe-color-text-secondary)', fontSize: 11, marginLeft: 4 }}>
+                        ({m.providerId})
+                      </span>
+                    </span>
+                    <InputNumber
+                      addonAfter="折"
+                      max={10}
+                      min={0.1}
+                      placeholder="不限"
+                      step={0.1}
+                      style={{ width: 140 }}
+                      value={m.discountRate != null ? Math.round(m.discountRate * 10 * 10) / 10 : undefined}
+                      onChange={(v) => {
+                        setAllowedModels((prev) =>
+                          prev.map((item, i) =>
+                            i === idx
+                              ? { ...item, discountRate: v != null ? Math.round((Number(v) / 10) * 1000) / 1000 : undefined }
+                              : item,
+                          ),
+                        );
+                      }}
+                    />
+                    <span style={{ color: 'var(--lobe-color-text-secondary)', fontSize: 12, minWidth: 100 }}>
+                      {m.discountRate != null && m.discountRate < 1
+                        ? `省 ${Math.round((1 - m.discountRate) * 100)}%`
+                        : '无折扣'}
+                    </span>
+                  </Flexbox>
+                ))}
+                <div style={{ color: 'var(--lobe-color-text-secondary)', fontSize: 11, marginTop: 4 }}>
+                  例：8.0 折 = 消耗 100 积分的操作实际扣 80 积分
+                </div>
+              </Flexbox>
+            )}
           </Card>
 
           <Form.Item label="启用" name="active" valuePropName="checked">

@@ -2,13 +2,16 @@ import createDebug from 'debug';
 
 import type { CreateVideoOptions } from '../../core/openaiCompatibleFactory';
 import type { CreateVideoPayload, CreateVideoResponse } from '../../types/video';
+import { resolveMediaUrl } from '../../utils/mediaReference';
 import { AgentRuntimeError } from '../../utils/createError';
 
 const log = createDebug('lobe-video:qwen');
 
 interface QwenVideoTaskResponse {
   output: {
+    code?: string;
     error_message?: string;
+    message?: string;
     task_id: string;
     task_status: 'PENDING' | 'RUNNING' | 'SUCCEEDED' | 'FAILED';
     video_url?: string;
@@ -94,7 +97,12 @@ export async function pollQwenVideoStatus(
   }
 
   if (response.output.task_status === 'FAILED') {
-    return { error: response.output.error_message || 'Video generation failed', status: 'failed' };
+    // 百炼把失败原因放在 output.message 或 output.error_message(不同接口版本字段不一),
+    // 缺失时兜底 output.code,避免用户只看到空泛文案
+    return {
+      error: response.output.error_message || response.output.message || response.output.code,
+      status: 'failed',
+    };
   }
 
   return { status: 'pending' };
@@ -237,7 +245,9 @@ async function createVideoTask(
     if (media.length > 0) {
       input.media = media;
     }
-  } else if (model.startsWith('wan2.7') || model.startsWith('happyhorse')) {
+  } else if (model.startsWith('wan2.7') || model.startsWith('wan3.0') || model.startsWith('happyhorse')) {
+    // wan3.0 全能参考模式(官方文档):媒体走 input.media 数组,
+    // type 用 first_frame / reference_image / last_frame
     const media = [];
     if (imageUrl) {
       media.push({
@@ -283,10 +293,36 @@ async function createVideoTask(
   // Add prompt to input for all models
   input.prompt = prompt;
 
+  // 本地/内网媒体(如 localhost S3 的 RustFS 链接)远程百炼拉不到——
+  // 实测报 InvalidParameter: Failed to download http://localhost:9000/...。
+  // 统一在发送前解析:公网 URL 原样保留,本地图转 base64 data URL 内联
+  // (万相 3.0 官方文档明确支持 data:{MIME};base64 形式的 media url)。
+  if (Array.isArray(input.media) && input.media.length > 0) {
+    const resolved = await Promise.all(
+      (input.media as Array<{ type: string; url: string }>).map(async (m) => {
+        const url = await resolveMediaUrl(m.url, 'image');
+        return url ? { ...m, url } : null;
+      }),
+    );
+    input.media = resolved.filter((m): m is { type: string; url: string } => m !== null);
+  }
+  for (const key of ['img_url', 'first_frame_url', 'last_frame_url'] as const) {
+    const value = input[key];
+    if (typeof value === 'string' && value) {
+      input[key] = (await resolveMediaUrl(value, 'image')) ?? value;
+    }
+  }
+  if (Array.isArray(input.reference_urls)) {
+    const resolved = await Promise.all(
+      (input.reference_urls as string[]).map((u) => resolveMediaUrl(u, 'image')),
+    );
+    input.reference_urls = resolved.filter((u): u is string => u !== null);
+  }
+
   // Add optional parameters
   if (params.aspectRatio) {
-    if (model.startsWith('wan2.7')) {
-      // Wan2.7 models use "ratio" parameter instead of "aspectRatio"
+    if (model.startsWith('wan2.7') || model.startsWith('wan3.0')) {
+      // Wan2.7 / Wan3.0 models use "ratio" parameter instead of "aspectRatio"
       parameters.ratio = params.aspectRatio;
     } else {
       parameters.aspectRatio = params.aspectRatio;

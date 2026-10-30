@@ -70,11 +70,15 @@ export type MessageBatchOperation =
  * After performing update/delete operations, conditionally returns message list based on sessionId/topicId.
  */
 export class MessageService {
+  private db: LobeChatDatabase;
+  private userId: string;
   private messageModel: MessageModel;
   private fileService: FileService;
   private compressionRepository: CompressionRepository;
 
   constructor(db: LobeChatDatabase, userId: string, workspaceId?: string) {
+    this.db = db;
+    this.userId = userId;
     this.messageModel = new MessageModel(db, userId, workspaceId);
     this.fileService = new FileService(db, userId, workspaceId);
     this.compressionRepository = new CompressionRepository(db, userId, workspaceId);
@@ -317,7 +321,85 @@ export class MessageService {
       valueKeys: Object.keys(value ?? {}),
     });
 
+    // Closed-product credit billing: client chat path finalizes usage via message.update
+    // (webapi/chat streams tokens; AgentRuntime path may not run). Charge once when usage arrives.
+    try {
+      await this.maybeChargeChatCredits(id, value as any);
+    } catch (e) {
+      console.error('[credits] message.update charge failed:', e);
+    }
+
     return this.queryWithSuccess(options);
+  }
+
+  /**
+   * Deduct credits when an assistant message receives token usage.
+   * Prefer reading usage from DB after update (client may put tokens in metadata flat fields).
+   */
+  private async maybeChargeChatCredits(id: string, value: Record<string, any>) {
+    // Prefer DB row after update — most reliable source of finalized usage/model/provider
+    const row = await this.messageModel.findById(id);
+    if (!row || row.role !== 'assistant') {
+      console.log('[credits] skip: not assistant or missing row', { id, role: row?.role });
+      return;
+    }
+
+    const dbUsage = (row.usage || (row.metadata as any)?.usage || {}) as Record<string, any>;
+    const meta = (value?.metadata || row.metadata || {}) as Record<string, any>;
+    const valueUsage = (value?.usage || meta?.usage || {}) as Record<string, any>;
+
+    const inputTokens = Number(
+      dbUsage.totalInputTokens ??
+        dbUsage.inputTextTokens ??
+        valueUsage.totalInputTokens ??
+        valueUsage.inputTextTokens ??
+        meta.totalInputTokens ??
+        meta.inputTextTokens,
+    );
+    const outputTokens = Number(
+      dbUsage.totalOutputTokens ??
+        dbUsage.outputTextTokens ??
+        valueUsage.totalOutputTokens ??
+        valueUsage.outputTextTokens ??
+        meta.totalOutputTokens ??
+        meta.outputTextTokens,
+    );
+
+    if (!(inputTokens > 0 || outputTokens > 0)) {
+      console.log('[credits] skip: no tokens on message', {
+        id,
+        hasDbUsage: !!row.usage,
+        valueKeys: Object.keys(value || {}),
+      });
+      return;
+    }
+
+    const model = row.model || value?.model;
+    const provider = row.provider || value?.provider;
+    if (!model || !provider) {
+      console.warn('[credits] skip charge: missing model/provider', { id, model, provider });
+      return;
+    }
+
+    console.log('[credits] charging message', {
+      id,
+      inputTokens,
+      model,
+      outputTokens,
+      provider,
+      userId: this.userId,
+    });
+
+    const { chargeChatUsage } = await import('@/business/server/credits/chargeChatUsage');
+    await chargeChatUsage({
+      db: this.db,
+      inputTokens: inputTokens > 0 ? inputTokens : 0,
+      messageId: id,
+      model,
+      outputTokens: outputTokens > 0 ? outputTokens : 0,
+      provider,
+      userId: this.userId,
+    });
   }
 
   /**

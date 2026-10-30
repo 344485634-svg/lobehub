@@ -22,7 +22,7 @@ export const isTaskPanelRoute = (pathname: string) =>
 export const isAgentProfilePanelRoute = (pathname: string) =>
   /^\/agent\/[^/]+\/profile\/?$/.test(pathname);
 
-// Switch to chat tab (and focus on ChatLM)
+// Switch to chat tab (and focus on ChatX)
 export const useNavigateToChatHotkey = () => {
   const navigateToAgent = useNavigateToAgent();
   const [, { unpinAgent }] = usePinnedAgentState();

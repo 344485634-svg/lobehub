@@ -1,5 +1,6 @@
 import { handleGenerationPromptModerationError } from '@/business/client/handleGenerationPromptModerationError';
 import { handleLobeHubModelDeprecatedError } from '@/business/client/handleLobeHubModelDeprecatedError';
+import { handleSubscriptionRequiredError } from '@/business/client/handleSubscriptionRequiredError';
 import { imageService } from '@/services/image';
 import { type StoreSetter } from '@/store/types';
 
@@ -95,6 +96,7 @@ export class CreateImageActionImpl {
         'createImage/clearPrompt',
       );
     } catch (error) {
+      if (handleSubscriptionRequiredError(error)) return;
       handleGenerationPromptModerationError(error);
       handleLobeHubModelDeprecatedError(error);
       throw error;

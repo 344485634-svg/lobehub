@@ -1,5 +1,6 @@
 import { isDesktop } from '@lobechat/const';
 import { Avatar } from '@lobehub/ui';
+import { SkillsIcon } from '@lobehub/ui/icons';
 import {
   BellIcon,
   ChartColumnBigIcon,
@@ -9,7 +10,6 @@ import {
   EllipsisIcon,
   EthernetPort,
   Gift,
-  KeyboardIcon,
   KeyIcon,
   Map,
   MonitorSmartphoneIcon,
@@ -83,11 +83,12 @@ export const useCategory = () => {
         key: SettingsTabs.Profile,
         label: username || tAuth('tab.profile'),
       },
-      {
-        icon: ChartColumnBigIcon,
-        key: SettingsTabs.Stats,
-        label: tAuth('tab.stats'),
-      },
+      // 数据统计：商业化场景下用量已由「用量明细」覆盖，隐藏冗余 stats 页
+      // {
+      //   icon: ChartColumnBigIcon,
+      //   key: SettingsTabs.Stats,
+      //   label: tAuth('tab.stats'),
+      // },
       {
         icon: PaletteIcon,
         key: SettingsTabs.Appearance,
@@ -97,11 +98,6 @@ export const useCategory = () => {
         icon: MonitorSmartphoneIcon,
         key: SettingsTabs.Devices,
         label: t('tab.devices'),
-      },
-      !mobile && {
-        icon: KeyboardIcon,
-        key: SettingsTabs.Hotkey,
-        label: t('tab.hotkey'),
       },
       enableBusinessFeatures && {
         icon: BellIcon,
@@ -135,10 +131,15 @@ export const useCategory = () => {
       });
     }
 
-    // Agent group — closed product: managed in Admin console only.
-    // Personal settings no longer expose provider/skill/connector/memory/creds.
+    // Agent group — closed product: provider/connector/memory/creds 由 Admin 后台统一管理。
+    // 技能对用户开放:内置技能、技能商店与自定义上传(zip/GitHub/URL),
+    // 与聊天工具面板的技能激活共用同一数据(个人技能 ∪ 管理员发布的平台技能)。
     const agentItems: CategoryItem[] = [
-      // intentionally empty for closed product
+      {
+        icon: SkillsIcon,
+        key: SettingsTabs.Skill,
+        label: t('tab.skill'),
+      },
     ].filter(Boolean) as CategoryItem[];
 
     if (agentItems.length > 0) {

@@ -53,21 +53,23 @@ const ProviderList = (props: {
     sortType: (sortType || SortType.Default) as SortType,
   });
 
-  // 商业化白标:设置页服务商列表仅显示 newapi(LIUMA 官方 API)。只在 UI 层过滤。
+  // 商业化白标:设置页服务商列表仅显示白名单服务商。只在 UI 层过滤。
+  // qwen(阿里云百炼)于 2026-10 放行:用户需直连百炼 DashScope 使用 wan3.0 等模型。
+  const VISIBLE_PROVIDER_IDS = ['newapi', 'qwen'];
   const enabledModelProviderList = useAiInfraStore(
     aiProviderSelectors.enabledAiProviderList,
     isEqual,
-  ).filter((p) => p.id === 'newapi');
+  ).filter((p) => VISIBLE_PROVIDER_IDS.includes(p.id));
 
   const disabledModelProviderList = useAiInfraStore(
     aiProviderSelectors.disabledAiProviderList,
     isEqual,
-  ).filter((p) => p.id === 'newapi');
+  ).filter((p) => VISIBLE_PROVIDER_IDS.includes(p.id));
 
   const disabledCustomProviderList = useAiInfraStore(
     aiProviderSelectors.disabledCustomAiProviderList,
     isEqual,
-  ).filter((p) => p.id === 'newapi');
+  ).filter((p) => VISIBLE_PROVIDER_IDS.includes(p.id));
 
   // Sort model providers based on sort type
   const sortedDisabledProviders = useMemo(() => {

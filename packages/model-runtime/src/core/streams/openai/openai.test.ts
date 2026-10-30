@@ -1993,6 +1993,66 @@ describe('OpenAIStream', () => {
       );
     });
 
+    it('should handle reasoning_content bundled with finish_reason in the SAME final chunk (DeepSeek/newapi gateway)', async () => {
+      // Regression: some OpenAI-compatible gateways (DeepSeek V4 over newapi)
+      // emit the final chunk with BOTH a non-empty reasoning_content and
+      // finish_reason:'stop' (plus usage). The mid-stream reasoning branch is
+      // unreachable here (the finish_reason block always returns), so without
+      // the reasoning_content guard in that block the thinking would be dropped
+      // while usage reports output tokens — blank assistant message.
+      const data = [
+        {
+          id: '1',
+          object: 'chat.completion.chunk',
+          created: 1785400000,
+          model: 'deepseek-v4-flash',
+          choices: [
+            {
+              index: 0,
+              delta: { role: 'assistant', content: '', reasoning_content: '思考中…答案会放在这里' },
+              logprobs: null,
+              finish_reason: 'stop',
+            },
+          ],
+          usage: {
+            prompt_tokens: 10,
+            completion_tokens: 41,
+            total_tokens: 51,
+            completion_tokens_details: { reasoning_tokens: 41 },
+          },
+        },
+      ];
+
+      const mockOpenAIStream = new ReadableStream({
+        start(controller) {
+          data.forEach((chunk) => {
+            controller.enqueue(chunk);
+          });
+          controller.close();
+        },
+      });
+
+      const protocolStream = OpenAIStream(mockOpenAIStream);
+      const decoder = new TextDecoder();
+      const chunks = [];
+
+      // @ts-ignore
+      for await (const chunk of protocolStream) {
+        chunks.push(decoder.decode(chunk, { stream: true }));
+      }
+
+      expect(chunks).toEqual(
+        [
+          'id: 1',
+          'event: reasoning',
+          `data: "思考中…答案会放在这里"\n`,
+          'id: 1',
+          'event: usage',
+          `data: {"inputTextTokens":10,"outputReasoningTokens":41,"totalInputTokens":10,"totalOutputTokens":41,"totalTokens":51}\n`,
+        ].map((i) => `${i}\n`),
+      );
+    });
+
     it('should handle reasoning event in aliyun bailian api', async () => {
       const data = [
         {

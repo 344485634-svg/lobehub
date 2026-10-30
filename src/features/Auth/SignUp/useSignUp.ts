@@ -53,11 +53,11 @@ export const useSignUp = () => {
       }
 
       const callbackUrl = searchParams.get('callbackUrl') || '/';
-      // New users always go through onboarding first; the original target is
-      // threaded via the `callbackUrl` query param and restored on finish.
       const redirectUrl = buildOnboardingRedirectUrl(callbackUrl);
       const username = values.email.split('@')[0];
       const fetchOptions = await getFetchOptions();
+      // Read invite code from URL (e.g. /signup?ref=ABCD1234)
+      const refCode = searchParams.get('ref') || searchParams.get('referral');
 
       const submit = async (nextFetchOptions?: AuthFetchOptions) =>
         signUp.email({
@@ -101,12 +101,29 @@ export const useSignUp = () => {
         return;
       }
 
+      // Signup succeeded — bind invite code if present in URL.
+      // Uses a plain fetch to a webapi route (not lambdaClient/tRPC) because the
+      // auth SPA bundle doesn't include the main app's tRPC chunks; importing
+      // lambdaClient here would 404 on chunk load and trigger an infinite
+      // reload loop via notifyChunkError().
+      if (refCode) {
+        try {
+          await fetch('/webapi/referral/bind', {
+            body: JSON.stringify({ code: refCode }),
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            method: 'POST',
+          });
+        } catch {
+          // Non-fatal: bind failure should not block registration completion
+        }
+      }
+
       if (enableEmailVerification) {
         navigate(
           `/verify-email?email=${encodeURIComponent(values.email)}&callbackUrl=${encodeURIComponent(redirectUrl)}`,
         );
       } else {
-        // onboarding lives in the main app, outside this auth SPA — full page load required
         window.location.href = redirectUrl;
       }
     } catch {

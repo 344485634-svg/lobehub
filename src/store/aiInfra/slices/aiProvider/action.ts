@@ -548,6 +548,7 @@ export class AiProviderActionImpl {
         if (isLogin) {
           const data = await aiProviderService.getAiProviderRuntimeState();
 
+
           const enabledEmbeddingAiProviders = data.enabledAiProviders.filter((provider) => {
             return data.enabledAiModels.some(
               (model) => model.providerId === provider.id && model.type === 'embedding',
@@ -556,10 +557,17 @@ export class AiProviderActionImpl {
 
           // 商业化白标:模型选择 UI 只显示用户后台配置的模型(source !== builtin,
           // 即从网关拉取/自定义的),隐藏 model-bank 内置目录模型。
+          // 例外:白名单服务商(与设置页 ProviderGrid/List 的白名单一致)的内置模型放行——
+          // 直连服务商(如 qwen/阿里云百炼)的模型卡以 builtin 来源落库,需要出现在选择器。
           // enabledAiModels state 保持全量,供 chat 能力检测 / tryMatchingProviderFrom 等运行时使用。
+          const VISIBLE_BUILTIN_MODEL_PROVIDERS = ['newapi', 'qwen'];
           const userConfiguredAiModels = data.enabledAiModels.filter(
-            (model) => model.source !== AiModelSourceEnum.Builtin,
+            (model) =>
+              model.source !== AiModelSourceEnum.Builtin ||
+              VISIBLE_BUILTIN_MODEL_PROVIDERS.includes(model.providerId),
           );
+
+
           const userChatProviders = data.enabledChatAiProviders.filter((p) =>
             userConfiguredAiModels.some((m) => m.providerId === p.id && m.type === 'chat'),
           );
@@ -585,6 +593,7 @@ export class AiProviderActionImpl {
             buildImageProviderModelLists(userImageProviders, userConfiguredAiModels),
             buildVideoProviderModelLists(userVideoProviders, userConfiguredAiModels),
           ]);
+
 
           return {
             ...data,

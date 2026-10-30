@@ -1,8 +1,12 @@
-import { type ModelPricingContext } from '@lobechat/model-runtime';
+import type { ModelPricingContext } from '@lobechat/model-runtime';
 
-import { type ModelPerformance, type ModelUsage } from '@/types/index';
+import type { LobeChatDatabase } from '@/database/type';
+import type { ModelPerformance, ModelUsage } from '@/types/index';
+
+import { refundCredits } from '../credits/deductCredits';
 
 interface ChargeParams {
+  isError?: boolean;
   metadata: {
     asyncTaskId: string;
     generationBatchId: string;
@@ -11,11 +15,21 @@ interface ChargeParams {
   };
   metrics?: ModelPerformance;
   modelUsage?: ModelUsage;
+  prechargeResult?: { amount?: number };
   pricingContext?: ModelPricingContext;
   provider: string;
+  serverDB?: LobeChatDatabase;
   userId: string;
   workspaceId?: string;
 }
 
-// eslint-disable-next-line unused-imports/no-unused-vars
-export async function chargeAfterGenerate(params: ChargeParams): Promise<void> {}
+export async function chargeAfterGenerate(params: ChargeParams): Promise<void> {
+  if (!params.isError) return;
+  const amount = Number(params.prechargeResult?.amount) || 0;
+  if (amount <= 0 || !params.serverDB) return;
+  try {
+    await refundCredits(params.serverDB, params.userId, amount);
+  } catch (e) {
+    console.error('[image] refundCredits failed:', e);
+  }
+}

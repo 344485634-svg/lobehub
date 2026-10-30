@@ -9,6 +9,7 @@ import { type BetterAuthOptions } from 'better-auth/minimal';
 import { betterAuth } from 'better-auth/minimal';
 import { admin, emailOTP, genericOAuth, magicLink } from 'better-auth/plugins';
 import { type BetterAuthPlugin } from 'better-auth/types';
+import { eq } from 'drizzle-orm';
 import { EnvHttpProxyAgent, setGlobalDispatcher } from 'undici';
 
 import { appEnv } from '@/envs/app';
@@ -233,6 +234,26 @@ export function defineConfig(customOptions: CustomBetterAuthOptions) {
       user: {
         create: {
           after: async (user) => {
+            // 首个注册用户自动成为管理员。
+            // better-auth 的 admin 插件对新增用户只写默认 'user',不提供首用户提升,
+            // 因此在插入后判定:DB 中仅此一人时,将该行 role 更新为 'admin'。
+            let isFirstUser = false;
+            try {
+              isFirstUser = (await serverDB.$count(schema.users)) === 1;
+            } catch (e) {
+              console.error('[auth] first-user admin check failed:', e);
+            }
+            if (isFirstUser && user.role !== 'admin') {
+              try {
+                await serverDB
+                  .update(schema.users)
+                  .set({ role: 'admin' })
+                  .where(eq(schema.users.id, user.id));
+                console.log(`[auth] First user ${user.email} promoted to admin.`);
+              } catch (e) {
+                console.error('[auth] Failed to promote first user to admin:', e);
+              }
+            }
             const userService = new UserService(serverDB);
             await userService.initUser({
               email: user.email,
@@ -318,7 +339,7 @@ export function defineConfig(customOptions: CustomBetterAuthOptions) {
         },
       }),
       passkey({
-        rpName: 'ChatLM',
+        rpName: 'ChatX',
         // Extract rpID from auth URL (e.g., 'lobehub.com' from 'https://lobehub.com')
         // Returns undefined if AUTH_URL is not set (e.g., in e2e tests)
         rpID: getPasskeyRpID(),

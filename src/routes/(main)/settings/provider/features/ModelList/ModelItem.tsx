@@ -155,7 +155,16 @@ const ModelItem = memo<ModelItemProps>(
       releasedAt && t('providerModels.item.releasedAt', { releasedAt }),
       ...formatPricing(),
       typeof (pricing as any)?.creditsPerRequest === 'number' &&
+        (pricing as any).creditsPerRequest > 0 &&
         `积分/次: ${(pricing as any).creditsPerRequest}`,
+      ((pricing as any)?.creditsPerMillionInputTokens > 0 ||
+        (pricing as any)?.creditsPerMillionOutputTokens > 0) &&
+        `积分/M tokens: 入${(pricing as any).creditsPerMillionInputTokens || 0}/出${(pricing as any).creditsPerMillionOutputTokens || 0}`,
+      (pricing as any)?.videoCreditsPerSecondByResolution &&
+        Object.keys((pricing as any).videoCreditsPerSecondByResolution).length > 0 &&
+        `视频积分/秒: ${Object.entries((pricing as any).videoCreditsPerSecondByResolution)
+          .map(([k, v]) => `${k}:${v}`)
+          .join(', ')}`,
     ].filter(Boolean) as string[];
 
     const { message } = App.useApp();

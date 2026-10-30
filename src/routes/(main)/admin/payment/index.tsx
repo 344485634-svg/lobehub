@@ -13,6 +13,7 @@ const AdminPaymentConfigPage: FC = () => {
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [activating, setActivating] = useState(false);
 
   const { data, isLoading, mutate } = useSWR('admin-payment-config', () =>
     lambdaClient.admin.getPaymentConfig.query(),
@@ -21,6 +22,7 @@ const AdminPaymentConfigPage: FC = () => {
   useEffect(() => {
     if (!data) return;
     form.setFieldsValue({
+      activationCode: '',
       appId: data.appId,
       enabled: data.enabled,
       env: data.env || 'sandbox',
@@ -28,8 +30,6 @@ const AdminPaymentConfigPage: FC = () => {
       payways: data.payways || ['alipay', 'wechat'],
       remark: data.remark,
       returnUrl: data.returnUrl,
-      terminalKey: '',
-      terminalSn: data.terminalSn,
       vendorKey: '',
       vendorSn: data.vendorSn,
     });
@@ -47,13 +47,11 @@ const AdminPaymentConfigPage: FC = () => {
         payways: values.payways,
         remark: values.remark,
         returnUrl: values.returnUrl,
-        terminalKey: values.terminalKey || undefined,
-        terminalSn: values.terminalSn,
         vendorKey: values.vendorKey || undefined,
         vendorSn: values.vendorSn,
       });
       message.success('支付配置已保存');
-      form.setFieldsValue({ terminalKey: '', vendorKey: '' });
+      form.setFieldsValue({ vendorKey: '' });
       mutate();
     } catch (e: any) {
       if (e?.errorFields) return;
@@ -75,12 +73,33 @@ const AdminPaymentConfigPage: FC = () => {
     }
   };
 
+  const handleActivate = async () => {
+    try {
+      const values = await form.validateFields(['activationCode']);
+      if (!values.activationCode) {
+        message.error('请输入激活码');
+        return;
+      }
+      setActivating(true);
+      const res = await lambdaClient.admin.activateTerminal.mutate({
+        activationCode: values.activationCode,
+      });
+      message.success(`${res.message}，终端号：${res.terminalSn}`);
+      form.setFieldsValue({ activationCode: '' });
+      mutate();
+    } catch (e: any) {
+      message.error(e?.message ?? '激活失败');
+    } finally {
+      setActivating(false);
+    }
+  };
+
   return (
     <Flexbox gap={16} padding={24}>
       <div>
         <div style={{ fontSize: 18, fontWeight: 600 }}>支付配置（收钱吧）</div>
         <div style={{ color: 'var(--lobe-color-text-secondary)', fontSize: 13, marginTop: 4 }}>
-          对接第三方收钱吧，用于套餐订阅收款。密钥加密存储。下单/回调接口将在支付对接阶段启用。
+          对接第三方收钱吧，用于套餐订阅收款。密钥加密存储。
         </div>
       </div>
 
@@ -99,16 +118,16 @@ const AdminPaymentConfigPage: FC = () => {
             />
           </Form.Item>
 
-          <Form.Item label="App ID" name="appId">
+          <Form.Item label="App ID（开发者序列号对应的应用ID）" name="appId">
             <Input placeholder="收钱吧应用 app_id" />
           </Form.Item>
 
-          <Form.Item label="Vendor SN" name="vendorSn">
+          <Form.Item label="开发者序列号 Vendor SN" name="vendorSn">
             <Input placeholder="vendor_sn" />
           </Form.Item>
 
           <Form.Item
-            label="Vendor Key"
+            label="开发者密钥 Vendor Key"
             name="vendorKey"
             tooltip={data?.hasVendorKey ? '已配置，留空保留原值' : '尚未配置'}
           >
@@ -118,20 +137,31 @@ const AdminPaymentConfigPage: FC = () => {
             />
           </Form.Item>
 
-          <Form.Item label="Terminal SN" name="terminalSn">
-            <Input placeholder="terminal_sn" />
-          </Form.Item>
-
-          <Form.Item
-            label="Terminal Key"
-            name="terminalKey"
-            tooltip={data?.hasTerminalKey ? '已配置，留空保留原值' : '尚未配置'}
+          <div
+            style={{
+              background: 'var(--lobe-color-bg-container)',
+              border: '1px solid var(--lobe-color-border)',
+              borderRadius: 8,
+              marginBottom: 24,
+              padding: 16,
+            }}
           >
-            <Input
-              placeholder={data?.hasTerminalKey ? '••••••••（留空保留）' : 'terminal_key'}
-              type="password"
-            />
-          </Form.Item>
+            <div style={{ fontWeight: 500, marginBottom: 12 }}>终端激活</div>
+            <div style={{ color: 'var(--lobe-color-text-secondary)', fontSize: 13, marginBottom: 12 }}>
+              输入门店设备激活码，自动生成终端号和终端密钥
+            </div>
+            <Form.Item label="门店设备激活码" name="activationCode" style={{ marginBottom: 12 }}>
+              <Input placeholder="从收钱吧商户后台获取的激活码" />
+            </Form.Item>
+            <Button loading={activating} type="primary" onClick={handleActivate}>
+              激活终端
+            </Button>
+            {data?.terminalSn && (
+              <div style={{ color: 'var(--lobe-color-success)', fontSize: 13, marginTop: 8 }}>
+                终端号：{data.terminalSn}
+              </div>
+            )}
+          </div>
 
           <Form.Item label="支付方式" name="payways">
             <Select
@@ -145,7 +175,7 @@ const AdminPaymentConfigPage: FC = () => {
           </Form.Item>
 
           <Form.Item label="支付回调 Notify URL" name="notifyUrl">
-            <Input placeholder="https://your-domain.com/api/webhooks/shouqianba" />
+            <Input placeholder="https://your-domain.com/webapi/payment/shouqianba/notify" />
           </Form.Item>
 
           <Form.Item label="前台回跳 Return URL" name="returnUrl">
@@ -163,8 +193,8 @@ const AdminPaymentConfigPage: FC = () => {
             <Tag color={data?.hasVendorKey ? 'blue' : 'default'}>
               VendorKey {data?.hasVendorKey ? '已配置' : '未配置'}
             </Tag>
-            <Tag color={data?.hasTerminalKey ? 'blue' : 'default'}>
-              TerminalKey {data?.hasTerminalKey ? '已配置' : '未配置'}
+            <Tag color={data?.terminalSn ? 'green' : 'default'}>
+              终端 {data?.terminalSn ? '已激活' : '未激活'}
             </Tag>
           </Flexbox>
 

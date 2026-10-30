@@ -515,7 +515,7 @@ export class MarketService {
           dataMessage = JSON.stringify(response.data);
         }
 
-        const message = responseError?.message || dataMessage || 'ChatLM Skill call failed';
+        const message = responseError?.message || dataMessage || 'ChatX Skill call failed';
 
         return {
           content: message,
@@ -613,7 +613,7 @@ export class MarketService {
             identifier: providerId,
             meta: {
               avatar: icon || '🔗',
-              description: `ChatLM Skill: ${providerLabel}`,
+              description: `ChatX Skill: ${providerLabel}`,
               tags: ['lobehub-skill', providerId],
               title: providerLabel,
             },

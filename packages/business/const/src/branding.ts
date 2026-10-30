@@ -2,12 +2,12 @@
 // if you want to use it in the commercial usage
 // please contact us for more information: hello@lobehub.com
 
-export const LOBE_CHAT_CLOUD = 'ChatLM Cloud';
+export const LOBE_CHAT_CLOUD = 'ChatX Cloud';
 
-export const BRANDING_NAME = 'ChatLM';
+export const BRANDING_NAME = 'ChatX';
 export const BRANDING_LOGO_URL = '/logo.png';
 
-export const ORG_NAME = 'ChatLM';
+export const ORG_NAME = 'ChatX';
 
 export const BRANDING_URL = {
   help: undefined,

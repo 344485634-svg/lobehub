@@ -10,6 +10,7 @@ import DragUploadZone from '@/components/DragUploadZone';
 import NavHeader from '@/features/NavHeader';
 import WideScreenContainer from '@/features/WideScreenContainer';
 import WideScreenButton from '@/features/WideScreenContainer/WideScreenButton';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { useQueryState } from '@/hooks/useQueryParam';
 
 // The drop zone is a sibling of NavHeader inside a column flex container.
@@ -43,6 +44,7 @@ const CreateGenerationPage = memo<CreateGenerationPageProps>(
     const isPersonalPath = useMatch({ end: true, path });
     const isWorkspacePath = useMatch({ end: true, path: `/:workspaceSlug${path}` });
     const [topic] = useQueryState('topic');
+    const isMobile = useIsMobile();
     const isHome = !topic;
 
     if (!isPersonalPath && !isWorkspacePath) return null;
@@ -50,11 +52,18 @@ const CreateGenerationPage = memo<CreateGenerationPageProps>(
     const content = (
       <Flexbox
         height={'100%'}
-        style={{ flexDirection: 'column', overflow: 'hidden', position: 'relative' }}
+        style={{
+          flexDirection: 'column',
+          overflow: 'hidden',
+          position: 'relative',
+          // 移动端为底部主导航(48px)留出空间,避免输入框被遮挡
+          paddingBottom: isMobile ? 48 : undefined,
+        }}
         width={'100%'}
       >
         <Flexbox flex={1} style={{ minHeight: 0, overflowY: 'auto' }} width={'100%'}>
-          <WideScreenContainer wrapperStyle={{ minHeight: '100%' }}>
+          {/* 移动端 fullWidth:去掉宽度上限与两侧留白,内容占满屏宽 */}
+          <WideScreenContainer fullWidth={isMobile} wrapperStyle={{ minHeight: '100%' }}>
             <AnimatePresence initial={false} mode="wait">
               {isHome ? (
                 <motion.div
@@ -96,7 +105,10 @@ const CreateGenerationPage = memo<CreateGenerationPageProps>(
               key="bottom-input"
               transition={{ delay: 0.04, duration: 0.2, ease: 'easeOut' }}
             >
-              <WideScreenContainer style={{ marginTop: -8, paddingBlockEnd: 12 }}>
+              <WideScreenContainer
+                fullWidth={isMobile}
+                style={{ marginTop: -8, paddingBlockEnd: 12 }}
+              >
                 <PromptInput disableAnimation showTitle={false} />
               </WideScreenContainer>
             </motion.div>
@@ -108,7 +120,8 @@ const CreateGenerationPage = memo<CreateGenerationPageProps>(
     return (
       <>
         <NavHeader
-          right={<WideScreenButton />}
+          // 宽屏切换按钮仅桌面端有意义;移动端不渲染,避免死按钮
+          right={isMobile ? undefined : <WideScreenButton />}
           styles={{
             center: {
               alignItems: 'center',

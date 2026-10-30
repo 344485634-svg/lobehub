@@ -9,5 +9,5 @@ export const CUSTOM_PROVIDER_SDK_OPTIONS = [
   { label: 'Qwen', value: 'qwen' },
   { label: 'Volcengine', value: 'volcengine' },
   { label: 'Ollama', value: 'ollama' },
-  { label: 'New API', value: 'router' },
+  { label: 'ChatX', value: 'router' },
 ] satisfies { label: string; value: AiProviderSDKType }[];

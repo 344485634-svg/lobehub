@@ -7,7 +7,10 @@ import {
   Download,
   Feather,
   FileClockIcon,
+  ImagePlus,
+  LogOut,
   Settings2,
+  Video,
 } from 'lucide-react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -52,6 +55,25 @@ export const useCategory = () => {
       key: 'setting',
       label: t('userPanel.setting'),
       onClick: () => navigate('/me/settings'),
+    },
+    {
+      type: 'divider',
+    },
+  ];
+
+  // 生图/生视频:与桌面端功能对齐,移动端经 /me 直达(路由复用桌面页)
+  const create: CellProps[] = [
+    {
+      icon: ImagePlus,
+      key: 'image',
+      label: t('navigation.image', { ns: 'electron' }),
+      onClick: () => navigate('/image'),
+    },
+    {
+      icon: Video,
+      key: 'video',
+      label: t('navigation.video', { ns: 'electron' }),
+      onClick: () => navigate('/video'),
     },
     {
       type: 'divider',
@@ -103,9 +125,23 @@ export const useCategory = () => {
     },
     ...(isLoginWithAuth ? profile : []),
     ...(isLoginWithAuth ? settings : []),
+    ...(isLoginWithAuth ? create : []),
     ...(isLoginWithAuth ? businessMeCells : []),
     ...getDesktopApp,
     ...(!hideDocs ? helps : []),
+    ...(isLoginWithAuth
+      ? ([
+          { type: 'divider' },
+          {
+            icon: LogOut,
+            key: 'logout',
+            label: t('signout', { ns: 'auth' }),
+            onClick: () => {
+              void useUserStore.getState().logout();
+            },
+          },
+        ] as CellProps[])
+      : []),
   ].filter(Boolean) as CellProps[];
 
   return mainItems;

@@ -1,5 +1,7 @@
+import { asyncTasks } from '@lobechat/database/schemas';
 import { RequestTrigger } from '@lobechat/types';
 import debug from 'debug';
+import { eq } from 'drizzle-orm';
 
 import { getProviderContentPolicyErrorMessage } from '@/business/server/getProviderContentPolicyErrorMessage';
 import { trackProviderContentPolicyViolation } from '@/business/server/trackProviderContentPolicyViolation';
@@ -58,7 +60,7 @@ export async function processBackgroundVideoPolling(
     const generationModel = new GenerationModel(db, userId, workspaceId);
 
     const modelRuntime = await initModelRuntimeFromDB(db, userId, provider, workspaceId);
-    const pollResult = await pollUntilCompletion(modelRuntime, inferenceId);
+    const pollResult = await pollUntilCompletion(db, asyncTaskId, modelRuntime, inferenceId);
 
     if (!pollResult) {
       throw new Error('Polling completed but no video URL returned');
@@ -142,17 +144,30 @@ export async function processBackgroundVideoPolling(
 }
 
 async function pollUntilCompletion(
+  db: LobeChatDatabase,
+  asyncTaskId: string,
   modelRuntime: any,
   inferenceId: string,
 ): Promise<{ headers?: Record<string, string>; videoUrl: string } | null> {
   const maxRetries = 180;
   const pollingInterval = 10000;
 
+  // 心跳:长任务轮询(可达 30 分钟)超过 ASYNC_TASK_TIMEOUT(~10 分钟)时,
+  // 不会被 getGenerationStatus 的 checkTimeoutTasks 误判为超时置错;
+  // 轮询进程死掉(如容器重启)后心跳停跳,getGenerationStatus 借此识别并断点续跑。
+  const heartbeat = () =>
+    db
+      .update(asyncTasks)
+      .set({ updatedAt: new Date() })
+      .where(eq(asyncTasks.id, asyncTaskId))
+      .catch((e) => log('Heartbeat failed for task %s: %O', asyncTaskId, e));
+
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       log('Polling attempt %d/%d for task: %s', attempt + 1, maxRetries, inferenceId);
 
       const result = await modelRuntime.handlePollVideoStatus(inferenceId);
+      await heartbeat();
 
       if (result.status === 'success') {
         log('Video generation succeeded for task: %s', inferenceId);
@@ -167,12 +182,13 @@ async function pollUntilCompletion(
       await sleep(pollingInterval);
     } catch (error) {
       // 仅当上游明确返回"Video generation failed:"才终止任务;
-      // 瞬时网络错误(如 "fetch failed"、超时、连接重置)改为重试——
+      // 瞬时网络错误(如 fetch failed、超时、连接重置)改为重试——
       // 否则一次 fetch 抖动就会把已生成成功的视频任务误标为失败。
       if (error instanceof Error && error.message.startsWith('Video generation failed:')) {
         throw error;
       }
       log('Polling attempt %d failed for task: %s: %O', attempt + 1, inferenceId, error);
+      await heartbeat();
       await sleep(pollingInterval);
     }
   }

@@ -167,30 +167,7 @@ const PopoverContent = memo<PopoverContentProps>(
             <Icon icon={Zap} size={12} />
             {autoCount}
           </span>
-          <Flexbox horizontal align="center" gap={2} style={{ marginInlineStart: 'auto' }}>
-            <button
-              className={styles.storeButton}
-              type="button"
-              onClick={() => {
-                closePopover();
-                onOpenStore();
-              }}
-            >
-              <Icon icon={Store} size={14} />
-              {t('tools.addSkillOrConnector')}
-            </button>
-            <button
-              aria-label={t('tools.plugins.management')}
-              className={styles.iconButton}
-              type="button"
-              onClick={() => {
-                closePopover();
-                navigate('/settings/connector');
-              }}
-            >
-              <Icon icon={Settings} size={14} />
-            </button>
-          </Flexbox>
+          {/* 商业化：隐藏技能商店与连接器管理入口 */}
         </div>
       </Flexbox>
     );

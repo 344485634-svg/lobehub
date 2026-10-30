@@ -1,17 +1,25 @@
 import { type ItemType } from '@lobehub/ui';
 import { Flexbox, Icon, SearchBar, stopPropagation } from '@lobehub/ui';
 import { createStaticStyles, cssVar } from 'antd-style';
-import { ChevronRight, ExternalLink, Settings, Store } from 'lucide-react';
 import { memo, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ScrollSignalProvider } from '@/features/ChatInput/ActionBar/Tools/ScrollSignalContext';
-import ToolsList, { toolsListStyles } from '@/features/ChatInput/ActionBar/Tools/ToolsList';
-import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
+import ToolsList from '@/features/ChatInput/ActionBar/Tools/ToolsList';
 
 import Empty from './Empty';
 
-const SKILL_ICON_SIZE = 20;
+const styles = createStaticStyles(({ css }) => ({
+  header: css`
+    padding-block: 8px;
+    padding-inline: 8px;
+    border-block-end: 1px solid ${cssVar.colorFill};
+    background: transparent;
+  `,
+  scroller: css`
+    overflow: hidden auto;
+  `,
+}));
 
 const filterItems = (items: ItemType[], keyword: string): ItemType[] => {
   const lower = keyword.toLowerCase();
@@ -38,34 +46,18 @@ const filterItems = (items: ItemType[], keyword: string): ItemType[] => {
     .filter(Boolean) as ItemType[];
 };
 
-const styles = createStaticStyles(({ css }) => ({
-  footer: css`
-    padding: 4px;
-    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
-  `,
-  header: css`
-    padding-block: 8px;
-    padding-inline: 8px;
-    border-block-end: 1px solid ${cssVar.colorFill};
-    background: transparent;
-  `,
-  scroller: css`
-    overflow: hidden auto;
-  `,
-  trailingIcon: css`
-    opacity: 0.5;
-  `,
-}));
-
 interface PopoverContentProps {
   items: ItemType[];
   onClose?: () => void;
-  onOpenStore: () => void;
+  /** @deprecated 技能商店已关闭，保留 prop 以兼容调用方 */
+  onOpenStore?: () => void;
 }
 
-const PopoverContent = memo<PopoverContentProps>(({ items, onOpenStore, onClose }) => {
+/**
+ * 商业化：仅展示可添加的基础技能 / 管理员技能，不提供技能商店与连接器管理入口。
+ */
+const PopoverContent = memo<PopoverContentProps>(({ items }) => {
   const { t } = useTranslation('setting');
-  const navigate = useWorkspaceAwareNavigate();
   const [searchKeyword, setSearchKeyword] = useState('');
 
   const filteredItems = useMemo(
@@ -92,30 +84,6 @@ const PopoverContent = memo<PopoverContentProps>(({ items, onOpenStore, onClose 
       <ScrollSignalProvider className={styles.scroller} style={{ flex: 1 }}>
         {isEmpty ? <Empty /> : <ToolsList items={filteredItems} />}
       </ScrollSignalProvider>
-      <div className={styles.footer}>
-        <div className={toolsListStyles.item} role="button" tabIndex={0} onClick={onOpenStore}>
-          <div className={toolsListStyles.itemIcon}>
-            <Icon icon={Store} size={SKILL_ICON_SIZE} />
-          </div>
-          <div className={toolsListStyles.itemContent}>{t('skillStore.title')}</div>
-          <Icon className={styles.trailingIcon} icon={ChevronRight} size={16} />
-        </div>
-        <div
-          className={toolsListStyles.item}
-          role="button"
-          tabIndex={0}
-          onClick={() => {
-            onClose?.();
-            navigate('/settings/connector');
-          }}
-        >
-          <div className={toolsListStyles.itemIcon}>
-            <Icon icon={Settings} size={SKILL_ICON_SIZE} />
-          </div>
-          <div className={toolsListStyles.itemContent}>{t('tools.plugins.management')}</div>
-          <Icon className={styles.trailingIcon} icon={ExternalLink} size={16} />
-        </div>
-      </div>
     </Flexbox>
   );
 });

@@ -3,13 +3,13 @@ import type { ModelProviderCard } from '@/types/llm';
 const NewAPI: ModelProviderCard = {
   chatModels: [],
   checkModel: 'gpt-4o-mini',
-  description: 'An open-source aggregation and routing platform for multiple AI services.',
+  description: 'ChatX 官方模型聚合与路由服务',
   enabled: true,
   id: 'newapi',
-  name: 'LIUMA 官方 API',
+  name: 'ChatX',
   settings: {
     proxyUrl: {
-      placeholder: 'https://your.new-api-provider.com',
+      placeholder: 'https://api.chatx.ai/v1',
     },
     sdkType: 'router',
     showModelFetcher: true,

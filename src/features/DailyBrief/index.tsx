@@ -72,11 +72,13 @@ const DailyBrief = memo(() => {
       actionAlwaysVisible
       icon={Newspaper}
       title={t('brief.title')}
-      action={
-        <Button size={'small'} type={'text'} onClick={() => navigate('/tasks')}>
-          {t('brief.viewAllTasks')}
-        </Button>
-      }
+      action={undefined}
+      // 商业化：隐藏「查看全部任务」入口
+      // action={
+      //   <Button size={'small'} type={'text'} onClick={() => navigate('/tasks')}>
+      //     {t('brief.viewAllTasks')}
+      //   </Button>
+      // }
     >
       <Flexbox gap={12}>
         {briefs.map((brief) => (

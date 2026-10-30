@@ -16,6 +16,7 @@ import { authSelectors, userProfileSelectors } from '@/store/user/selectors';
 
 import AvatarRow from './features/AvatarRow';
 import ComposioAuthorizationList from './features/ComposioAuthorizationList';
+import DeleteAccountRow from './features/DeleteAccountRow';
 import EmailRow from './features/EmailRow';
 import FullNameRow from './features/FullNameRow';
 import InterestsRow from './features/InterestsRow';
@@ -124,6 +125,13 @@ const ProfileSetting = () => {
               <ProfileRow label={t('profile.authorizations.title')}>
                 <ComposioAuthorizationList servers={connectedServers} />
               </ProfileRow>
+            </>
+          )}
+
+          {isLogin && (
+            <>
+              <Divider style={{ margin: 0 }} />
+              <DeleteAccountRow />
             </>
           )}
         </Flexbox>

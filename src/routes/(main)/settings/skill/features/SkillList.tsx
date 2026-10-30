@@ -453,15 +453,14 @@ const SkillList = memo<SkillListProps>(
     // Skills tab: prompt/agent-based skills (show description/content)
     const hasBuiltinTools = builtinToolItems.length > 0 && isConnectorView;
     const hasBuiltinSkills = builtinSkillItems.length > 0 && !isConnectorView;
-    // Skills tab only shows agent-based community skills; Lobehub/Composio OAuth
-    // connectors live exclusively in the Connectors view (hasCommunityConnectors).
-    const hasCommunitySkills = !isConnectorView && marketAgentSkills.length > 0;
+    // 「我的技能」= 用户自己安装的全部技能:市场安装(source='market') + 导入/自建(source='user')。
+    // 与内置技能相对;不再按来源拆分"社区/自定义"两个分区。
+    const hasMySkills =
+      !isConnectorView && (marketAgentSkills.length > 0 || userAgentSkills.length > 0);
     const hasCommunityTools = communityMCPs.length > 0 && isConnectorView;
     // In connector view: custom MCPs (old plugins) + custom connectors (new store).
-    // In skill view: user agent skills
     const hasCustomConnectors =
       isConnectorView && (customMCPs.length > 0 || customConnectors.length > 0);
-    const hasCustomSkills = userAgentSkills.length > 0 && !isConnectorView;
     // Lobehub/Composio OAuth skills go in Connectors tab (they provide tools)
     const hasCommunityConnectors = communitySkillItems.length > 0 && isConnectorView;
 
@@ -547,12 +546,15 @@ const SkillList = memo<SkillListProps>(
             }),
           )}
 
-        {/* Skill view: community agent skills only (OAuth connectors are in the Connectors view) */}
-        {hasCommunitySkills &&
+        {/* 我的技能:用户安装的全部技能(市场安装 + 导入/自建),合并展示 */}
+        {hasMySkills &&
           renderSection(
-            'communitySkills',
-            t('skillGroup.communitySkills', 'Community Skills'),
-            renderMarketAgentSkills(),
+            'mySkills',
+            t('skillGroup.mySkills', 'My Skills'),
+            <>
+              {renderMarketAgentSkills()}
+              {renderUserAgentSkills()}
+            </>,
           )}
 
         {hasCommunityTools &&
@@ -570,13 +572,6 @@ const SkillList = memo<SkillListProps>(
               {renderCustomConnectors()}
               {renderCustomMCPs()}
             </>,
-          )}
-
-        {hasCustomSkills &&
-          renderSection(
-            'customSkills',
-            t('skillGroup.customSkills', 'Custom Skills'),
-            renderUserAgentSkills(),
           )}
       </div>
     );

@@ -1,9 +1,14 @@
 Dockerfile
 .dockerignore
-node_modules
+**/node_modules
 npm-debug.log
-.next
+**/.next
 .git
 .github
 *.md
+**/dist
+**/*.tsbuildinfo
 .env.example
+.env.desktop
+mint_oidc_jwt.tmp.mts
+docker-compose

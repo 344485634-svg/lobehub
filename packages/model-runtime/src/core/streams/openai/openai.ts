@@ -356,6 +356,23 @@ const transformOpenAIStream = (
         return appendUsageChunk({ data: text, id: chunk.id, type: 'text' });
       }
 
+      // DeepSeek reasoning models (and other OpenAI-compatible gateways) stream
+      // their thinking/reasoning content in `delta.reasoning_content` rather
+      // than `delta.content`. Mid-stream reasoning chunks (finish_reason null)
+      // are handled by the pre-existing branch below; but when a gateway
+      // bundles `reasoning_content` and `finish_reason` in the SAME final
+      // chunk, that branch is unreachable (the finish_reason block always
+      // returns), so the reasoning would be silently dropped while usage still
+      // reports output tokens — finalizing the turn to a blank assistant
+      // message ("thinking for a few seconds, then no reply").
+      if (
+        typeof (item.delta as any)?.reasoning_content === 'string' &&
+        !!(item.delta as any).reasoning_content
+      ) {
+        const reasoning = (item.delta as any).reasoning_content as string;
+        return appendUsageChunk({ data: reasoning, id: chunk.id, type: 'reasoning' });
+      }
+
       // OpenAI Search Preview model returns citation sources
       // {"id":"chatcmpl-18037d13-243c-4941-8b05-9530b352cf17","object":"chat.completion.chunk","created":1748351805,"model":"gpt-4o-mini-search-preview-2025-03-11","choices":[{"index":0,"delta":{"annotations":[{"type":"url_citation","url_citation":{"url":"https://zh.wikipedia.org/wiki/%E4%B8%8A%E6%B5%B7%E4%B9%90%E9%AB%98%E4%B9%90%E5%9B%AD?utm_source=openai","title":"上海乐高乐园","start_index":75,"end_index":199}}]},"finish_reason":"stop"}],"service_tier":"default"}
       if ((item as any).delta?.annotations && (item as any).delta.annotations.length > 0) {

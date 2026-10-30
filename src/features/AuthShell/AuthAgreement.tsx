@@ -4,8 +4,6 @@ import { Text } from '@lobehub/ui';
 import { type CSSProperties, memo } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 
-import { PRIVACY_URL, TERMS_URL } from '@/const/url';
-
 const linkStyle: CSSProperties = {
   color: 'inherit',
   cursor: 'pointer',
@@ -21,12 +19,12 @@ const AuthAgreement = memo(() => {
         ns={'auth'}
         components={{
           privacy: (
-            <a href={PRIVACY_URL} style={linkStyle}>
+            <a href="/privacy" style={linkStyle} target="_blank" rel="noreferrer">
               {t('footer.privacy')}
             </a>
           ),
           terms: (
-            <a href={TERMS_URL} style={linkStyle}>
+            <a href="/terms" style={linkStyle} target="_blank" rel="noreferrer">
               {t('footer.terms')}
             </a>
           ),

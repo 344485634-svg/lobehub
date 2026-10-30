@@ -178,6 +178,7 @@ export const POST = async (req: Request, { params }: { params: Promise<{ provide
           model: resolvedModelId,
           prechargeResult: metadata?.precharge as any,
           provider,
+          serverDB: db,
           userId: asyncTask.userId,
           workspaceId: asyncTask.workspaceId ?? undefined,
         });
@@ -256,6 +257,7 @@ export const POST = async (req: Request, { params }: { params: Promise<{ provide
         model: resolvedModelId,
         prechargeResult: metadata?.precharge as any,
         provider,
+        serverDB: db,
         usage: result.usage,
         userId: asyncTask.userId,
         workspaceId: asyncTask.workspaceId ?? undefined,
@@ -291,6 +293,7 @@ export const POST = async (req: Request, { params }: { params: Promise<{ provide
           model: '',
           prechargeResult: asyncTaskMetadata.precharge as any,
           provider,
+          serverDB: await getServerDB().catch(() => undefined),
           userId: asyncTaskUserId,
           workspaceId: asyncTaskWorkspaceId,
         });

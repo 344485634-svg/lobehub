@@ -16,7 +16,12 @@ export const resolveImageSinglePrice = (pricing?: Pricing): ImageSinglePriceResu
   }
 
   // Priority 2: Calculate exact price from pricing units
-  const imageGenerationUnit = pricing.units.find((unit) => unit.name === 'imageGeneration');
+  // Guard against missing/invalid `units` (e.g. closed-product models priced
+  // only via creditsPerRequest) — an absent array previously threw TypeError
+  // and broke the whole model list build.
+  const imageGenerationUnit = Array.isArray(pricing.units)
+    ? pricing.units.find((unit) => unit.name === 'imageGeneration')
+    : undefined;
   if (!imageGenerationUnit) return {};
 
   if (imageGenerationUnit.strategy === 'fixed') {

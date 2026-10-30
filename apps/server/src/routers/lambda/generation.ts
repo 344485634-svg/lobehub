@@ -1,4 +1,6 @@
+import { asyncTasks } from '@lobechat/database/schemas';
 import { TRPCError } from '@trpc/server';
+import { and, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { withScopedPermission } from '@/business/server/trpc-middlewares/rbacPermission';
@@ -8,9 +10,15 @@ import { GenerationModel } from '@/database/models/generation';
 import { router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { FileService } from '@/server/services/file';
+import { processBackgroundVideoPolling } from '@/server/services/generation/videoBackgroundPolling';
 import { type AsyncTaskError } from '@/types/asyncTask';
-import { AsyncTaskStatus } from '@/types/asyncTask';
+import { AsyncTaskStatus, AsyncTaskType } from '@/types/asyncTask';
 import { type Generation } from '@/types/generation';
+
+// 断点续跑判定:心跳超过 3 分钟未刷新 → 认定轮询进程已死
+const RESUME_STALE_MS = 3 * 60 * 1000;
+// 单次续跑预算 30 分钟 + 5 分钟缓冲;超过后允许再次续跑(resumedAt 重臂窗口)
+const RESUME_REARM_MS = 35 * 60 * 1000;
 
 const generationProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
@@ -64,6 +72,62 @@ export const generationRouter = router({
       const asyncTask = await ctx.asyncTaskModel.findById(input.asyncTaskId);
       if (!asyncTask) {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Async task not found' });
+      }
+
+      // 断点续跑:视频轮询跑在应用进程内,容器重启会把在途轮询直接杀掉,
+      // 任务从此僵在 processing(无人翻转状态)。
+      // 判定依据=心跳停跳:轮询循环每 10 秒刷新 updatedAt,超过 RESUME_STALE
+      // 未刷新即认定进程已死。用原子 claim(带 resumedAt 重臂窗口)保证多端
+      // 同时打开页面也只拉起一个续跑进程。
+      const staleMs = Date.now() - new Date(asyncTask.updatedAt).getTime();
+      if (
+        asyncTask.status === AsyncTaskStatus.Processing &&
+        asyncTask.type === AsyncTaskType.VideoGeneration &&
+        asyncTask.inferenceId &&
+        staleMs > RESUME_STALE_MS
+      ) {
+        const claim = await ctx.serverDB
+          .update(asyncTasks)
+          .set({
+            metadata: sql`jsonb_set(coalesce(${asyncTasks.metadata}, '{}'::jsonb), '{resumedAt}', ${JSON.stringify(new Date().toISOString())}::jsonb)`,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(asyncTasks.id, input.asyncTaskId),
+              eq(asyncTasks.status, AsyncTaskStatus.Processing),
+              sql`(${asyncTasks.metadata}->>'resumedAt') is null or (${asyncTasks.metadata}->>'resumedAt') < ${new Date(Date.now() - RESUME_REARM_MS).toISOString()}`,
+            ),
+          )
+          .returning({ id: asyncTasks.id });
+
+        if (claim.length > 0) {
+          const generation = await ctx.serverDB.query.generations.findFirst({
+            where: (gens, { eq: eqFn }) => eqFn(gens.id, input.generationId),
+          });
+          const batch = generation
+            ? await ctx.serverDB.query.generationBatches.findFirst({
+                where: (batches, { eq: eqFn }) => eqFn(batches.id, generation.generationBatchId),
+              })
+            : undefined;
+
+          if (generation && batch) {
+            // fire-and-forget:页面继续用当前 query 正常轮询,不打断响应
+            void processBackgroundVideoPolling(ctx.serverDB, {
+              asyncTaskCreatedAt: asyncTask.createdAt,
+              asyncTaskId: input.asyncTaskId,
+              generationBatchId: batch.id,
+              generationId: input.generationId,
+              generationTopicId: batch.generationTopicId,
+              inferenceId: asyncTask.inferenceId,
+              model: batch.model,
+              prechargeResult: (asyncTask.metadata as Record<string, any>)?.precharge,
+              provider: batch.provider,
+              userId: ctx.userId,
+              workspaceId: ctx.workspaceId ?? undefined,
+            }).catch((e) => console.error('[generation] resume video polling failed:', e));
+          }
+        }
       }
 
       const { status, error } = asyncTask;

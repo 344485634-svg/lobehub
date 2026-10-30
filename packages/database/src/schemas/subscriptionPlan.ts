@@ -75,4 +75,9 @@ export type PlanAllowedModel = {
   displayName?: string;
   modelId: string;
   providerId: string;
+  /**
+   * Credit discount for this model in this plan. Range 0.01–1.0.
+   * 0.8 = 8折 = 20% off. Undefined / 1.0 = no discount.
+   */
+  discountRate?: number;
 };

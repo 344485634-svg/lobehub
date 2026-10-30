@@ -62,8 +62,9 @@ afterEach(() => {
 });
 
 describe('settings useCategory', () => {
-  it('keeps Provider visible when provider settings are enabled', () => {
-    expect(getItemKeys()).toContain(SettingsTabs.Provider);
+  // 白标封闭产品:provider/connector/memory/creds 收敛到 Admin 后台,个人设置不展示
+  it('hides Provider from personal settings (closed product)', () => {
+    expect(getItemKeys()).not.toContain(SettingsTabs.Provider);
   });
 
   it('hides Provider when provider settings are disabled', () => {
@@ -74,5 +75,10 @@ describe('settings useCategory', () => {
     const keys = result.current.flatMap((group) => group.items.map((item) => item.key));
 
     expect(keys).not.toContain(SettingsTabs.Provider);
+  });
+
+  // 技能对用户开放:内置技能/技能商店/自定义上传,与聊天工具面板共用数据
+  it('shows Skill tab for users', () => {
+    expect(getItemKeys()).toContain(SettingsTabs.Skill);
   });
 });

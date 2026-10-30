@@ -61,7 +61,7 @@ const getComposioMetas = (s: ToolStoreState): LobeToolMeta[] =>
       identifier: server.identifier,
       meta: {
         avatar: '☁️',
-        description: `ChatLM Mcp Server: ${server.label}`,
+        description: `ChatX Mcp Server: ${server.label}`,
         tags: ['composio', 'mcp'],
         title: server.label,
       },

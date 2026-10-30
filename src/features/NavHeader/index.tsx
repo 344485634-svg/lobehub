@@ -1,9 +1,12 @@
-import { type FlexboxProps } from '@lobehub/ui';
-import { Flexbox, TooltipGroup } from '@lobehub/ui';
+import { type ActionIconProps, type FlexboxProps } from '@lobehub/ui';
+import { ActionIcon, Flexbox, TooltipGroup } from '@lobehub/ui';
+import { ArrowLeft } from 'lucide-react';
 import { type CSSProperties, type ReactNode } from 'react';
 import { memo } from 'react';
+import { useNavigate } from 'react-router';
 
 import ToggleLeftPanelButton, { isMacDesktop } from '@/features/NavPanel/ToggleLeftPanelButton';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { useGlobalStore } from '@/store/global';
 import { systemStatusSelectors } from '@/store/global/selectors';
 
@@ -11,6 +14,11 @@ export interface NavHeaderProps extends Omit<FlexboxProps, 'children'> {
   children?: ReactNode;
   left?: ReactNode;
   right?: ReactNode;
+  /**
+   * 移动端是否显示返回按钮(默认显示)。层级深的页面(如生图生视频)
+   * 没有左侧主导航,返回是唯一退路;平级页面可显式关闭。
+   */
+  showMobileBack?: boolean;
   showTogglePanelButton?: boolean;
   slotClassNames?: {
     center?: string;
@@ -24,8 +32,27 @@ export interface NavHeaderProps extends Omit<FlexboxProps, 'children'> {
   };
 }
 
+const MobileBackButton = memo(() => {
+  const navigate = useNavigate();
+
+  return (
+    <ActionIcon
+      icon={ArrowLeft}
+      size={{ blockSize: 32, size: 18 }}
+      onClick={() => {
+        // 无历史(新标签直进)时兜底回首页
+        if (window.history.state?.idx === 0) navigate('/');
+        else navigate(-1);
+      }}
+    />
+  );
+});
+
+MobileBackButton.displayName = 'MobileBackButton';
+
 const NavHeader = memo<NavHeaderProps>(
   ({
+    showMobileBack = true,
     showTogglePanelButton = true,
     style,
     children,
@@ -36,12 +63,13 @@ const NavHeader = memo<NavHeaderProps>(
     ...rest
   }) => {
     const expand = useGlobalStore(systemStatusSelectors.showLeftPanel);
+    const isMobile = useIsMobile();
 
-    const noContent = !left && !right;
+    const noContent = !left && !right && !(isMobile && showMobileBack);
 
     // When empty, this header only rendered to host the collapse toggle. Hide it
     // when expanded, and also on macOS desktop where the toggle moved to the titlebar.
-    if (noContent && (expand || isMacDesktop)) return;
+    if (noContent && !isMobile && (expand || isMacDesktop)) return;
 
     return (
       <Flexbox
@@ -66,6 +94,7 @@ const NavHeader = memo<NavHeaderProps>(
             justify={'flex-start'}
             style={styles?.left}
           >
+            {isMobile && showMobileBack && <MobileBackButton />}
             {showTogglePanelButton && !expand && <ToggleLeftPanelButton />}
             {left}
           </Flexbox>

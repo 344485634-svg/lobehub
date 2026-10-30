@@ -67,6 +67,11 @@ ENV NEXT_PUBLIC_ANALYTICS_UMAMI="${NEXT_PUBLIC_ANALYTICS_UMAMI}" \
 # Node
 ENV NODE_OPTIONS="--max-old-space-size=8192"
 
+# pnpm 网络韧性:对不稳定 CDN(如 cdn.sheetjs.com)放宽超时并加大重试
+ENV npm_config_fetch_retries="5" \
+    npm_config_fetch_timeout="300000" \
+    npm_config_fetch_retry_maxtimeout="120000"
+
 WORKDIR /app
 
 COPY package.json pnpm-workspace.yaml ./
@@ -75,8 +80,13 @@ COPY packages ./packages
 COPY patches ./patches
 # bring in desktop workspace manifest so pnpm can resolve it
 COPY apps/desktop/src/main/package.json ./apps/desktop/src/main/package.json
+# vendored tarball deps (xlsx) — file: 依赖在 pnpm i 时就要读
+COPY vendor ./vendor
 
-RUN set -e && \
+# pnpm store 走 BuildKit cache mount:依赖缓存跨构建持久化,
+# 层失败重试时无需重新下载 345+ 个包,也绕开不稳定 CDN 的重复拉取
+RUN --mount=type=cache,id=chatx-pnpm-store,target=/root/.local/share/pnpm/store \
+    set -e && \
     if [ "${USE_CN_MIRROR:-false}" = "true" ]; then \
         export SENTRYCLI_CDNURL="https://npmmirror.com/mirrors/sentry-cli"; \
         npm config set registry "https://registry.npmmirror.com/"; \

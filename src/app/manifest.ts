@@ -5,7 +5,7 @@ const manifest = async (): Promise<MetadataRoute.Manifest> => {
   if (process.env.NODE_ENV === 'development') {
     return {
       background_color: '#000000',
-      description: 'ChatLM Development',
+      description: 'ChatX Development',
       display: 'standalone',
       icons: [
         {
@@ -14,8 +14,8 @@ const manifest = async (): Promise<MetadataRoute.Manifest> => {
           type: 'image/png',
         },
       ],
-      name: 'ChatLM',
-      short_name: 'ChatLM',
+      name: 'ChatX',
+      short_name: 'ChatX',
       start_url: '/',
       theme_color: '#000000',
     };

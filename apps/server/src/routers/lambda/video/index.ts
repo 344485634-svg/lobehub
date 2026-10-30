@@ -81,47 +81,10 @@ export const videoRouter = router({
   createVideo: videoCreateProcedure
     .input(createVideoInputSchema)
     .mutation(async ({ input, ctx }) => {
-      const { getSubscriptionPlan } = await import('@/business/server/user');
-      const { Plans } = await import('@lobechat/types');
-      const { AiModelModel } = await import('@/database/models/aiModel');
-      const plan = await getSubscriptionPlan(ctx.userId);
-      const isFree = !plan || plan === Plans.Free;
-      const providerId = (input as any).provider;
-      const modelId = (input as any).model;
-      if (isFree && providerId && modelId) {
-        let creditsPerRequest = 0;
-        try {
-          const m = await new AiModelModel(ctx.serverDB, ctx.userId).findByIdAndProvider(
-            modelId,
-            providerId,
-          );
-          if (m) creditsPerRequest = Number((m.pricing as any)?.creditsPerRequest ?? 0) || 0;
-          if (!m) {
-            const { eq: eq2 } = await import('drizzle-orm');
-            const { users: usersTable } = await import('@/database/schemas');
-            const admins = await ctx.serverDB
-              .select({ id: usersTable.id })
-              .from(usersTable)
-              .where(eq2(usersTable.role, 'admin'))
-              .limit(3);
-            for (const a of admins) {
-              const am = await new AiModelModel(ctx.serverDB, a.id).findByIdAndProvider(
-                modelId,
-                providerId,
-              );
-              if (am) {
-                creditsPerRequest = Number((am.pricing as any)?.creditsPerRequest ?? 0) || 0;
-                break;
-              }
-            }
-          }
-        } catch {}
-        if (creditsPerRequest > 0) {
-          throw new TRPCError({
-            code: 'FORBIDDEN',
-            message: '积分不足：当前视频模型需订阅套餐后使用，请前往「设置 → 订阅套餐」开通。',
-          });
-        }
+      {
+        const { checkModelAccess } = await import('@/business/server/checkModelAccess');
+        const denied = await checkModelAccess(ctx.serverDB, ctx.userId, input.provider, input.model);
+        if (denied) throw new TRPCError({ code: 'FORBIDDEN', message: denied });
       }
 
       const { userId, serverDB, asyncTaskModel, fileService, generationTopicModel } = ctx;
@@ -206,7 +169,7 @@ export const videoRouter = router({
       }
 
       // Convert stored keys / proxy URLs to full URLs the model gateway can fetch.
-      // Remote gateways (api.liuma.ai) require media_url to be valid HTTP(S).
+      // Remote gateways (api.chatx.ai) require media_url to be valid HTTP(S).
       // Always resolve through fileService so localhost proxy URLs become S3/public URLs
       // when available (not only in development).
       let generationParams = params;
@@ -261,15 +224,25 @@ export const videoRouter = router({
         throw new TRPCError({ code: 'FORBIDDEN', message: 'Invalid generation topic' });
       }
 
-      const { errorBatch, prechargeResult } = await chargeBeforeGenerate({
-        generationTopicId,
-        model,
-        params,
-        provider,
-        userId,
-        workspaceId: wsId,
-      });
-      if (errorBatch) return errorBatch;
+      let prechargeResult: Record<string, unknown> | undefined;
+      try {
+        const charge = await chargeBeforeGenerate({
+          generationTopicId,
+          model,
+          params,
+          provider,
+          serverDB,
+          userId,
+          workspaceId: wsId,
+        });
+        if (charge.errorBatch) return charge.errorBatch;
+        prechargeResult = charge.prechargeResult as any;
+      } catch (e: any) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: e?.message || '积分不足，无法生成视频',
+        });
+      }
 
       // Generate a one-time token for webhook callback verification
       const webhookToken = randomBytes(32).toString('hex');
@@ -441,6 +414,7 @@ export const videoRouter = router({
               model: resolvedModelId,
               prechargeResult,
               provider,
+              serverDB,
               userId,
               workspaceId: wsId,
             });

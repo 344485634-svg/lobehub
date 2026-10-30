@@ -48,7 +48,7 @@ describe('PlaceholderVariablesProcessor — tool message substitution', () => {
         tool_call_id: 'toolu_1',
         name: 'lobe-activator____activateSkill',
         content:
-          '<lobehub_platform_guides>\n| Agent ID | `{{agent_id}}` |\n| Agent Title | {{agent_title}} |\n| Topic ID | `{{topic_id}}` |\n</lobehub_platform_guides>',
+          '<lm_studio_platform_guides>\n| Agent ID | `{{agent_id}}` |\n| Agent Title | {{agent_title}} |\n| Topic ID | `{{topic_id}}` |\n</lm_studio_platform_guides>',
       },
     ]);
 

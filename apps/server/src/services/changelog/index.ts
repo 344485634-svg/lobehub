@@ -5,6 +5,7 @@ import semver from 'semver';
 import urlJoin from 'url-join';
 
 import { FetchCacheTag } from '@/const/cacheControl';
+import { SystemConfigModel } from '@/database/models/systemConfig';
 import { type Locales } from '@/locales/resources';
 import { type ChangelogIndexItem } from '@/types/changelog';
 import { markdownToTxt } from '@/utils/markdownToTxt';
@@ -13,6 +14,19 @@ const URL_TEMPLATE = 'https://raw.githubusercontent.com/{{user}}/{{repo}}/{{bran
 const LAST_MODIFIED = new Date().toISOString();
 
 const docCdnPrefix = process.env.DOC_S3_PUBLIC_DOMAIN || '';
+
+/** system_configs key: admin-configured changelog entries */
+export const ADMIN_CHANGELOG_KEY = 'changelog.admin';
+
+export type AdminChangelogEntry = {
+  /** stable id, e.g. '2026-08-01-fix-billing' */
+  content: string;
+  date: string;
+  id: string;
+  image?: string;
+  title: string;
+  versionRange?: string[];
+};
 
 export interface ChangelogConfig {
   branch: string;
@@ -42,12 +56,42 @@ export class ChangelogService {
     user: 'lobehub',
   };
 
+  constructor(private db?: any) {}
+
+  /** Load admin-configured changelog entries from system_configs (if any). */
+  private async getAdminEntries(): Promise<AdminChangelogEntry[] | null> {
+    if (!this.db) return null;
+    try {
+      const model = new SystemConfigModel(this.db);
+      const cfg = await model.get<{ entries: AdminChangelogEntry[] }>(ADMIN_CHANGELOG_KEY);
+      const entries = Array.isArray(cfg?.entries) ? cfg.entries : [];
+      if (entries.length === 0) return null;
+      // sort newest first
+      return entries
+        .slice()
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    } catch {
+      return null;
+    }
+  }
+
   async getLatestChangelogId() {
     const index = await this.getChangelogIndex();
     return index[0]?.id;
   }
 
   async getChangelogIndex(): Promise<ChangelogIndexItem[]> {
+    // Admin-configured changelog takes precedence over the remote GitHub docs.
+    const admin = await this.getAdminEntries();
+    if (admin) {
+      return admin.map((e) => ({
+        date: e.date,
+        id: e.id,
+        image: e.image,
+        versionRange: e.versionRange || [String(e.date)],
+      }));
+    }
+
     try {
       const url = this.genUrl(urlJoin(this.config.docsPath, 'index.json'));
 
@@ -82,6 +126,25 @@ export class ChangelogService {
   }
 
   async getPostById(id: string, options?: { locale?: Locales }) {
+    // Admin-configured changelog takes precedence.
+    const admin = await this.getAdminEntries();
+    if (admin) {
+      const post = admin.find((e) => e.id === id);
+      if (post) {
+        return {
+          content: post.content,
+          date: new Date(post.date),
+          description: markdownToTxt(post.content.replaceAll('\n', '').replaceAll('  ', ' ')).slice(
+            0,
+            160,
+          ),
+          image: post.image,
+          tags: ['changelog'],
+          title: post.title,
+        };
+      }
+    }
+
     await this.cdnInit();
     try {
       const post = await this.getIndexItemById(id);

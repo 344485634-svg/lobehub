@@ -654,6 +654,47 @@ export const callLlm =
                   search: grounding,
                   tools: persistedTools,
                 });
+
+                // Closed-product: deduct subscription credits by token usage
+                try {
+                  const usageForCredit = currentStepUsage as
+                    | {
+                        totalInputTokens?: number;
+                        totalOutputTokens?: number;
+                        inputTextTokens?: number;
+                        outputTextTokens?: number;
+                      }
+                    | undefined;
+                  const inputTokens =
+                    usageForCredit?.totalInputTokens ?? usageForCredit?.inputTextTokens;
+                  const outputTokens =
+                    usageForCredit?.totalOutputTokens ?? usageForCredit?.outputTextTokens;
+                  const chargeUserId = ctx.userId;
+                  if ((inputTokens || outputTokens) && ctx.serverDB && chargeUserId) {
+                    const { chargeChatUsage } = await import(
+                      '@/business/server/credits/chargeChatUsage'
+                    );
+                    await chargeChatUsage({
+                      db: ctx.serverDB,
+                      inputTokens,
+                      messageId: assistantMessageItem.id,
+                      model: llmPayload.model || model,
+                      outputTokens,
+                      provider: llmPayload.provider || provider,
+                      userId: chargeUserId,
+                    });
+                  } else {
+                    console.warn('[call_llm] skip credit charge', {
+                      hasDb: !!ctx.serverDB,
+                      hasUsage: !!usageForCredit,
+                      inputTokens,
+                      outputTokens,
+                      userId: chargeUserId,
+                    });
+                  }
+                } catch (creditErr) {
+                  console.error('[call_llm] credit charge failed:', creditErr);
+                }
               } catch (error) {
                 console.error('[call_llm] Failed to update message:', error);
               }

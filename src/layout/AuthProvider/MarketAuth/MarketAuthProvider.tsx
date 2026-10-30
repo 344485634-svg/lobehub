@@ -395,7 +395,7 @@ export const MarketAuthProvider = ({ children, isDesktop }: MarketAuthProviderPr
    */
   const signIn = useCallback(async (scene: MarketAuthScene = 'default'): Promise<number | null> => {
     if (!useUserStore.getState().isSignedIn) {
-      throw new Error('ChatLM session required');
+      throw new Error('ChatX session required');
     }
     setAuthScene(scene);
     return new Promise<number | null>((resolve, reject) => {

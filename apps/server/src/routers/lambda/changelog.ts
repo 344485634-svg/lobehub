@@ -2,12 +2,13 @@ import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
 import { publicProcedure, router } from '@/libs/trpc/lambda';
+import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { ChangelogService } from '@/server/services/changelog';
 
-const changelogProcedure = publicProcedure.use(async ({ next }) => {
+const changelogProcedure = publicProcedure.use(serverDatabase).use(async ({ next, ctx }) => {
   return next({
     ctx: {
-      changelogService: new ChangelogService(),
+      changelogService: new ChangelogService(ctx.serverDB),
     },
   });
 });

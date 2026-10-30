@@ -1,5 +1,3 @@
-import { SOCIAL_URL } from '@lobechat/business-const';
-import { DiscordIcon } from '@lobehub/ui/icons';
 import { Command } from 'cmdk';
 import {
   Bot,
@@ -12,7 +10,6 @@ import {
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { openFeedbackModal } from '@/components/FeedbackModal';
 import { getNavigableRoutes, getRouteById } from '@/config/routes';
 import { usePermission } from '@/hooks/usePermission';
 import { useChatStore } from '@/store/chat';
@@ -152,25 +149,14 @@ const MainMenu = memo(() => {
         <CommandItem
           icon={<FeatherIcon />}
           keywords={t('cmdk.keywords.contactUs').split(' ')}
-          value="contact-via-email"
+          value="contact-via-wechat"
           onSelect={() => {
-            // Close the palette through the context handler (which runs the exit
-            // animation and clears the local `isVisible` state) before opening the
-            // modal. `openFeedbackModal` only flips the store flag, which alone
-            // doesn't unmount the palette — so without this it stays on screen.
             onClose();
-            openFeedbackModal();
+            // Open WeChat contact modal
+            import('@/components/WechatContactModal').then((m) => m.openWechatContactModal());
           }}
         >
           {t('cmdk.contactUs')}
-        </CommandItem>
-        <CommandItem
-          icon={<DiscordIcon />}
-          keywords={t('cmdk.keywords.discord').split(' ')}
-          value="discord"
-          onSelect={() => handleExternalLink(SOCIAL_URL.discord)}
-        >
-          {t('cmdk.communitySupport')}
         </CommandItem>
       </Command.Group>
     </>

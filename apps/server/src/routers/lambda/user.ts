@@ -552,6 +552,22 @@ export const userRouter = router({
 
     return ctx.userModel.updateUser({ username: input });
   }),
+
+  deleteAccount: userProcedure
+    .input(z.object({ confirm: z.literal('DELETE') }))
+    .mutation(async ({ ctx }) => {
+      const userId = ctx.userId;
+      // 不允许删除管理员账号（保护误操作）
+      const user = await UserModel.findById(ctx.serverDB, userId);
+      if (user?.role === 'admin') {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: '管理员账号不可自助注销，请联系超级管理员处理',
+        });
+      }
+      await UserModel.deleteUser(ctx.serverDB, userId);
+      return { success: true };
+    }),
 });
 
 export type UserRouter = typeof userRouter;

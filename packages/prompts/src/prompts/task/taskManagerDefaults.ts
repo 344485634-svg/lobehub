@@ -9,9 +9,9 @@ export const buildTaskManagerDefaultsBlock = ({
 
   return [
     '<task_manager_defaults>',
-    `Default ChatLM agent id: ${defaultAssigneeAgentId}`,
-    'Use this id as assigneeAgentId when you decide a task should be assigned to the default ChatLM assistant.',
-    "Do not use it as a listTasks filter unless the user asks for ChatLM's tasks.",
+    `Default ChatX agent id: ${defaultAssigneeAgentId}`,
+    'Use this id as assigneeAgentId when you decide a task should be assigned to the default ChatX assistant.',
+    "Do not use it as a listTasks filter unless the user asks for ChatX's tasks.",
     '</task_manager_defaults>',
     '',
   ];

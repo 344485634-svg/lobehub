@@ -95,12 +95,12 @@ export const lobehubSkillStoreSelectors = {
           identifier: server.identifier,
           manifest: {
             api: apis,
-            author: 'ChatLM Market',
+            author: 'ChatX Market',
             homepage: 'https://lobehub.com/market',
             identifier: server.identifier,
             meta: {
               avatar: server.icon || '🔗',
-              description: `ChatLM Skill: ${server.name}`,
+              description: `ChatX Skill: ${server.name}`,
               tags: ['lobehub-skill', server.identifier],
               title: server.name,
             },
@@ -128,7 +128,7 @@ export const lobehubSkillStoreSelectors = {
         identifier: server.identifier,
         meta: {
           avatar: server.icon || '🔗',
-          description: `ChatLM Skill: ${server.name}`,
+          description: `ChatX Skill: ${server.name}`,
           title: server.name,
         },
       }));

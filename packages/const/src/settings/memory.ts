@@ -1,6 +1,6 @@
 import  { type UserMemorySettings } from '@lobechat/types';
 
 export const DEFAULT_MEMORY_SETTINGS: UserMemorySettings = {
-  enabled: true,
+  enabled: false, // commercial default: hide memory product surface
   effort: 'medium',
 };

@@ -14,6 +14,9 @@ const AdminProvidersPage: FC = () => {
   const [modelsProviderId, setModelsProviderId] = useState<string | null>(null);
   const [fetching, setFetching] = useState(false);
   const [form] = Form.useForm();
+  const [pricingEdit, setPricingEdit] = useState<any | null>(null);
+  const [pricingForm] = Form.useForm();
+  const [pricingSaving, setPricingSaving] = useState(false);
 
   const { data, isLoading, mutate } = useSWR('admin-providers', () =>
     lambdaClient.admin.listProviders.query(),
@@ -169,19 +172,88 @@ const AdminProvidersPage: FC = () => {
     },
   ];
 
-  const handleCreditsChange = async (modelId: string, creditsPerRequest: number) => {
-    if (!modelsProviderId) return;
+  const openPricingEditor = (row: any) => {
+    setPricingEdit(row);
+    const p = row?.pricing || {};
+    const byRes = p.videoCreditsPerSecondByResolution || {};
+    pricingForm.setFieldsValue({
+      creditsPerMillionInputTokens: p.creditsPerMillionInputTokens ?? 0,
+      creditsPerMillionOutputTokens: p.creditsPerMillionOutputTokens ?? 0,
+      creditsPerRequest: p.creditsPerRequest ?? 0,
+      videoCreditsPerSecond: p.videoCreditsPerSecond ?? 0,
+      videoRate480p: byRes['480p'] ?? byRes['480'] ?? undefined,
+      videoRate720p: byRes['720p'] ?? byRes['720'] ?? undefined,
+      videoRate1080p: byRes['1080p'] ?? byRes['1080'] ?? undefined,
+    });
+  };
+
+  const handleSavePricing = async () => {
+    if (!modelsProviderId || !pricingEdit) return;
     try {
-      await lambdaClient.admin.updateModelCredits.mutate({
-        creditsPerRequest,
-        modelId,
+      setPricingSaving(true);
+      const values = await pricingForm.validateFields();
+      const type = pricingEdit.type || 'chat';
+      const payload: any = {
+        modelId: pricingEdit.id,
         providerId: modelsProviderId,
-      });
-      message.success('积分已更新');
+      };
+
+      if (type === 'chat' || type === 'embedding' || !type) {
+        payload.creditsPerMillionInputTokens = Number(values.creditsPerMillionInputTokens) || 0;
+        payload.creditsPerMillionOutputTokens = Number(values.creditsPerMillionOutputTokens) || 0;
+        // keep legacy flat field at 0 for chat token billing
+        payload.creditsPerRequest = Number(values.creditsPerRequest) || 0;
+      } else if (type === 'image') {
+        payload.creditsPerRequest = Number(values.creditsPerRequest) || 0;
+      } else if (type === 'video') {
+        const byRes: Record<string, number> = {};
+        if (values.videoRate480p != null && values.videoRate480p !== '')
+          byRes['480p'] = Number(values.videoRate480p) || 0;
+        if (values.videoRate720p != null && values.videoRate720p !== '')
+          byRes['720p'] = Number(values.videoRate720p) || 0;
+        if (values.videoRate1080p != null && values.videoRate1080p !== '')
+          byRes['1080p'] = Number(values.videoRate1080p) || 0;
+        payload.videoCreditsPerSecondByResolution = byRes;
+        payload.videoCreditsPerSecond = Number(values.videoCreditsPerSecond) || 0;
+        // optional legacy
+        payload.creditsPerRequest = Number(values.creditsPerRequest) || 0;
+      } else {
+        payload.creditsPerRequest = Number(values.creditsPerRequest) || 0;
+      }
+
+      await lambdaClient.admin.updateModelCredits.mutate(payload);
+      message.success('计费配置已更新');
+      setPricingEdit(null);
       mutateModels();
     } catch (e: any) {
+      if (e?.errorFields) return;
       message.error(e?.message ?? '更新失败');
+    } finally {
+      setPricingSaving(false);
     }
+  };
+
+  const formatPricingSummary = (row: any) => {
+    const p = row?.pricing || {};
+    const type = row?.type || 'chat';
+    if (type === 'video') {
+      const by = p.videoCreditsPerSecondByResolution || {};
+      const parts = Object.entries(by)
+        .filter(([, v]) => Number(v) > 0)
+        .map(([k, v]) => `${k}:${v}/秒`);
+      if (parts.length) return parts.join(' · ');
+      if (p.videoCreditsPerSecond > 0) return `${p.videoCreditsPerSecond}/秒`;
+      if (p.creditsPerRequest > 0) return `${p.creditsPerRequest}/次`;
+      return '未配置';
+    }
+    if (type === 'image') {
+      return p.creditsPerRequest > 0 ? `${p.creditsPerRequest}/次` : '未配置';
+    }
+    const inn = Number(p.creditsPerMillionInputTokens) || 0;
+    const out = Number(p.creditsPerMillionOutputTokens) || 0;
+    if (inn > 0 || out > 0) return `入${inn}/M · 出${out}/M`;
+    if (p.creditsPerRequest > 0) return `${p.creditsPerRequest}/次`;
+    return '未配置';
   };
 
   const modelColumns = [
@@ -226,22 +298,18 @@ const AdminProvidersPage: FC = () => {
     },
     {
       key: 'credits',
-      render: (_: unknown, row: any) => {
-        const credits = row?.pricing?.creditsPerRequest ?? 0;
-        return (
-          <InputNumber
-            min={0}
-            size="small"
-            style={{ width: 90 }}
-            value={credits}
-            onChange={(v) => {
-              if (typeof v === 'number') handleCreditsChange(row.id, v);
-            }}
-          />
-        );
-      },
-      title: '积分/次',
-      width: 110,
+      render: (_: unknown, row: any) => (
+        <Flexbox gap={4} horizontal style={{ alignItems: 'center' }}>
+          <span style={{ fontSize: 12, maxWidth: 160 }} title={formatPricingSummary(row)}>
+            {formatPricingSummary(row)}
+          </span>
+          <Button size="small" onClick={() => openPricingEditor(row)}>
+            配置
+          </Button>
+        </Flexbox>
+      ),
+      title: '积分计费',
+      width: 220,
     },
     {
       dataIndex: 'enabled',
@@ -290,14 +358,14 @@ const AdminProvidersPage: FC = () => {
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item label="显示名称" name="name">
-            <Input placeholder="例如：LIUMA 官方 API" />
+            <Input placeholder="例如：ChatX 官方 API" />
           </Form.Item>
           <Form.Item
             label="API Base URL"
             name="baseURL"
-            tooltip="OpenAI 兼容网关地址，例如 https://api.liuma.ai/v1"
+            tooltip="OpenAI 兼容网关地址，例如 https://api.chatx.ai/v1"
           >
-            <Input placeholder="https://api.liuma.ai/v1" />
+            <Input placeholder="https://api.chatx.ai/v1" />
           </Form.Item>
           <Form.Item
             label="API Key"
@@ -362,6 +430,99 @@ const AdminProvidersPage: FC = () => {
             size="small"
           />
         </Flexbox>
+      </Modal>
+
+      {/* Model credit pricing editor */}
+      <Modal
+        confirmLoading={pricingSaving}
+        destroyOnClose
+        open={!!pricingEdit}
+        title={`积分计费：${pricingEdit?.displayName || pricingEdit?.id || ''}`}
+        width={520}
+        onCancel={() => setPricingEdit(null)}
+        onOk={handleSavePricing}
+      >
+        <Form form={pricingForm} layout="vertical" style={{ marginTop: 12 }}>
+          {(pricingEdit?.type === 'chat' ||
+            pricingEdit?.type === 'embedding' ||
+            !pricingEdit?.type) && (
+            <>
+              <div style={{ color: 'var(--lobe-color-text-secondary)', fontSize: 12, marginBottom: 8 }}>
+                文本/对话模型按 Token 计费（每百万 tokens 扣多少积分）
+              </div>
+              <Form.Item
+                extra="例如输入 5 表示每 100 万 input tokens 扣 5 积分"
+                label="输入积分 / 百万 tokens"
+                name="creditsPerMillionInputTokens"
+              >
+                <InputNumber min={0} style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item
+                extra="例如输出 10 表示每 100 万 output tokens 扣 10 积分"
+                label="输出积分 / 百万 tokens"
+                name="creditsPerMillionOutputTokens"
+              >
+                <InputNumber min={0} style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item
+                extra="可选兼容：按次扣费（token 单价均为 0 时生效）"
+                label="兼容：积分/次"
+                name="creditsPerRequest"
+              >
+                <InputNumber min={0} style={{ width: '100%' }} />
+              </Form.Item>
+            </>
+          )}
+
+          {pricingEdit?.type === 'image' && (
+            <>
+              <div style={{ color: 'var(--lobe-color-text-secondary)', fontSize: 12, marginBottom: 8 }}>
+                图片模型按每次生成请求扣费（多图 = 单价 × 张数）
+              </div>
+              <Form.Item label="积分 / 次（每张）" name="creditsPerRequest">
+                <InputNumber min={0} style={{ width: '100%' }} />
+              </Form.Item>
+            </>
+          )}
+
+          {pricingEdit?.type === 'video' && (
+            <>
+              <div style={{ color: 'var(--lobe-color-text-secondary)', fontSize: 12, marginBottom: 8 }}>
+                视频模型按「分辨率 × 秒」扣费。例：720p 每秒 10 积分，生成 5 秒 = 50 积分
+              </div>
+              <Form.Item label="480p 积分/秒" name="videoRate480p">
+                <InputNumber min={0} style={{ width: '100%' }} placeholder="可选" />
+              </Form.Item>
+              <Form.Item label="720p 积分/秒" name="videoRate720p">
+                <InputNumber min={0} style={{ width: '100%' }} placeholder="例如 10" />
+              </Form.Item>
+              <Form.Item label="1080p 积分/秒" name="videoRate1080p">
+                <InputNumber min={0} style={{ width: '100%' }} placeholder="可选" />
+              </Form.Item>
+              <Form.Item
+                extra="当分辨率未命中上表时使用的默认每秒积分"
+                label="默认积分/秒（兜底）"
+                name="videoCreditsPerSecond"
+              >
+                <InputNumber min={0} style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item
+                extra="可选兼容：整段视频按次扣费（仅当秒单价均为 0 时生效）"
+                label="兼容：积分/次"
+                name="creditsPerRequest"
+              >
+                <InputNumber min={0} style={{ width: '100%' }} />
+              </Form.Item>
+            </>
+          )}
+
+          {pricingEdit?.type &&
+            !['chat', 'embedding', 'image', 'video'].includes(pricingEdit.type) && (
+              <Form.Item label="积分/次" name="creditsPerRequest">
+                <InputNumber min={0} style={{ width: '100%' }} />
+              </Form.Item>
+            )}
+        </Form>
       </Modal>
     </Flexbox>
   );

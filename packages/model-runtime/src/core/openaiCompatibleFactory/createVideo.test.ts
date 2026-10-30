@@ -124,6 +124,7 @@ describe('createOpenAICompatibleVideo', () => {
 
     it('should send reference_contents with structured refs for non-OpenAI compatible providers', async () => {
       // 非OpenAI网关:用 reference_contents 数组,type=image/video,name=人物/动作
+      // 本地 S3 图(localhost)远程网关拉不到,会被内联为 base64 data URL 再发送
       const imgBuf = new Uint8Array([1, 2, 3]);
       global.fetch = vi
         .fn()
@@ -142,7 +143,7 @@ describe('createOpenAICompatibleVideo', () => {
       const payload: CreateVideoPayload = {
         model: 'vllm-omni',
         params: {
-          imageUrl: 'https://example.com/image.jpg',
+          imageUrl: 'http://localhost:9000/chatx/refs/image.jpg',
           prompt: 'Continue this scene',
         },
       };
@@ -150,13 +151,15 @@ describe('createOpenAICompatibleVideo', () => {
       await createOpenAICompatibleVideo(payload, mockVllmOptions);
 
       const body = JSON.parse((global.fetch as any).mock.calls[1][1].body);
-      expect(body.input_reference).toBeUndefined();
       expect(body.first_frame).toBeUndefined();
       expect(body.images).toBeUndefined();
       expect(body.reference_contents).toBeInstanceOf(Array);
       expect(body.reference_contents[0].type).toBe('image');
       expect(body.reference_contents[0].name).toBe('人物');
       expect(body.reference_contents[0].media_url).toMatch(/^data:image\/jpeg;base64,/);
+      // 网关的图生视频通道认 input_reference(字符串):首图以解析后的 media_url
+      // (公网 URL 或 base64 data URL)补发,否则报 "Field required: input.media"
+      expect(body.input_reference).toMatch(/^data:image\/jpeg;base64,/);
     });
   });
 
@@ -316,12 +319,17 @@ describe('queryOpenAICompatibleVideoStatus', () => {
     });
 
     expect(result).toEqual(mockResponse);
-    expect(fetch).toHaveBeenCalledWith('https://api.openai.com/v1/videos/task-123', {
-      method: 'GET',
-      headers: {
-        'Authorization': 'Bearer test-key',
-        'Content-Type': 'application/json',
-      },
-    });
+    // 状态查询带 60s 超时:防网关挂起导致轮询循环永久卡死
+    expect(fetch).toHaveBeenCalledWith(
+      'https://api.openai.com/v1/videos/task-123',
+      expect.objectContaining({
+        method: 'GET',
+        headers: {
+          'Authorization': 'Bearer test-key',
+          'Content-Type': 'application/json',
+        },
+        signal: expect.any(AbortSignal),
+      }),
+    );
   });
 });

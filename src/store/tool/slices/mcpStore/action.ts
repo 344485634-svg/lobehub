@@ -235,7 +235,7 @@ export class PluginMCPStoreActionImpl {
     let data: any;
     let result: CheckMcpInstallResult | undefined;
     let connection: any;
-    const userAgent = `ChatLM Desktop/${CURRENT_VERSION}`;
+    const userAgent = `ChatX Desktop/${CURRENT_VERSION}`;
 
     try {
       // Check if already cancelled

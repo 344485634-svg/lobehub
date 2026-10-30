@@ -57,11 +57,11 @@ const InboxItem = memo<InboxItemProps>(({ className, style }) => {
     inboxAgentId ? operationSelectors.isAgentVisiblyRunning(inboxAgentId) : () => false,
   );
   const prefetchAgent = usePrefetchAgent();
-  const inboxAgentTitle = inboxMeta.title || 'ChatLM';
+  const inboxAgentTitle = inboxMeta.title || 'ChatX';
   const inboxAgentAvatar = inboxMeta.avatar || DEFAULT_INBOX_AVATAR;
   const inboxUrl = usePreservedAgentUrl(inboxAgentId!);
 
-  // Prefetch agent layout chunk and data eagerly since ChatLM is almost always clicked
+  // Prefetch agent layout chunk and data eagerly since ChatX is almost always clicked
   prefetchAgent(inboxAgentId!);
 
   const avatarNode = (

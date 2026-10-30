@@ -66,6 +66,9 @@ const ModelConfigForm = memo<ModelConfigFormProps>(
       onFormInstanceReady(formInstance);
     }, []);
 
+    const modelType =
+      Form.useWatch('type', formInstance) || initialValues?.type || type || 'chat';
+
     return (
       <div
         onClick={(e) => {
@@ -84,7 +87,22 @@ const ModelConfigForm = memo<ModelConfigFormProps>(
           wrapperCol={isMobile ? { span: 18 } : { offset: 1, span: 18 }}
           initialValues={{
             ...initialValues,
+            creditsPerMillionInputTokens:
+              (initialValues as any)?.pricing?.creditsPerMillionInputTokens ?? 0,
+            creditsPerMillionOutputTokens:
+              (initialValues as any)?.pricing?.creditsPerMillionOutputTokens ?? 0,
             creditsPerRequest: (initialValues as any)?.pricing?.creditsPerRequest ?? 0,
+            videoCreditsPerSecond: (initialValues as any)?.pricing?.videoCreditsPerSecond ?? 0,
+            videoRate480p:
+              (initialValues as any)?.pricing?.videoCreditsPerSecondByResolution?.['480p'] ??
+              undefined,
+            videoRate720p:
+              (initialValues as any)?.pricing?.videoCreditsPerSecondByResolution?.['720p'] ??
+              undefined,
+            videoRate1080p:
+              (initialValues as any)?.pricing?.videoCreditsPerSecondByResolution?.['1080p'] ??
+              undefined,
+            type: initialValues?.type || type || 'chat',
           }}
         >
           <Form.Item
@@ -186,13 +204,6 @@ const ModelConfigForm = memo<ModelConfigFormProps>(
             <Checkbox />
           </Form.Item>
           <Form.Item
-            extra="用户每次调用该模型扣除的积分点（0 表示不扣）"
-            label="积分/次"
-            name="creditsPerRequest"
-          >
-            <InputNumber min={0} placeholder="0" style={{ width: '100%' }} />
-          </Form.Item>
-          <Form.Item
             extra={t('providerModels.item.modelConfig.type.extra')}
             label={t('providerModels.item.modelConfig.type.title')}
             name={'type'}
@@ -202,6 +213,66 @@ const ModelConfigForm = memo<ModelConfigFormProps>(
               placeholder={t('providerModels.item.modelConfig.type.placeholder')}
             />
           </Form.Item>
+
+          {(modelType === 'chat' || modelType === 'embedding') && (
+            <>
+              <Form.Item
+                extra="每 100 万 input tokens 扣除的积分，例如 5"
+                label="输入积分/百万tokens"
+                name="creditsPerMillionInputTokens"
+              >
+                <InputNumber min={0} placeholder="0" style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item
+                extra="每 100 万 output tokens 扣除的积分，例如 10"
+                label="输出积分/百万tokens"
+                name="creditsPerMillionOutputTokens"
+              >
+                <InputNumber min={0} placeholder="0" style={{ width: '100%' }} />
+              </Form.Item>
+            </>
+          )}
+
+          {modelType === 'image' && (
+            <Form.Item
+              extra="每次图片生成扣除的积分（多图按张数累加）"
+              label="积分/次"
+              name="creditsPerRequest"
+            >
+              <InputNumber min={0} placeholder="0" style={{ width: '100%' }} />
+            </Form.Item>
+          )}
+
+          {modelType === 'video' && (
+            <>
+              <Form.Item extra="480p 每秒扣除积分" label="480p 积分/秒" name="videoRate480p">
+                <InputNumber min={0} placeholder="可选" style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item extra="720p 每秒扣除积分，例如 10" label="720p 积分/秒" name="videoRate720p">
+                <InputNumber min={0} placeholder="10" style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item extra="1080p 每秒扣除积分" label="1080p 积分/秒" name="videoRate1080p">
+                <InputNumber min={0} placeholder="可选" style={{ width: '100%' }} />
+              </Form.Item>
+              <Form.Item
+                extra="分辨率未命中时的默认每秒积分"
+                label="默认积分/秒"
+                name="videoCreditsPerSecond"
+              >
+                <InputNumber min={0} placeholder="0" style={{ width: '100%' }} />
+              </Form.Item>
+            </>
+          )}
+
+          {!['chat', 'embedding', 'image', 'video'].includes(String(modelType)) && (
+            <Form.Item
+              extra="用户每次调用该模型扣除的积分点（0 表示不扣）"
+              label="积分/次"
+              name="creditsPerRequest"
+            >
+              <InputNumber min={0} placeholder="0" style={{ width: '100%' }} />
+            </Form.Item>
+          )}
           {/*<Form.Item*/}
           {/*  extra={t('providerModels.item.modelConfig.files.extra')}*/}
           {/*  label={t('providerModels.item.modelConfig.files.title')}*/}

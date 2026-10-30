@@ -1,4 +1,13 @@
-import { decimal, index, jsonb, pgTable, text, timestamp, varchar } from 'drizzle-orm/pg-core';
+import {
+  decimal,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  varchar,
+} from 'drizzle-orm/pg-core';
 
 import { idGenerator } from '../utils/idGenerator';
 import { timestamps } from './_helpers';
@@ -16,9 +25,23 @@ export const paymentOrders = pgTable(
       .references(() => users.id, { onDelete: 'cascade' })
       .notNull(),
 
-    planId: varchar('plan_id', { length: 255 })
-      .references(() => subscriptionPlans.id, { onDelete: 'restrict' })
-      .notNull(),
+    planId: varchar('plan_id', { length: 255 }).references(() => subscriptionPlans.id, {
+      onDelete: 'restrict',
+    }),
+
+    /**
+     * Order kind:
+     * - subscription: buy a plan
+     * - topup: purchase credits (¥1 = 100 credits)
+     */
+    orderType: varchar('order_type', { length: 32 }).notNull().default('subscription'),
+
+    /** Credits purchased (top-up orders) */
+    credits: integer('credits'),
+
+    couponCode: varchar('coupon_code', { length: 32 }),
+    originalAmount: decimal('original_amount', { precision: 10, scale: 2 }),
+    discountAmount: decimal('discount_amount', { precision: 10, scale: 2 }),
 
     /** Merchant order id sent to payment gateway */
     outTradeNo: varchar('out_trade_no', { length: 64 }).notNull().unique(),

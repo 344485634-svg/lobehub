@@ -710,12 +710,45 @@ describe('createOpenAICompatibleImage', () => {
       const result = await createOpenAICompatibleImage(mockClient, payload, 'newapi');
 
       expect(result.imageUrl).toBe('data:image/png;base64,aspectRatioResult');
+      // 网关 images API 要求像素串:16:9 → 1824x1024(网关报错示例的基准尺寸)
       expect(mockClient.images.generate).toHaveBeenCalledWith(
-        expect.objectContaining({ size: '16:9' }),
+        expect.objectContaining({ size: '1824x1024' }),
       );
 
       const callArgs = vi.mocked(mockClient.images.generate).mock.calls[0][0] as any;
       expect(callArgs.aspectRatio).toBeUndefined();
+      expect(callArgs.size).toBe('1824x1024');
+    });
+
+    it('should merge width/height params into a pixel size string', async () => {
+      const mockImageResponse = {
+        data: [
+          {
+            b64_json: 'widthHeightResult',
+          },
+        ],
+      };
+
+      vi.mocked(mockClient.images.generate).mockResolvedValue(mockImageResponse as any);
+
+      const payload: CreateImagePayload = {
+        model: 'qwen-image-2.0',
+        params: {
+          height: 1024,
+          prompt: 'Generate a portrait image',
+          width: 576,
+        },
+      };
+
+      await createOpenAICompatibleImage(mockClient, payload, 'newapi');
+
+      // 宽高型模型(qwen):独立 width/height 会被网关忽略,必须合成 size 串
+      expect(mockClient.images.generate).toHaveBeenCalledWith(
+        expect.objectContaining({ size: '576x1024' }),
+      );
+      const callArgs = vi.mocked(mockClient.images.generate).mock.calls[0][0] as any;
+      expect(callArgs.width).toBeUndefined();
+      expect(callArgs.height).toBeUndefined();
     });
 
     it('should remove size when aspectRatio is "auto"', async () => {

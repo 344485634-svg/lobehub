@@ -4,7 +4,7 @@ import { Icon } from '@lobehub/ui';
 import { type TabBarProps } from '@lobehub/ui/mobile';
 import { TabBar } from '@lobehub/ui/mobile';
 import { createStaticStyles } from 'antd-style';
-import { Compass, MessageSquare, User } from 'lucide-react';
+import { ImagePlus, MessageSquare, User } from 'lucide-react';
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -12,7 +12,6 @@ import { MOBILE_TABBAR_HEIGHT } from '@/const/layoutTokens';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import { useActiveTabKey } from '@/hooks/useActiveTabKey';
 import { SidebarTabKey } from '@/store/global/initialState';
-import { featureFlagsSelectors, useServerConfigStore } from '@/store/serverConfig';
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
   active: css`
@@ -29,12 +28,12 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 }));
 
 const NavBar = memo(() => {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation(['common', 'electron']);
   const activeKey = useActiveTabKey();
   const navigate = useWorkspaceAwareNavigate();
 
-  const { showMarket } = useServerConfigStore(featureFlagsSelectors);
-
+  // 移动端主导航:对话 / 创作 / 我的。
+  // 生图与生视频同属"创作"(进入 /image 后由页面内模式切换器切换到 /video)。
   const items: TabBarProps['items'] = useMemo(
     () =>
       [
@@ -44,19 +43,19 @@ const NavBar = memo(() => {
           ),
           key: SidebarTabKey.Chat,
           onClick: () => {
-            navigate('/agent');
+            navigate('/');
           },
           title: t('tab.chat'),
         },
-        showMarket && {
+        {
           icon: (active: boolean) => (
-            <Icon className={active ? styles.active : undefined} icon={Compass} />
+            <Icon className={active ? styles.active : undefined} icon={ImagePlus} />
           ),
-          key: SidebarTabKey.Community,
+          key: SidebarTabKey.Image,
           onClick: () => {
-            navigate('/community');
+            navigate('/image', { escape: true });
           },
-          title: t('tab.community'),
+          title: t('navigation.create', { ns: 'electron' }),
         },
         {
           icon: (active: boolean) => (

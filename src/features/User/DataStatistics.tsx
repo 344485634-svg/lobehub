@@ -11,10 +11,11 @@ import { useTranslation } from 'react-i18next';
 import NeuralNetworkLoading from '@/components/NeuralNetworkLoading';
 import { useClientDataSWR } from '@/libs/swr';
 import { statsKeys } from '@/libs/swr/keys';
+import { lambdaClient } from '@/libs/trpc/client';
 import { agentService } from '@/services/agent';
 import { messageService } from '@/services/message';
 import { topicService } from '@/services/topic';
-import { useServerConfigStore } from '@/store/serverConfig';
+import { serverConfigSelectors, useServerConfigStore } from '@/store/serverConfig';
 import { formatShortenNumber } from '@/utils/format';
 import { today } from '@/utils/time';
 
@@ -46,6 +47,9 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 
 const DataStatistics = memo<Omit<FlexboxProps, 'children'>>(({ style, ...rest }) => {
   const mobile = useServerConfigStore((s) => s.isMobile);
+  const enableBusinessFeatures = useServerConfigStore(
+    serverConfigSelectors.enableBusinessFeatures,
+  );
   // assistants (counted from the agents table — the sidebar list source of truth)
   const { data: agents, isLoading: agentsLoading } = useClientDataSWR(statsKeys.countAgents(), () =>
     agentService.countAgents(),
@@ -63,6 +67,12 @@ const DataStatistics = memo<Omit<FlexboxProps, 'children'>>(({ style, ...rest })
         startDate: today().format('YYYY-MM-DD'),
       }),
     }),
+  );
+  // 积分余额:商业功能开启时用它替换"话题"卡(与套餐/积分页同一数据源)。
+  // PC 端昵称面板与移动端「我的」页对齐——两端口径一致(会话/积分/消息)。
+  const { data: creditBalance, isLoading: creditsLoading } = useClientDataSWR(
+    enableBusinessFeatures ? 'credit-balance-stat' : null,
+    () => lambdaClient.topUp.balance.query(),
   );
 
   const { t } = useTranslation('common');
@@ -87,6 +97,19 @@ const DataStatistics = memo<Omit<FlexboxProps, 'children'>>(({ style, ...rest })
       title: t('dataStatistics.messages'),
     },
   ];
+
+  // 商业功能开启:三卡改为 会话/积分余额/消息 —— 积分对用户是更高频
+  // 关注的信息,话题数可从会话列表自行感知。PC 端昵称面板与移动端「我的」页对齐。
+  if (enableBusinessFeatures) {
+    items[1] = {
+      count:
+        creditsLoading || isUndefined(creditBalance?.remaining)
+          ? loading
+          : formatShortenNumber(creditBalance.remaining),
+      key: 'credits',
+      title: t('subscription:tab.credits'),
+    };
+  }
 
   return (
     <Flexbox

@@ -194,7 +194,7 @@ CommandMenuContent.displayName = 'CommandMenuContent';
 /**
  * CMDK Menu.
  *
- * Search everything in ChatLM.
+ * Search everything in ChatX.
  */
 const CommandMenu = memo(() => {
   const [open, setOpen] = useGlobalStore((s) => [s.status.showCommandMenu, s.updateSystemStatus]);

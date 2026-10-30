@@ -284,7 +284,7 @@ export const contextEngineering = async ({
             const server = allComposioServers.find((s) => s.identifier === composioType.identifier);
 
             officialTools.push({
-              description: `ChatLM Mcp Server: ${composioType.label}`,
+              description: `ChatX Mcp Server: ${composioType.label}`,
               enabled: enabledPlugins.includes(composioType.identifier),
               identifier: composioType.identifier,
               installed: !!server,
@@ -306,7 +306,7 @@ export const contextEngineering = async ({
             const server = allLobehubSkillServers.find((s) => s.identifier === provider.id);
 
             officialTools.push({
-              description: `ChatLM Skill Provider: ${provider.label}`,
+              description: `ChatX Skill Provider: ${provider.label}`,
               enabled: enabledPlugins.includes(provider.id),
               identifier: provider.id,
               installed: !!server,

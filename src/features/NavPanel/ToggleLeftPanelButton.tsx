@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 
 import { DESKTOP_HEADER_ICON_SMALL_SIZE } from '@/const/layoutTokens';
 import { isDesktop } from '@/const/version';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { useGlobalStore } from '@/store/global';
 import { systemStatusSelectors } from '@/store/global/selectors';
 import { useUserStore } from '@/store/user';
@@ -48,9 +49,12 @@ const ToggleLeftPanelButton = memo<ToggleLeftPanelButtonProps>(
       s.toggleLeftPanel,
     ]);
     const hotkey = useUserStore(settingsSelectors.getHotkeyById(HotkeyEnum.ToggleLeftPanel));
+    // 移动端(mobile shell)不渲染 NavPanel 宿主,切换按钮是死按钮,隐藏
+    const isMobile = useIsMobile();
 
     const { t } = useTranslation(['chat', 'hotkey']);
 
+    if (isMobile) return null;
     if (isMacDesktop && !forceVisible) return null;
 
     return (

@@ -56,7 +56,7 @@ export default class NotificationCtr extends ControllerModule {
     }
 
     const notification = new Notification({
-      body: 'ChatLM can now send you notifications.',
+      body: 'ChatX can now send you notifications.',
       title: 'Notification Permission',
     });
 

@@ -168,7 +168,7 @@ const sidebarExpandedKeys =
 export const SIDEBAR_SPACER_ID = '__spacer__';
 
 export const DEFAULT_SIDEBAR_ITEMS: string[] = [
-  'tasks',
+  // 'tasks', // 商业化默认隐藏
   'pages',
   'recents',
   'private',
@@ -177,7 +177,7 @@ export const DEFAULT_SIDEBAR_ITEMS: string[] = [
   'image',
   'community',
   'resource',
-  'memory',
+  // 'memory', // 商业化默认隐藏
 ];
 
 /** Items that must stay contiguous in the sidebar list (accordion block).

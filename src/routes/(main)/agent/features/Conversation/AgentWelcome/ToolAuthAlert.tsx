@@ -33,14 +33,10 @@ const useStyles = createStyles(({ css }) => ({
   `,
 }));
 
-// Tools that require Market authentication
-const MARKET_AUTH_TOOLS = [
-  {
-    avatar: '💻',
-    identifier: 'lobe-cloud-sandbox',
-    label: 'Cloud Sandbox',
-  },
-];
+// 白标部署不依赖 LobeHub 社区沙箱/社区 OIDC 授权。
+// 移除 cloud-sandbox 的市场授权入口，避免弹出「试用社区沙箱 / 社区个人档案」等
+// 原品牌社区服务的授权确认，也避免暴露 LobeHub 品牌。
+const MARKET_AUTH_TOOLS: PendingMarketTool[] = [];
 
 const POLL_INTERVAL_MS = 1000;
 const POLL_TIMEOUT_MS = 15_000;

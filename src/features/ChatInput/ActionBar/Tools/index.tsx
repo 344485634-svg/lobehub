@@ -2,7 +2,6 @@ import { Blocks } from 'lucide-react';
 import { memo, Suspense, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { createSkillStoreModal } from '@/features/SkillStore';
 import { useModelSupportToolUse } from '@/hooks/useModelSupportToolUse';
 import { useAgentStore } from '@/store/agent';
 import { agentByIdSelectors } from '@/store/agent/selectors';
@@ -23,7 +22,7 @@ const Tools = memo(() => {
   const enableFC = useModelSupportToolUse(model, provider);
 
   const handleOpenStore = useCallback(() => {
-    createSkillStoreModal();
+    // closed product: skill store disabled
   }, []);
 
   if (!enableFC)

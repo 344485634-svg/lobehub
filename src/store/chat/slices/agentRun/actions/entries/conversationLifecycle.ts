@@ -26,6 +26,7 @@ import { TRPCClientError } from '@trpc/client';
 import { t } from 'i18next';
 
 import { message as antdMessage } from '@/components/AntdStaticMethods';
+import { handleSubscriptionRequiredError } from '@/business/client/handleSubscriptionRequiredError';
 import { resolveAgentWorkingDirectoryConfig } from '@/helpers/agentWorkingDirectory';
 import { agentService } from '@/services/agent';
 import { aiChatService } from '@/services/aiChat';
@@ -1283,7 +1284,11 @@ export class ConversationLifecycleActionImpl {
         const isAbort = e.message.includes('aborted') || e.name === 'AbortError';
         // Check if error is due to cancellation
         if (!isAbort) {
-          this.#get().updateOperationMetadata(operationId, { inputSendErrorMsg: e.message });
+          // Subscription-required errors get a dedicated notification with CTA button
+          const isSubscriptionError = handleSubscriptionRequiredError(e);
+          if (!isSubscriptionError) {
+            this.#get().updateOperationMetadata(operationId, { inputSendErrorMsg: e.message });
+          }
           const op = this.#get().operations[operationId];
           if (op?.metadata.inputEditorTempState) {
             this.#get().mainInputEditor?.setJSONState(op.metadata.inputEditorTempState);

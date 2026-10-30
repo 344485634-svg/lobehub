@@ -4,6 +4,7 @@ import {
   buildMappedBusinessModelFields,
   resolveBusinessModelMapping,
 } from '@lobechat/business-model-runtime';
+import { asyncTasks } from '@lobechat/database/schemas';
 import {
   AsyncTaskError,
   AsyncTaskErrorType,
@@ -11,6 +12,7 @@ import {
   RequestTrigger,
 } from '@lobechat/types';
 import debug from 'debug';
+import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { getProviderContentPolicyErrorMessage } from '@/business/server/getProviderContentPolicyErrorMessage';
@@ -57,12 +59,22 @@ const checkAbortSignal = (signal: AbortSignal) => {
 };
 
 async function pollUntilCompletion(
+  db: any,
+  asyncTaskId: string,
   modelRuntime: any,
   inferenceId: string,
   signal: AbortSignal,
 ): Promise<{ headers?: Record<string, string>; videoUrl: string } | null> {
   const maxRetries = 180;
   const pollingInterval = 10000;
+
+  // 心跳:防止长轮询被 checkTimeoutTasks 误判超时;进程死掉后据此触发断点续跑。
+  const heartbeat = () =>
+    db
+      .update(asyncTasks)
+      .set({ updatedAt: new Date() })
+      .where(eq(asyncTasks.id, asyncTaskId))
+      .catch((e: unknown) => log('Heartbeat failed for task %s: %O', asyncTaskId, e));
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     checkAbortSignal(signal);
@@ -71,6 +83,7 @@ async function pollUntilCompletion(
       log('Polling attempt %d/%d for inferenceId: %s', attempt + 1, maxRetries, inferenceId);
 
       const result = await modelRuntime.handlePollVideoStatus(inferenceId);
+      await heartbeat();
 
       if (result.status === 'success') {
         log('Video generation succeeded for inferenceId: %s', inferenceId);
@@ -104,6 +117,7 @@ async function pollUntilCompletion(
       }
 
       log('Polling attempt %d failed for inferenceId: %s: %O', attempt + 1, inferenceId, error);
+      await heartbeat();
 
       await new Promise<void>((resolve, reject) => {
         const timeoutId = setTimeout(resolve, pollingInterval);
@@ -167,7 +181,13 @@ export const videoRouter = router({
 
         checkAbortSignal(signal);
 
-        const pollResult = await pollUntilCompletion(modelRuntime, inferenceId, signal);
+        const pollResult = await pollUntilCompletion(
+          ctx.serverDB,
+          asyncTaskId,
+          modelRuntime,
+          inferenceId,
+          signal,
+        );
 
         if (!pollResult) {
           log('Polling completed but no video URL returned for inferenceId: %s', inferenceId);
@@ -237,6 +257,7 @@ export const videoRouter = router({
               model: resolvedModelId,
               prechargeResult,
               provider,
+              serverDB: ctx.serverDB,
               usage: undefined,
               userId: ctx.userId,
               workspaceId,
@@ -314,6 +335,7 @@ export const videoRouter = router({
             model: resolvedModelId,
             prechargeResult,
             provider,
+            serverDB: ctx.serverDB,
             userId: ctx.userId,
             workspaceId,
           });

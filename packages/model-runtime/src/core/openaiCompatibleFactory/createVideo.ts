@@ -5,79 +5,11 @@ import type {
   CreateVideoResponse,
   PollVideoStatusResult,
 } from '../../types/video';
+import { resolveMediaUrl } from '../../utils/mediaReference';
 import { resolveMappedModelId } from '../../utils/modelIdMapping';
 import type { CreateVideoOptions } from '../openaiCompatibleFactory';
 
 const log = createDebug('lobe-video:openai-compatible');
-
-/**
- * 将图片 URL 取回并转为 base64 data URL。
- * 仅作兜底:部分本地网关仍接受 data URL;远程网关(api.liuma.ai)要求 media_url 必须是 HTTP(S)。
- */
-async function fetchImageAsDataUrl(url: string): Promise<string | null> {
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const buf = Buffer.from(await res.arrayBuffer());
-    const mime = res.headers.get('content-type') || 'image/png';
-    return `data:${mime};base64,${buf.toString('base64')}`;
-  } catch {
-    return null;
-  }
-}
-
-/** 是否为远程网关可直接拉取的 HTTP(S) URL */
-function isPublicHttpUrl(url: string): boolean {
-  try {
-    const u = new URL(url);
-    if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
-    const host = u.hostname.toLowerCase();
-    // 本地/内网地址远程网关拉不到
-    if (
-      host === 'localhost' ||
-      host === '127.0.0.1' ||
-      host === '0.0.0.0' ||
-      host === '::1' ||
-      host.endsWith('.local') ||
-      host.startsWith('10.') ||
-      host.startsWith('192.168.') ||
-      /^172\.(?:1[6-9]|2\d|3[01])\./.test(host)
-    ) {
-      return false;
-    }
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * 解析参考素材最终 media_url:
- * - 已是公网 HTTP(S) → 原样使用(远程网关可下载)
- * - 本地/内网/相对路径 → 尝试内联 base64(仅图片类型部分网关接受)
- * - 无法解析 → 跳过该项
- */
-async function resolveMediaUrl(url: string, kind: 'image' | 'video'): Promise<string | null> {
-  if (!url) return null;
-  if (isPublicHttpUrl(url)) return url;
-
-  // 视频参考:网关强制 HTTP(S) URL,本地地址无法内联
-  if (kind === 'video') {
-    log(
-      'Skip video reference: media_url is not a public HTTP(S) URL (got %s). Upload to public storage or use a reachable URL.',
-      url.slice(0, 80),
-    );
-    return null;
-  }
-
-  // 图片:本地地址尝试 base64 兜底(部分兼容网关仍接受)
-  if (url.startsWith('data:')) return url;
-  const dataUrl = await fetchImageAsDataUrl(url);
-  if (dataUrl) return dataUrl;
-
-  log('Failed to resolve image reference URL: %s', url.slice(0, 80));
-  return null;
-}
 
 interface OpenAIVideoStatusResponse {
   completed_at?: number;
@@ -120,6 +52,9 @@ export async function queryOpenAICompatibleVideoStatus(
       'Content-Type': 'application/json',
     },
     method: 'GET',
+    // 状态查询挂起最危险:轮询循环会永久卡住,任务僵在 processing。
+    // 60s 足够慢网关,超时后由轮询层重试。
+    signal: AbortSignal.timeout(60_000),
   });
 
   if (!response.ok) {
@@ -135,7 +70,7 @@ export async function queryOpenAICompatibleVideoStatus(
 
 /**
  * Poll video status and return standardized result
- * Compatible with OpenAI Sora API
+ * Compatible with OpenAI Sora API and Aliyun-style task payloads.
  */
 export async function pollOpenAICompatibleVideoStatus(
   inferenceId: string,
@@ -143,14 +78,35 @@ export async function pollOpenAICompatibleVideoStatus(
 ): Promise<PollVideoStatusResult> {
   const response = await queryOpenAICompatibleVideoStatus(inferenceId, options);
 
-  if (response.status === 'completed') {
+  // 网关可能透传不同上游的响应形态:
+  // - OpenAI Sora 风格:顶层 { status: 'completed'|'failed'|..., url }
+  // - 阿里云万相风格(output.task_status):{ output: { task_status: 'SUCCEEDED'|'FAILED'|..., video_url } }
+  // 统一做大小写不敏感归一,否则上游早已完成,轮询仍按 pending 空转到超时。
+  const asRecord = response as unknown as Record<string, any>;
+  const output = asRecord.output ?? {};
+  const rawStatus = String(
+    asRecord.status ?? output.task_status ?? output.status ?? '',
+  ).toLowerCase();
+  const errorMessage = asRecord.error?.message ?? output.message ?? output.code;
+  // URL 候选覆盖各网关形态;实测网关(如 newapi 系 api.xinguhub.com)把链接放 metadata.url,
+  // 且进行中时是空串——用 || 链跳过空值,避免把 '' 误当有效链接。
+  const videoUrl: string | undefined =
+    asRecord.url ||
+    asRecord.video_url ||
+    output.video_url ||
+    asRecord.metadata?.url ||
+    asRecord.metadata?.video_url ||
+    asRecord.data?.[0]?.url ||
+    undefined;
+
+  if (['completed', 'succeeded', 'success'].includes(rawStatus)) {
     // Some providers return the download URL directly in the url field
     // Others require calling /videos/{id}/content endpoint
-    let videoUrl = response.url;
+    let finalVideoUrl = videoUrl;
 
-    if (!videoUrl) {
+    if (!finalVideoUrl) {
       // If no URL returned, construct the content endpoint URL
-      videoUrl = `${options.baseURL}/videos/${inferenceId}/content`;
+      finalVideoUrl = `${options.baseURL}/videos/${inferenceId}/content`;
     }
 
     // Return headers for authenticated download
@@ -160,18 +116,18 @@ export async function pollOpenAICompatibleVideoStatus(
         Authorization: `Bearer ${options.apiKey}`,
       },
       status: 'success',
-      videoUrl,
+      videoUrl: finalVideoUrl,
     };
   }
 
-  if (response.status === 'failed') {
+  if (['failed', 'canceled', 'cancelled', 'error'].includes(rawStatus)) {
     return {
-      error: response.error?.message || 'Video generation failed',
+      error: errorMessage || 'Video generation failed',
       status: 'failed',
     };
   }
 
-  // queued, in_progress, or any other status means still pending
+  // queued, in_progress, PENDING, RUNNING, UNKNOWN 等其余状态视为仍在进行
   return { status: 'pending' };
 }
 
@@ -234,7 +190,7 @@ export async function createOpenAICompatibleVideo(
       body['last_frame'] = { image_url: endImageUrl };
     }
   } else {
-    // OpenAI-compatible 网关(如 newapi / api.liuma.ai):
+    // OpenAI-compatible 网关(如 newapi / api.chatx.ai):
     // 官方要求 reference_contents[].media_url 必须是有效 HTTP(S) URL。
     // - 公网 URL:直接传
     // - 本地/内网图片:尽量转 data URL 兜底(部分网关不接受时会由上游再报错)
@@ -255,15 +211,12 @@ export async function createOpenAICompatibleVideo(
       seen.add(url);
       const media = await resolveMediaUrl(url, type);
       if (!media) return;
-      // 远程网关不接受 data: 时,仅在图片且为 data 时仍发送(兼容旧网关);
-      // 若是 video 且非 http, resolveMediaUrl 已返回 null。
-      if (type === 'image' && media.startsWith('data:') && !isPublicHttpUrl(url)) {
-        // api.liuma.ai 明确要求 HTTP(S),data URL 会被拒。本地图无法被远程拉时跳过并提示。
-        log(
-          'Skip local image reference for remote gateway (media_url must be HTTP(S)): %s',
-          url.slice(0, 80),
-        );
-        return;
+      // 图片:公网 URL 原样传;本地图(localhost/内网)远程网关拉不到,
+      // 由 resolveMediaUrl 转 Base64 内联——万相 3.0 官方明说支持
+      // `data:{MIME};base64,{data}`。若个别网关不接受,会显式报错,
+      // 好过静默丢图、让"参考生视频"退化为纯文生视频。
+      if (type === 'image' && media.startsWith('data:')) {
+        log('Inlining local image reference as base64 data URL: %s', url.slice(0, 80));
       }
       referenceContents.push({ media_url: media, name, type });
     };
@@ -276,6 +229,14 @@ export async function createOpenAICompatibleVideo(
     await pushRef(mediaUrl, '动作', 'video');
 
     if (referenceContents.length > 0) body['reference_contents'] = referenceContents;
+
+    // 网关(实测 api.xinguhub.com 等阿里系通道)的图生视频要求 input.media,
+    // 其 OpenAI 风格入口实际认的传图字段是 input_reference(字符串:公网 URL 或
+    // data URL 均已实测可用)。reference_contents 里的图它不会转发,
+    // 缺图时会报 "Field required: input.media"。
+    // 这里以字符串形态补发首图,reference_contents 仍保留给支持多参考的网关。
+    const firstImageRef = referenceContents.find((r) => r.type === 'image');
+    if (firstImageRef) body['input_reference'] = firstImageRef.media_url;
 
     // 网关用 aspect_ratio(非 size)和 duration(数字,非 seconds 字符串)
     if (aspectRatio) body['aspect_ratio'] = aspectRatio;

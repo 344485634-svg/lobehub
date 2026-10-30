@@ -59,7 +59,7 @@ export class ShouqianbaClient {
       app_id: this.cfg.appId,
       code: activationCode,
       device_id: deviceId,
-      name: 'ChatLM Terminal',
+      name: 'ChatX Terminal',
       os_info: 'Linux',
       sdk_version: '2.0.0',
     };

@@ -5,7 +5,7 @@ export const OFFICIAL_URL = '';
 export const OFFICIAL_SITE = '';
 export const OFFICIAL_DOMAIN = '';
 
-export const OG_URL = '/og/og.webp?v=1';
+export const OG_URL = '/og/og.webp?v=2';
 
 export const LobeHubPath = {
   webapi: {

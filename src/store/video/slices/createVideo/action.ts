@@ -2,6 +2,7 @@ import { t } from 'i18next';
 
 import { handleGenerationPromptModerationError } from '@/business/client/handleGenerationPromptModerationError';
 import { handleLobeHubModelDeprecatedError } from '@/business/client/handleLobeHubModelDeprecatedError';
+import { handleSubscriptionRequiredError } from '@/business/client/handleSubscriptionRequiredError';
 import { message } from '@/components/AntdStaticMethods';
 import { videoService } from '@/services/video';
 import { aiProviderSelectors, getAiInfraStoreState } from '@/store/aiInfra';
@@ -145,6 +146,7 @@ export class CreateVideoActionImpl {
         'createVideo/clearPrompt',
       );
     } catch (error) {
+      if (handleSubscriptionRequiredError(error)) return;
       handleGenerationPromptModerationError(error);
       handleLobeHubModelDeprecatedError(error);
       throw error;

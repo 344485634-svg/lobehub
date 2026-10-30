@@ -12,7 +12,18 @@ export interface BuiltinSkillFilterContext {
 }
 
 const DEVICE_ONLY_BUILTIN_SKILLS = new Set([AgentBrowserIdentifier]);
-const USER_HIDDEN_BUILTIN_SKILLS = new Set(['task']);
+// Hide market/store/onboarding builtins from end-user skill pickers (closed product)
+const USER_HIDDEN_BUILTIN_SKILLS = new Set([
+  'task',
+  'lobe-skill-store',
+  'lobe-activator',
+  'lobe-web-onboarding',
+  'lobe-agent',
+  'group-agent-builder',
+  'agent-builder',
+  // 记忆工具：商业化默认不向用户暴露（依赖 embedding 管线）
+  'lobe-user-memory',
+]);
 
 // Client default: the desktop app is itself the execution device.
 const DEFAULT_CONTEXT: BuiltinSkillFilterContext = {

@@ -263,7 +263,7 @@ export const ERROR_PATTERNS: ErrorPattern[] = [
   {
     code: AgentRuntimeErrorType.InsufficientQuota,
     match: sub('Monthly request limit exceeded'),
-    note: 'ChatLM cloud monthly quota',
+    note: 'ChatX cloud monthly quota',
   },
   {
     code: AgentRuntimeErrorType.InsufficientQuota,

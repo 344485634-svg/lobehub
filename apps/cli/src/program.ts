@@ -42,7 +42,7 @@ export function createProgram() {
 
   program
     .name('lh')
-    .description('ChatLM CLI - manage and connect to ChatLM services')
+    .description('ChatX CLI - manage and connect to ChatX services')
     .version(cliVersion);
 
   const internalToolWorker = program

@@ -154,7 +154,7 @@ export class AsyncTaskModel {
             eq(asyncTasks.status, AsyncTaskStatus.Pending),
             eq(asyncTasks.status, AsyncTaskStatus.Processing),
           ),
-          lt(asyncTasks.createdAt, new Date(Date.now() - ASYNC_TASK_TIMEOUT)),
+          lt(asyncTasks.updatedAt, new Date(Date.now() - ASYNC_TASK_TIMEOUT)),
         ),
       );
 

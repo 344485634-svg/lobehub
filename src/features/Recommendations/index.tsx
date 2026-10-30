@@ -1,35 +1,25 @@
-import { Button, Flexbox, Text } from '@lobehub/ui';
-import { RefreshCw } from 'lucide-react';
+import { Flexbox, Text } from '@lobehub/ui';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
-
-import { DailyBriefRecommendations } from '@/business/client/DailyBriefRecommendations';
-import {
-  type DailyBriefRecommendationsUIState,
-  useDailyBriefRecommendationsUI,
-} from '@/business/client/useDailyBriefRecommendationsUI';
 
 import { useEligibleActions } from './hooks/useEligibleActions';
 import { RecommendationCard } from './RecommendationCard';
 import { styles } from './style';
 
-const isTaskTemplatesVisible = (state: DailyBriefRecommendationsUIState): boolean =>
-  state.mode !== 'hidden';
-
+/**
+ * 商业化：不再拉取 market 任务模板（taskTemplate.listDailyRecommend 会持续 429/报错）。
+ * 仅保留本地可执行的推荐动作（若有）。
+ */
 export const useRecommendationsVisible = (): boolean => {
-  const taskTemplatesState = useDailyBriefRecommendationsUI();
   const { actions } = useEligibleActions();
-  return actions.length > 0 || isTaskTemplatesVisible(taskTemplatesState);
+  return actions.length > 0;
 };
 
 const Recommendations = memo(() => {
   const { t } = useTranslation('home');
-  const { t: tCommon } = useTranslation('common');
-  const taskTemplatesState = useDailyBriefRecommendationsUI();
   const { actions } = useEligibleActions();
 
-  const showTaskTemplates = isTaskTemplatesVisible(taskTemplatesState);
-  if (actions.length === 0 && !showTaskTemplates) return null;
+  if (actions.length === 0) return null;
 
   return (
     <Flexbox gap={12}>
@@ -37,16 +27,6 @@ const Recommendations = memo(() => {
         <Text className={styles.subtitle} fontSize={12}>
           {t('recommendations.subtitle')}
         </Text>
-        {taskTemplatesState.mode === 'cards' && (
-          <Button
-            icon={<RefreshCw size={12} />}
-            size={'small'}
-            type={'text'}
-            onClick={taskTemplatesState.onRefresh}
-          >
-            {tCommon('taskTemplate.action.refresh.button')}
-          </Button>
-        )}
       </Flexbox>
       <Flexbox gap={8}>
         {actions.map((action) => (
@@ -61,7 +41,6 @@ const Recommendations = memo(() => {
             onAction={action.run}
           />
         ))}
-        {showTaskTemplates ? <DailyBriefRecommendations state={taskTemplatesState} /> : null}
       </Flexbox>
     </Flexbox>
   );

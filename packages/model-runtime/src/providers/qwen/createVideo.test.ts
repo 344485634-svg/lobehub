@@ -127,6 +127,103 @@ describe('createQwenVideo', () => {
     expect(body.parameters.resolution).toBe('720p');
   });
 
+  it('should create wan3.0 all-in-one task with input.media and ratio', async () => {
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        output: { task_id: 'wan3-task-777', task_status: 'PENDING' },
+        request_id: 'req-wan3',
+      }),
+    });
+
+    const payload: CreateVideoPayload = {
+      model: 'wan3.0-video',
+      params: {
+        aspectRatio: '9:16',
+        duration: 5,
+        imageUrls: ['https://example.com/ref2.jpg'],
+        imageUrl: 'https://example.com/first.jpg',
+        prompt: '人物在草地上奔跑',
+        resolution: '480P',
+      },
+    };
+
+    await createQwenVideo(payload, mockOptions);
+
+    const body = JSON.parse((global.fetch as any).mock.calls[0][1].body);
+    // wan3.0 全能参考模式:首帧/参考图进 input.media
+    expect(body.input.media).toEqual([
+      { type: 'first_frame', url: 'https://example.com/first.jpg' },
+      { type: 'reference_image', url: 'https://example.com/ref2.jpg' },
+    ]);
+    expect(body.input.prompt).toBe('人物在草地上奔跑');
+    // wan3.0 用 ratio(非 aspectRatio),分辨率/时长直传
+    expect(body.parameters.ratio).toBe('9:16');
+    expect(body.parameters.resolution).toBe('480P');
+    expect(body.parameters.duration).toBe(5);
+  });
+
+  it('should inline localhost image references as base64 data URLs', async () => {
+    // 百炼拉不到 localhost:本地图必须内联为 data URL(否则 InvalidParameter: Failed to download)
+    const imgBuf = new Uint8Array([9, 9, 9]);
+    global.fetch = vi
+      .fn()
+      .mockResolvedValueOnce({
+        // 1st call: resolveMediaUrl 拉回本地图
+        arrayBuffer: async () => imgBuf.buffer,
+        headers: { get: () => 'image/png' },
+        ok: true,
+      })
+      .mockResolvedValueOnce({
+        // 2nd call: 创建视频任务
+        json: async () => ({
+          output: { task_id: 'wan3-local-task', task_status: 'PENDING' },
+          request_id: 'req-local',
+        }),
+        ok: true,
+      });
+
+    const payload: CreateVideoPayload = {
+      model: 'wan3.0-video',
+      params: {
+        imageUrl: 'http://localhost:9000/chatx/files/123/first.png?X-Amz-Signature=abc',
+        prompt: '人物在草地上奔跑',
+      },
+    };
+
+    await createQwenVideo(payload, mockOptions);
+
+    const body = JSON.parse((global.fetch as any).mock.calls[1][1].body);
+    expect(body.input.media).toEqual([{ type: 'first_frame', url: 'data:image/png;base64,CQkJ' }]);
+  });
+
+  it('should surface real failure message from output.message', async () => {
+    // 百炼部分接口把失败原因放 output.message(而非 error_message),缺失时应透传而非空泛兜底
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        output: {
+          code: 'InvalidParameter',
+          message: 'Failed to download http://localhost:9000/x.png',
+          task_id: 'task-fail-1',
+          task_status: 'FAILED',
+        },
+        request_id: 'req-fail',
+      }),
+    });
+
+    const result = await pollQwenVideoStatus(
+      'task-fail-1',
+      'test-key',
+      'https://dashscope.aliyuncs.com',
+    );
+
+    expect(result).toEqual({
+      error: 'Failed to download http://localhost:9000/x.png',
+      status: 'failed',
+    });
+  });
+
   it('should include optional parameters', async () => {
     global.fetch = vi.fn().mockResolvedValueOnce({
       ok: true,

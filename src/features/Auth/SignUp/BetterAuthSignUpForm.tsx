@@ -2,14 +2,13 @@
 
 import { BRANDING_NAME } from '@lobechat/business-const';
 import { Button, Icon, Text } from '@lobehub/ui';
-import { Form, Input, type InputRef } from 'antd';
+import { Checkbox, Form, Input, type InputRef } from 'antd';
 import { Lock, Mail } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { AuthCard } from '@/features/AuthCard';
-import { AuthAgreement } from '@/features/AuthShell';
 import { trackLoginOrSignupClicked } from '@/features/User/UserLoginOrSignup/trackLoginOrSignupClicked';
 
 import { useSignUp } from './useSignUp';
@@ -142,13 +141,38 @@ const BetterAuthSignUpForm = () => {
 
         {businessElement}
 
+        <Form.Item
+          name="agreedToTerms"
+          valuePropName="checked"
+          rules={[
+            {
+              validator: (_, value) =>
+                value
+                  ? Promise.resolve()
+                  : Promise.reject(new Error('请先阅读并同意服务条款和隐私政策')),
+            },
+          ]}
+        >
+          <Checkbox>
+            <Text fontSize={13} type="secondary">
+              我已阅读并同意本平台的{' '}
+              <a href="/terms" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>
+                服务条款
+              </a>
+              {' '}和{' '}
+              <a href="/privacy" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>
+                隐私政策
+              </a>
+            </Text>
+          </Checkbox>
+        </Form.Item>
+
         <Form.Item>
           <Button block htmlType="submit" loading={loading} size="large" type="primary">
             {t('betterAuth.signup.submit')}
           </Button>
         </Form.Item>
       </Form>
-      <AuthAgreement />
     </AuthCard>
   );
 };

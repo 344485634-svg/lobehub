@@ -1,7 +1,6 @@
 import { imageUrlToBase64 } from '@lobechat/utils';
 import { cleanObject } from '@lobechat/utils/object';
 import createDebug from 'debug';
-import type { RuntimeImageGenParamsValue } from 'model-bank';
 import type OpenAI from 'openai';
 
 import type {
@@ -38,20 +37,36 @@ async function generateByImageMode(
 
   log('Creating image with model: %s and params: %O', requestModel, params);
 
-  // Map parameter names, mapping imageUrls to image and aspectRatio to size
-  // (some gateways, e.g. newapi's gpt-image-2, take an aspect-ratio string like "16:9"
-  // in the same `size` field the native API uses for pixel resolutions)
-  const paramsMap = new Map<RuntimeImageGenParamsValue, string>([
-    ['imageUrls', 'image'],
-    ['imageUrl', 'image'],
-    ['aspectRatio', 'size'],
-  ]);
-  const userInput: Record<string, any> = Object.fromEntries(
-    Object.entries(params).map(([key, value]) => [
-      paramsMap.get(key as RuntimeImageGenParamsValue) ?? key,
-      value,
-    ]),
-  );
+  // OpenAI 兼容网关的 images API 只认像素串 size("WIDTHxHEIGHT"):
+  // - 比例串(如 "9:16")会被网关拒绝:`400 Invalid size '9:16'. Expected WIDTHxHEIGHT`;
+  // - 独立的 width/height 数字字段会被忽略,qwen 系模型将始终按默认方形出图。
+  // 因此这里统一把 UI 的 aspectRatio / width+height 换算成像素串。
+  const round8 = (v: number) => Math.max(256, Math.round(v / 8) * 8);
+  // 以网关示例(16:9 → 1824x1024)为基准:长边 1824,短边等比换算并取 8 的倍数。
+  const ratioToPixelSize = (ratio: string): string | undefined => {
+    if (!ratio || ratio === 'auto') return undefined;
+    const m = /^(\d+):(\d+)$/.exec(ratio);
+    if (!m) return undefined;
+    const [rw, rh] = [Number(m[1]), Number(m[2])];
+    if (!rw || !rh) return undefined;
+    if (rw === rh) return '1024x1024';
+    return rw > rh ? `1824x${round8((1824 * rh) / rw)}` : `${round8((1824 * rw) / rh)}x1824`;
+  };
+
+  const { aspectRatio, width, height, imageUrls, imageUrl: srcImageUrl, ...restParams } =
+    params as Record<string, any>;
+
+  let size = (restParams as Record<string, any>).size as string | undefined;
+  if (!size && aspectRatio) size = ratioToPixelSize(aspectRatio);
+  if (!size && Number.isFinite(width) && Number.isFinite(height)) size = `${width}x${height}`;
+  delete (restParams as Record<string, any>).size;
+
+  const userInput: Record<string, any> = {
+    ...restParams,
+    ...(size ? { size } : {}),
+    ...(imageUrls?.length ? { image: imageUrls } : srcImageUrl ? { image: srcImageUrl } : {}),
+  };
+
   // unify image input to array
   if (typeof userInput.image === 'string' && userInput.image.trim() !== '') {
     userInput.image = [userInput.image];

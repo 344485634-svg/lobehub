@@ -21,18 +21,20 @@ type ListProps = {
 const List = memo((props: ListProps) => {
   const { onProviderSelect } = props;
   const { t } = useTranslation('modelProvider');
-  // 商业化白标:设置页服务商列表仅显示 newapi(LIUMA 官方 API)。
+  // 商业化白标:设置页服务商列表仅显示白名单服务商。
   // 只在 UI 层过滤,不动 selectors,以免影响模型选择器等其它处的已启用模型调用。
+  // qwen(阿里云百炼)于 2026-10 放行:用户需直连百炼 DashScope 使用 wan3.0 等模型。
+  const VISIBLE_PROVIDER_IDS = ['newapi', 'qwen'];
   const enabledList = useAiInfraStore(aiProviderSelectors.enabledAiProviderList, isEqual).filter(
-    (p) => p.id === 'newapi',
+    (p) => VISIBLE_PROVIDER_IDS.includes(p.id),
   );
   const disabledList = useAiInfraStore(aiProviderSelectors.disabledAiProviderList, isEqual).filter(
-    (p) => p.id === 'newapi',
+    (p) => VISIBLE_PROVIDER_IDS.includes(p.id),
   );
   const disabledCustomList = useAiInfraStore(
     aiProviderSelectors.disabledCustomAiProviderList,
     isEqual,
-  ).filter((p) => p.id === 'newapi');
+  ).filter((p) => VISIBLE_PROVIDER_IDS.includes(p.id));
   const [initAiProviderList] = useAiInfraStore((s) => [s.initAiProviderList]);
   // Own the same list fetch (SWR-deduped with ProviderMenu) so a failed load
   // shows error + Retry here too, instead of a permanent skeleton grid

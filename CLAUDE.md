@@ -48,7 +48,7 @@ KEY_VAULTS_SECRET=a8W0WSpsDIauVxxFT2hYcDvK4xpXTVZgeKYbWjuZPFk=
 
 # PostgreSQL 数据库配置
 DATABASE_URL=postgres://postgres:lobechat_password@localhost:5432/lobechat
-DATABASE_DRIVER=node  # 重要：本地开发必须使用 node 驱动，而非默认的 neon
+DATABASE_DRIVER=node # 重要：本地开发必须使用 node 驱动，而非默认的 neon
 
 # S3 存储配置（使用本地 RustFS）
 S3_ACCESS_KEY_ID=9b2a4256242603876702b24aa80336b2
@@ -82,6 +82,7 @@ RUSTFS_SECRET_KEY=3407c442e80c604be3f95daee6d7853f883e870f077c507d75573530051eea
 **错误**: `spawn bunx ENOENT`
 
 **解决方案**:
+
 ```bash
 curl -fsSL https://bun.sh/install | bash
 export PATH="$HOME/.bun/bin:$PATH"
@@ -92,11 +93,13 @@ export PATH="$HOME/.bun/bin:$PATH"
 ### 2. 配置数据库环境变量
 
 **问题**: 缺少 `KEY_VAULTS_SECRET` 和 `DATABASE_URL`
-**错误**: 
+**错误**:
+
 - `KEY_VAULTS_SECRET is not set`
 - `DATABASE_URL is not set`
 
 **解决方案**:
+
 1. 生成加密密钥: `openssl rand -base64 32`
 2. 创建 `.env.local` 文件
 3. 配置数据库连接字符串
@@ -107,6 +110,7 @@ export PATH="$HOME/.bun/bin:$PATH"
 **问题**: 需要 PostgreSQL、Redis、RustFS 等服务
 
 **解决方案**:
+
 ```bash
 # 1. 创建 docker-compose/dev/.env 文件
 # 2. 启动服务
@@ -120,6 +124,7 @@ pnpm dev:docker:reset
 ```
 
 **Docker 服务列表**:
+
 - `lobe-postgres`: PostgreSQL 数据库 (端口 5432)
 - `lobe-redis`: Redis 缓存 (端口 6379)
 - `lobe-rustfs`: S3 兼容存储 (端口 9000)
@@ -131,12 +136,13 @@ pnpm dev:docker:reset
 **错误**: `Failed query: select ... from "users"`
 
 **解决方案**:
+
 ```bash
 # 确保环境变量已设置
 DATABASE_URL=postgres://postgres:lobechat_password@localhost:5432/lobechat \
-DATABASE_DRIVER=node \
-KEY_VAULTS_SECRET=xxx \
-pnpm db:migrate
+  DATABASE_DRIVER=node \
+  KEY_VAULTS_SECRET=xxx \
+  pnpm db:migrate
 ```
 
 **注意**: 迁移脚本默认使用 Neon WebSocket 驱动，本地必须设置 `DATABASE_DRIVER=node`
@@ -153,6 +159,7 @@ pnpm db:migrate
 
 **问题**: 图片生成等异步任务失败
 **错误历史**:
+
 1. `JWKS_KEY environment variable is not set`
 2. `is not valid JSON` (使用了 base64 字符串)
 3. `Cannot read properties of undefined (reading 'find')` (缺少 keys 数组)
@@ -161,6 +168,7 @@ pnpm db:migrate
 **正确的密钥格式**: RSA JWKS 格式，包含 `keys` 数组
 
 **生成密钥脚本**:
+
 ```bash
 node -e "
 const crypto = require('crypto');
@@ -230,49 +238,51 @@ pnpm db:reset
 
 ## 访问地址
 
-- **应用主页**: http://localhost:3010
-- **网络访问**: http://192.168.2.116:3010
-- **Vite 开发服务器**: http://localhost:9876
-- **RustFS 控制台**: http://localhost:9001
+- **应用主页**: <http://localhost:3010>
+- **网络访问**: <http://192.168.2.116:3010>
+- **Vite 开发服务器**: <http://localhost:9876>
+- **RustFS 控制台**: <http://localhost:9001>
 - **PostgreSQL**: localhost:5432
 - **Redis**: localhost:6379
-- **SearXNG**: http://localhost:8180
+- **SearXNG**: <http://localhost:8180>
 
 ## 常见问题和解决方案
 
 ### 1. Agent 市场加载失败
 
 **问题**: "加载模板失败。请稍后再试。"
-**原因**: 默认的 Agent 市场 API (https://market.lobehub.com) 需要身份验证
+**原因**: 默认的 Agent 市场 API (<https://market.lobehub.com>) 需要身份验证
 
-**解决方案**: 
+**解决方案**:
+
 - 跳过入门引导，直接使用应用
 - 手动创建自定义 Agent
 - 或配置 OAuth 认证访问官方市场
 
 ### 2. 图片生成服务商配置
 
-**推荐使用 liuma 官方服务商** (自建网关平台)
+**推荐使用 ChatX 官方服务商** (自建网关平台)
 
-**问题**: 使用 OpenAI provider 代理 liuma 网关时，`gpt-image-2` 模型会出现参数格式不匹配错误 `400 Invalid size, allowed ratios: ...`
+**问题**: 使用 OpenAI provider 代理 ChatX 网关时，`gpt-image-2` 模型会出现参数格式不匹配错误 `400 Invalid size, allowed ratios: ...`
 
-**原因**: 
+**原因**:
+
 - OpenAI 官方 API 的 `gpt-image-2` 使用分辨率参数 (`1024x1024`, `2048x2048` 等)
-- liuma 网关的 `gpt-image-2` 使用比例参数 (`1:1`, `16:9`, `9:16` 等)
+- ChatX 网关的 `gpt-image-2` 使用比例参数 (`1:1`, `16:9`, `9:16` 等)
 - 复用 `openai` provider 会导致参数 schema 对不上
 
-**解决方案**: 
-项目已新增专用的 `liuma` provider，为 liuma 网关定制了正确的模型参数 schema。
+**解决方案**:
+项目内置 `newapi` provider（显示名 "ChatX"，SDK 类型为 `router`，见 `packages/model-bank/src/modelProviders/newapi.ts`），已为 ChatX 网关定制正确的模型参数 schema。
 
 **配置步骤**:
-1. 在 LobeHub 设置 → AI 服务商 → 添加自定义服务商
-2. Provider ID: `liuma`
-3. 显示名称: `liuma 官方` (或任意自定义名称)
-4. API 端点: `https://api.liuma.ai/v1`
-5. API Key: 填入 liuma 平台的 API 密钥
-6. 添加模型: `gpt-image-2` (会自动匹配正确的 aspectRatio 参数 schema)
 
-**liuma gpt-image-2 支持的比例**:
+1. 在 设置 → AI 服务商 → 选择 "ChatX"
+2. API 端点: `https://api.chatx.ai/v1`
+3. API Key: 填入 ChatX 平台的 API 密钥
+4. `gpt-image-2` 模型会自动匹配正确的 aspectRatio 参数 schema
+
+**ChatX gpt-image-2 支持的比例**:
+
 - 1:1 (正方形), 16:9 (横屏), 9:16 (竖屏)
 - 4:3, 3:4, 3:2, 2:3
 - 5:4, 4:5, 2:1, 1:2
@@ -285,6 +295,7 @@ pnpm db:reset
 **问题**: Next.js 服务器已在运行
 
 **解决方案**:
+
 ```bash
 # 查找并终止占用端口的进程
 lsof -ti:3010 | xargs kill -9
@@ -298,6 +309,7 @@ kill <PID>
 **问题**: 数据库连接失败
 
 **检查服务状态**:
+
 ```bash
 docker ps
 
@@ -311,6 +323,7 @@ docker logs lobe-rustfs
 **问题**: pnpm 警告或错误
 
 **解决方案**:
+
 ```bash
 # 清理缓存重新安装
 rm -rf node_modules
@@ -348,12 +361,14 @@ pnpm install
 ## 技术架构
 
 ### 前端
+
 - **框架**: Next.js 16 (Turbopack)
 - **UI**: React + TypeScript
 - **状态管理**: tRPC + React Query
 - **样式**: CSS-in-JS
 
 ### 后端
+
 - **API**: tRPC (类型安全的 RPC)
 - **数据库**: PostgreSQL (使用 Drizzle ORM)
 - **缓存**: Redis
@@ -361,6 +376,7 @@ pnpm install
 - **认证**: Better Auth
 
 ### 开发工具
+
 - **包管理**: pnpm
 - **运行时**: Node.js + Bun
 - **容器化**: Docker Compose
@@ -379,11 +395,13 @@ pnpm install
 ## 维护建议
 
 1. **定期备份数据库**
+
    ```bash
    docker exec lobe-postgres pg_dump -U postgres lobechat > backup.sql
    ```
 
 2. **监控 Docker 容器健康状态**
+
    ```bash
    docker ps
    docker stats
@@ -400,12 +418,12 @@ pnpm install
 
 ## 联系和支持
 
-- **官方网站**: https://lobehub.com
-- **GitHub**: https://github.com/lobehub/lobe-chat
+- **官方网站**: <https://lobehub.com>
+- **GitHub**: <https://github.com/lobehub/lobe-chat>
 - **文档**: 查看项目根目录的 README.md
 
 ---
 
-**文档最后更新**: 2026-07-10  
-**配置人**: Claude Code AI Assistant  
+**文档最后更新**: 2026-07-10\
+**配置人**: Claude Code AI Assistant\
 **项目版本**: 2.2.8
