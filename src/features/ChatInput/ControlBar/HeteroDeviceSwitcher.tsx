@@ -498,7 +498,7 @@ const HeteroDeviceSwitcher = memo<HeteroDeviceSwitcherProps>(({ agentId }) => {
         ) : (
           <a
             className={styles.headerLink}
-            href="https://lobehub.com/downloads"
+            href="#"
             rel="noreferrer"
             target="_blank"
           >
@@ -585,7 +585,7 @@ const HeteroDeviceSwitcher = memo<HeteroDeviceSwitcherProps>(({ agentId }) => {
       {showWebDownloadCard ? (
         <a
           className={styles.downloadCard}
-          href="https://lobehub.com/downloads"
+          href="#"
           rel="noreferrer"
           target="_blank"
         >

@@ -9,6 +9,7 @@ import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import NeuralNetworkLoading from '@/components/NeuralNetworkLoading';
+import WorkspaceLink from '@/features/Workspace/WorkspaceLink';
 import { useClientDataSWR } from '@/libs/swr';
 import { statsKeys } from '@/libs/swr/keys';
 import { lambdaClient } from '@/libs/trpc/client';
@@ -79,6 +80,15 @@ const DataStatistics = memo<Omit<FlexboxProps, 'children'>>(({ style, ...rest })
 
   const loading = <NeuralNetworkLoading size={20} />;
 
+  // 逐卡独立跳转:助理/消息 → 数据统计页,积分 → 积分页。
+  // links 的 key 与 items 对齐;商业功能关闭时积分卡不存在,links.credits 不会被用到。
+  const links = {
+    credits: '/settings/credits',
+    messages: '/settings/stats',
+    sessions: '/settings/stats',
+    topics: '/settings/stats',
+  } as const;
+
   const items = [
     {
       count: agentsLoading || isUndefined(agents) ? loading : agents,
@@ -125,42 +135,49 @@ const DataStatistics = memo<Omit<FlexboxProps, 'children'>>(({ style, ...rest })
         if (item.key === 'messages') {
           const showBadge = Boolean(item.countToady && item.countToady > 0);
           return (
-            <Flexbox
-              horizontal
-              align={'center'}
-              className={styles.card}
-              flex={showBadge && !mobile ? 2 : 1}
-              gap={4}
-              justify={'space-between'}
+            <WorkspaceLink
               key={item.key}
+              style={{ color: 'inherit', flex: showBadge && !mobile ? 2 : 1 }}
+              to={links[item.key]}
             >
-              <Flexbox gap={2}>
-                <div className={styles.count}>{formatShortenNumber(item.count)}</div>
-                <div className={styles.title}>{item.title}</div>
+              <Flexbox
+                horizontal
+                align={'center'}
+                className={styles.card}
+                gap={4}
+                justify={'space-between'}
+                width={'100%'}
+              >
+                <Flexbox gap={2}>
+                  <div className={styles.count}>{formatShortenNumber(item.count)}</div>
+                  <div className={styles.title}>{item.title}</div>
+                </Flexbox>
+                {showBadge && (
+                  <Tooltip title={t('dataStatistics.today')}>
+                    <Badge
+                      count={`+${item.countToady}`}
+                      style={{
+                        background: cssVar.colorSuccess,
+                        color: cssVar.colorSuccessBg,
+                        cursor: 'pointer',
+                      }}
+                    />
+                  </Tooltip>
+                )}
               </Flexbox>
-              {showBadge && (
-                <Tooltip title={t('dataStatistics.today')}>
-                  <Badge
-                    count={`+${item.countToady}`}
-                    style={{
-                      background: cssVar.colorSuccess,
-                      color: cssVar.colorSuccessBg,
-                      cursor: 'pointer',
-                    }}
-                  />
-                </Tooltip>
-              )}
-            </Flexbox>
+            </WorkspaceLink>
           );
         }
 
         return (
-          <Flexbox className={styles.card} flex={1} gap={2} key={item.key}>
-            <Flexbox horizontal>
-              <div className={styles.count}>{formatShortenNumber(item.count)}</div>
+          <WorkspaceLink key={item.key} style={{ color: 'inherit', flex: 1 }} to={links[item.key]}>
+            <Flexbox className={styles.card} gap={2} width={'100%'}>
+              <Flexbox horizontal>
+                <div className={styles.count}>{formatShortenNumber(item.count)}</div>
+              </Flexbox>
+              <div className={styles.title}>{item.title}</div>
             </Flexbox>
-            <div className={styles.title}>{item.title}</div>
-          </Flexbox>
+          </WorkspaceLink>
         );
       })}
     </Flexbox>

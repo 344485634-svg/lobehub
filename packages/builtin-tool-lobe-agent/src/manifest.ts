@@ -265,9 +265,9 @@ export const LobeAgentManifest: BuiltinToolManifest = {
   meta: {
     avatar: '🤖',
     description:
-      'Run built-in Lobe Agent capabilities: plan + todo management, sub-agent dispatch, and visual media analysis.',
-    readme: 'Lobe Agent provides built-in assistant capabilities that can be expanded over time.',
-    title: 'Lobe Agent',
+      'Run built-in ChatX Agent capabilities: plan + todo management, sub-agent dispatch, and visual media analysis.',
+    readme: 'ChatX Agent provides built-in assistant capabilities that can be expanded over time.',
+    title: 'ChatX Agent',
   },
   systemRole: systemPrompt,
   type: 'builtin',

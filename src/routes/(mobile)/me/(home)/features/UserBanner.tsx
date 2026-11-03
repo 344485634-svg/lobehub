@@ -7,19 +7,12 @@ import DataStatistics from '@/features/User/DataStatistics';
 import UserInfo from '@/features/User/UserInfo';
 import UserLoginOrSignup from '@/features/User/UserLoginOrSignup/Community';
 import WorkspaceLink from '@/features/Workspace/WorkspaceLink';
-import { serverConfigSelectors, useServerConfigStore } from '@/store/serverConfig';
 import { useUserStore } from '@/store/user';
 import { authSelectors } from '@/store/user/selectors';
 
 const UserBanner = memo(() => {
   const isLoginWithAuth = useUserStore(authSelectors.isLoginWithAuth);
   const [signIn] = useUserStore((s) => [s.openLogin]);
-  const enableBusinessFeatures = useServerConfigStore(
-    serverConfigSelectors.enableBusinessFeatures,
-  );
-
-  // 移动端统计卡含积分余额时,点击跳积分页;纯统计模式跳数据统计页
-  const statsLink = enableBusinessFeatures ? '/settings/credits' : '/settings/stats';
 
   return (
     <Flexbox gap={12} paddingBlock={8}>
@@ -28,9 +21,8 @@ const UserBanner = memo(() => {
           <WorkspaceLink style={{ color: 'inherit' }} to="/settings/profile">
             <UserInfo />
           </WorkspaceLink>
-          <WorkspaceLink style={{ color: 'inherit' }} to={statsLink}>
-            <DataStatistics paddingInline={12} />
-          </WorkspaceLink>
+          {/* 每张统计卡在 DataStatistics 内部自带跳转(助理/消息→数据统计,积分→积分页) */}
+          <DataStatistics paddingInline={12} />
         </>
       ) : (
         <UserLoginOrSignup

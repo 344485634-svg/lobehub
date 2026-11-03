@@ -49,7 +49,7 @@ services:
       chatx-rustfs-init:
         condition: service_completed_successfully
 
-  # 稳定的网络命名空间宿主:持有 3210(app)/9000(rustfs API)/9001(console) 的端口发布。
+  # 稳定的网络命名空间宿主:持有 3210(app)/9020(rustfs API)/9021(console) 的端口发布。
   # app 与 rustfs 挂到它的 netns 下,因此互不影响生命周期。
   chatx-net:
     image: alpine
@@ -58,8 +58,8 @@ services:
     command: tail -f /dev/null
     ports:
       - '${CHATX_PORT}:3210' # ChatX Web
-      - '${RUSTFS_API_PORT}:9000' # RustFS S3 API(应用与浏览器共用)
-      - '${RUSTFS_CONSOLE_PORT}:9001' # RustFS Console
+      - '${RUSTFS_API_PORT}:9020' # RustFS S3 API(应用与浏览器共用,容器内外同为 9020)
+      - '${RUSTFS_CONSOLE_PORT}:9021' # RustFS Console
     networks:
       - chatx-network
 
@@ -105,6 +105,11 @@ services:
     network_mode: 'service:chatx-net'
     command:
       [
+        'server',
+        '--address',
+        ':9020',
+        '--console-address',
+        ':9021',
         '--access-key',
         '${RUSTFS_ACCESS_KEY}',
         '--secret-key',
@@ -113,12 +118,14 @@ services:
       ]
     environment:
       - RUSTFS_CONSOLE_ENABLE=true
+      - RUSTFS_ADDRESS=:9020
+      - RUSTFS_CONSOLE_ADDRESS=:9021
       - RUSTFS_ACCESS_KEY=${RUSTFS_ACCESS_KEY}
       - RUSTFS_SECRET_KEY=${RUSTFS_SECRET_KEY}
     volumes:
       - chatx_rustfs_data:/data
     healthcheck:
-      test: ['CMD-SHELL', 'wget -qO- http://localhost:9000/health >/dev/null 2>&1 || exit 1']
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:9020/health >/dev/null 2>&1 || exit 1']
       interval: 10s
       timeout: 5s
       retries: 12
@@ -145,10 +152,10 @@ services:
     # rustfs 与 app 共享 chatx-net 的 netns,经 chatx-net 名称可达
     command: -c '
         set -x;
-        aws --endpoint-url http://chatx-net:9000 s3api create-bucket --bucket "${RUSTFS_CHATX_BUCKET}" || true;
-        aws --endpoint-url http://chatx-net:9000 s3api put-bucket-policy --bucket "${RUSTFS_CHATX_BUCKET}" --policy file:///bucket.policy.json || true;
-        aws --endpoint-url http://chatx-net:9000 s3api put-bucket-cors --bucket "${RUSTFS_CHATX_BUCKET}" --cors-configuration file:///bucket.cors.json || true;
-        aws --endpoint-url http://chatx-net:9000 s3api list-buckets;
+        aws --endpoint-url http://chatx-net:9020 s3api create-bucket --bucket "${RUSTFS_CHATX_BUCKET}" || true;
+        aws --endpoint-url http://chatx-net:9020 s3api put-bucket-policy --bucket "${RUSTFS_CHATX_BUCKET}" --policy file:///bucket.policy.json || true;
+        aws --endpoint-url http://chatx-net:9020 s3api put-bucket-cors --bucket "${RUSTFS_CHATX_BUCKET}" --cors-configuration file:///bucket.cors.json || true;
+        aws --endpoint-url http://chatx-net:9020 s3api list-buckets;
         echo "bucket ${RUSTFS_CHATX_BUCKET} ready";
       '
     restart: 'no'
