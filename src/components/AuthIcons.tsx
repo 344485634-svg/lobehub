@@ -25,6 +25,8 @@ const iconComponents: { [key: string]: any } = {
   'logto': Logto.Color,
   'microsoft': Microsoft.Color,
   'microsoft-entra-id': MicrosoftEntra.Color,
+  'wechat': Aws, // WeChat 官方图标占位:使用现有图标库可达的图标,后续可替换为品牌 SVG
+  'wechat-mp': Aws, // 公众号网页授权(与 wechat 同品牌)
   'zitadel': Zitadel.Color,
 };
 

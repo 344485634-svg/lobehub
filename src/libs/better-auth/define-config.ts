@@ -2,13 +2,15 @@ import { expo } from '@better-auth/expo';
 import { passkey } from '@better-auth/passkey';
 import { createNanoId, idGenerator, serverDB } from '@lobechat/database';
 import * as schema from '@lobechat/database/schemas';
+import { type AuthSmsConfig, type AuthWechatConfig } from '@/database/schemas/systemConfig';
+import { SystemConfigModel } from '@/database/models/systemConfig';
 import bcrypt from 'bcryptjs';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { verifyPassword as defaultVerifyPassword } from 'better-auth/crypto';
 import { type BetterAuthOptions } from 'better-auth/minimal';
 import { betterAuth } from 'better-auth/minimal';
-import { admin, emailOTP, genericOAuth, magicLink } from 'better-auth/plugins';
-import { type BetterAuthPlugin } from 'better-auth/types';
+import { admin, emailOTP, genericOAuth, magicLink, phoneNumber } from 'better-auth/plugins';
+import { type BetterAuthPlugin, type BetterAuthOptions as BAOptions } from 'better-auth/types';
 import { eq } from 'drizzle-orm';
 import { EnvHttpProxyAgent, setGlobalDispatcher } from 'undici';
 
@@ -23,10 +25,13 @@ import {
 } from '@/libs/better-auth/email-templates';
 import { emailWhitelist } from '@/libs/better-auth/plugins/email-whitelist';
 import { initBetterAuthSSOProviders } from '@/libs/better-auth/sso';
+import { buildWechatMpProvider, WECHAT_MP_PROVIDER_ID } from '@/libs/better-auth/sso/providers/wechat-mp';
 import { createSecondaryStorage, getTrustedOrigins } from '@/libs/better-auth/utils/config';
 import { parseSSOProviders } from '@/libs/better-auth/utils/server';
+import { generateNumericOtp, sendAliyunSms } from '@/libs/sms/aliyun';
 import { EmailService } from '@/server/services/email';
 import { UserService } from '@/server/services/user';
+import { KeyVaultsGateKeeper } from '@/server/modules/KeyVaultsEncrypt';
 
 const LOCAL_NO_PROXY_HOSTS = ['localhost', '127.0.0.1', '[::1]'];
 
@@ -102,23 +107,106 @@ const enabledSSOProviders = parseSSOProviders(authEnv.AUTH_SSO_PROVIDERS);
 
 const { socialProviders, genericOAuthProviders } = initBetterAuthSSOProviders();
 
+/**
+ * ===== Admin 后台动态认证配置(注册登录配置) =====
+ * 微信(公众号网页授权)与阿里云短信的凭据来自 system_configs 表(auth.wechat / auth.sms),
+ * 由管理员在 /admin/auth 页面维护,而非环境变量。
+ * 本模块在服务启动/首次使用时加载一次;admin 保存配置后调用 bumpAuthConfigVersion()
+ * 使下一次 auth 实例创建时重读 DB(轻量缓存,避免每次请求查库+解密)。
+ */
+
+let authConfigCache: {
+  sms?: AuthSmsConfig;
+  version: number;
+  wechat?: AuthWechatConfig;
+} | null = null;
+
+let authConfigVersion = 0;
+let loadedAuthConfigVersion = -1;
+
+/** admin 保存认证配置后调用:使缓存的 DB 配置失效,下次构建 auth 实例时重读。 */
+export const bumpAuthConfigVersion = () => {
+  authConfigVersion += 1;
+};
+
+const loadAuthConfigFromDB = async (): Promise<void> => {
+  if (authConfigCache && loadedAuthConfigVersion === authConfigVersion) return;
+  try {
+    const model = new SystemConfigModel(serverDB);
+    const [wechat, sms] = await Promise.all([
+      model.getAuthWechatConfig(),
+      model.getAuthSmsConfig(),
+    ]);
+
+    // 解密敏感字段(secret 为 AES-GCM 密文,由 KeyVaultsGateKeeper 加密入库)
+    let wechatPlain: AuthWechatConfig | undefined = wechat;
+    if (wechat?.appSecret) {
+      const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
+      const { plaintext, wasAuthentic } = await gateKeeper.decrypt(wechat.appSecret);
+      wechatPlain = wasAuthentic ? { ...wechat, appSecret: plaintext } : undefined;
+    }
+
+    let smsPlain: AuthSmsConfig | undefined = sms;
+    if (sms?.accessKeySecret) {
+      const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
+      const { plaintext, wasAuthentic } = await gateKeeper.decrypt(sms.accessKeySecret);
+      smsPlain = wasAuthentic ? { ...sms, accessKeySecret: plaintext } : undefined;
+    }
+
+    authConfigCache = {
+      sms: smsPlain?.enabled ? smsPlain : undefined,
+      version: authConfigVersion,
+      wechat: wechatPlain?.enabled ? wechatPlain : undefined,
+    };
+    loadedAuthConfigVersion = authConfigVersion;
+  } catch (e) {
+    // DB 不可达(如早期启动阶段)时保持禁用,不阻塞认证服务本身
+    authConfigCache = { version: authConfigVersion };
+    loadedAuthConfigVersion = authConfigVersion;
+    console.warn('[auth] Failed to load dynamic auth config from DB:', e);
+  }
+};
+
+/** 外部(如 admin 设置页)读取当前生效的动态认证配置(已解密,慎用) */
+export const getDynamicAuthConfig = async () => {
+  await loadAuthConfigFromDB();
+  return authConfigCache;
+};
+
 interface CustomBetterAuthOptions {
   plugins: BetterAuthPlugin[];
 }
 
-export function defineConfig(customOptions: CustomBetterAuthOptions) {
+export async function defineConfig(customOptions: CustomBetterAuthOptions) {
+  await loadAuthConfigFromDB();
+
+  const dynWechatCfg = authConfigCache?.wechat;
+  const dynSmsCfg = authConfigCache?.sms;
+
+  // 动态微信(公众号)provider:合并进 env 驱动的 provider 结果
+  const mergedSocialProviders = { ...socialProviders };
+  const mergedGenericProviders = [...genericOAuthProviders];
+  const mergedEnabledProviders = [...enabledSSOProviders];
+
+  const wechatMp = dynWechatCfg ? buildWechatMpProvider(dynWechatCfg) : null;
+  if (wechatMp) {
+    wechatMp.redirectURI = `${appEnv.APP_URL}/api/auth/callback/${WECHAT_MP_PROVIDER_ID}`;
+    mergedGenericProviders.push(wechatMp);
+    mergedEnabledProviders.push(WECHAT_MP_PROVIDER_ID);
+  }
+
   const options = {
     account: {
       accountLinking: {
         allowDifferentEmails: true,
         enabled: true,
-        trustedProviders: enabledSSOProviders,
+        trustedProviders: mergedEnabledProviders,
       },
     },
 
     baseURL: appEnv.APP_URL,
     secret: authEnv.AUTH_SECRET,
-    trustedOrigins: getTrustedOrigins(enabledSSOProviders),
+    trustedOrigins: getTrustedOrigins(mergedEnabledProviders),
 
     emailAndPassword: {
       autoSignIn: true,
@@ -284,7 +372,7 @@ export function defineConfig(customOptions: CustomBetterAuthOptions) {
       modelName: 'users',
     },
 
-    socialProviders,
+    socialProviders: mergedSocialProviders,
     advanced: {
       database: {
         /**
@@ -305,12 +393,41 @@ export function defineConfig(customOptions: CustomBetterAuthOptions) {
     },
     rateLimit: {
       customRules: {
+        '/phone-number/send-otp': { max: 3, window: 60 },
         '/request-password-reset': { max: 3, window: 60 },
         '/send-verification-email': { max: 3, window: 60 },
       },
     },
     plugins: [
       ...customOptions.plugins,
+      // 手机验证码登录(阿里云短信,凭据来自 admin 后台 DB 配置)。
+      // signUpOnVerification 实现「首验即注册」:手机号不存在时校验通过即建号。
+      ...(dynSmsCfg
+        ? [
+            phoneNumber({
+              // 纯数字验证码,位数由 admin 配置(默认 6)
+              allowedAttempts: 3,
+              expiresIn: 300,
+              otpLength: dynSmsCfg.codeLength || 6,
+              // 仅中国大陆手机号(11 位,1 开头)
+              phoneNumberValidator: (phone: string) => /^1[3-9]\d{9}$/.test(phone.trim()),
+              async sendOTP({ phoneNumber: phone }) {
+                if (!dynSmsCfg) throw new Error('短信登录未启用');
+                if (!phone) throw new Error('手机号为空');
+                await sendAliyunSms(dynSmsCfg, phone.trim(), {
+                  code: generateNumericOtp(dynSmsCfg.codeLength || 6),
+                }).catch((e) => {
+                  console.error('[auth][sms] send failed:', e);
+                  throw e;
+                });
+              },
+              signUpOnVerification: {
+                getTempEmail: (phone) => `${phone}@phone.user`,
+                getTempName: (phone) => `用户${phone.slice(-4)}`,
+              },
+            }),
+          ]
+        : []),
       emailWhitelist(),
       expo(),
       admin(),
@@ -351,7 +468,7 @@ export function defineConfig(customOptions: CustomBetterAuthOptions) {
       ...(genericOAuthProviders.length > 0
         ? [
             genericOAuth({
-              config: genericOAuthProviders,
+              config: mergedGenericProviders,
             }),
           ]
         : []),

@@ -142,6 +142,8 @@ export interface UserInitializationState {
    * Referral lifecycle status for the current user (invitee side).
    */
   referralStatus?: ReferralStatusString;
+  /** 用户角色(admin/user)—— admin 守卫与菜单入口依赖此字段 */
+  role?: string;
   settings: PartialDeep<UserSettings>;
   subscriptionPlan?: Plans;
   userId?: string;

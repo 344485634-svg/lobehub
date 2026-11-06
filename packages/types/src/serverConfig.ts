@@ -75,6 +75,8 @@ export interface GlobalServerConfig {
   enableLobehubSkill?: boolean;
   enableMagicLink?: boolean;
   enableMarketTrustedClient?: boolean;
+  /** 手机验证码登录(admin 后台动态开关,阿里云短信) */
+  enablePhoneLogin?: boolean;
   enableUploadFileToServer?: boolean;
   enableVisualUnderstanding?: boolean;
   image?: PartialDeep<UserImageConfig>;

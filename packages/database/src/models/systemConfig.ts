@@ -1,6 +1,8 @@
 import { eq } from 'drizzle-orm';
 
 import {
+  type AuthSmsConfig,
+  type AuthWechatConfig,
   type EmailSmtpConfig,
   type ShouqianbaConfig,
   SYSTEM_CONFIG_KEYS,
@@ -68,6 +70,36 @@ export class SystemConfigModel {
       value as unknown as Record<string, unknown>,
       {
         description: 'Shouqianba (收钱吧) payment configuration',
+        updatedBy,
+      },
+    );
+  }
+
+  async getAuthWechatConfig(): Promise<AuthWechatConfig | undefined> {
+    return this.get<AuthWechatConfig>(SYSTEM_CONFIG_KEYS.authWechat);
+  }
+
+  async setAuthWechatConfig(value: AuthWechatConfig, updatedBy?: string) {
+    return this.set(
+      SYSTEM_CONFIG_KEYS.authWechat,
+      value as unknown as Record<string, unknown>,
+      {
+        description: 'WeChat login configuration (admin managed)',
+        updatedBy,
+      },
+    );
+  }
+
+  async getAuthSmsConfig(): Promise<AuthSmsConfig | undefined> {
+    return this.get<AuthSmsConfig>(SYSTEM_CONFIG_KEYS.authSms);
+  }
+
+  async setAuthSmsConfig(value: AuthSmsConfig, updatedBy?: string) {
+    return this.set(
+      SYSTEM_CONFIG_KEYS.authSms,
+      value as unknown as Record<string, unknown>,
+      {
+        description: 'SMS (Aliyun) phone login configuration (admin managed)',
         updatedBy,
       },
     );

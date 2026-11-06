@@ -1,11 +1,18 @@
 'use client';
 
+import { useAuthServerConfigStore } from '@/features/AuthShell';
+
+import { PhoneLogin } from './PhoneLogin';
 import { SignInEmailSentStep } from './SignInEmailSentStep';
 import { SignInEmailStep } from './SignInEmailStep';
 import { SignInPasswordStep } from './SignInPasswordStep';
 import { useSignIn } from './useSignIn';
 
 const SignIn = () => {
+  const enablePhoneLogin = useAuthServerConfigStore(
+    (s) => s.serverConfig.enablePhoneLogin || false,
+  );
+
   const {
     disableEmailPassword,
     email,
@@ -54,21 +61,24 @@ const SignIn = () => {
     );
 
   return (
-    <SignInEmailStep
-      disableEmailPassword={disableEmailPassword}
-      form={form as any}
-      isSocialOnly={isSocialOnly}
-      lastAuthProvider={lastAuthProvider}
-      loading={loading}
-      oAuthSSOProviders={oAuthSSOProviders}
-      serverConfigInit={serverConfigInit}
-      socialLoading={socialLoading}
-      onCheckUser={handleCheckUser}
-      onGoToSignup={handleGoToSignup}
-      onResetEmail={handleBackToEmail}
-      onSetPassword={handleForgotPassword}
-      onSocialSignIn={handleSocialSignIn}
-    />
+    <>
+      <SignInEmailStep
+        disableEmailPassword={disableEmailPassword}
+        form={form as any}
+        isSocialOnly={isSocialOnly}
+        lastAuthProvider={lastAuthProvider}
+        loading={loading}
+        oAuthSSOProviders={oAuthSSOProviders}
+        serverConfigInit={serverConfigInit}
+        socialLoading={socialLoading}
+        onCheckUser={handleCheckUser}
+        onGoToSignup={handleGoToSignup}
+        onResetEmail={handleBackToEmail}
+        onSetPassword={handleForgotPassword}
+        onSocialSignIn={handleSocialSignIn}
+      />
+      {serverConfigInit && enablePhoneLogin && <PhoneLogin />}
+    </>
   );
 };
 

@@ -16,7 +16,13 @@ import { SubscriptionModel } from '@/database/models/subscription';
 import { SystemConfigModel } from '@/database/models/systemConfig';
 import { UserModel } from '@/database/models/user';
 import { AiInfraRepos } from '@/database/repositories/aiInfra';
-import type { EmailSmtpConfig, ReferralPolicyConfig, ShouqianbaConfig } from '@/database/schemas/systemConfig';
+import type {
+  AuthSmsConfig,
+  AuthWechatConfig,
+  EmailSmtpConfig,
+  ReferralPolicyConfig,
+  ShouqianbaConfig,
+} from '@/database/schemas/systemConfig';
 import { SYSTEM_CONFIG_KEYS } from '@/database/schemas/systemConfig';
 import { router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
@@ -915,6 +921,138 @@ export const adminRouter = router({
       vendorSn: cfg.vendorSn || '',
     };
   }),
+
+  // ===== Auth (注册登录) Configuration: WeChat + SMS =====
+  getAuthWechatConfig: adminProcedure.query(async ({ ctx }) => {
+    const model = new SystemConfigModel(ctx.serverDB);
+    const cfg = (await model.getAuthWechatConfig()) || ({} as Partial<AuthWechatConfig>);
+    return {
+      appId: cfg.appId || '',
+      appType: cfg.appType || 'mp',
+      callbackDomain: cfg.callbackDomain || '',
+      enabled: cfg.enabled ?? false,
+      hasAppSecret: Boolean(cfg.appSecret),
+    };
+  }),
+
+  updateAuthWechatConfig: adminProcedure
+    .input(
+      z.object({
+        appId: z.string().min(1, 'AppID 不能为空'),
+        appSecret: z.string().optional(), // 留空 = 保留原值
+        appType: z.enum(['mp', 'open']).default('mp'),
+        callbackDomain: z.string().optional(),
+        enabled: z.boolean(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const model = new SystemConfigModel(ctx.serverDB);
+      const existing = (await model.getAuthWechatConfig()) || ({} as Partial<AuthWechatConfig>);
+      const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
+
+      let appSecret = existing.appSecret;
+      if (input.appSecret) {
+        appSecret = await gateKeeper.encrypt(input.appSecret);
+      }
+
+      const next: AuthWechatConfig = {
+        appId: input.appId,
+        appSecret,
+        appType: input.appType,
+        callbackDomain: input.callbackDomain ?? existing.callbackDomain ?? '',
+        enabled: input.enabled,
+      };
+
+      await model.setAuthWechatConfig(next, ctx.userId);
+      const { resetAuthInstance } = await import('@/auth');
+      await resetAuthInstance();
+      return { success: true as const };
+    }),
+
+  getAuthSmsConfig: adminProcedure.query(async ({ ctx }) => {
+    const model = new SystemConfigModel(ctx.serverDB);
+    const cfg = (await model.getAuthSmsConfig()) || ({} as Partial<AuthSmsConfig>);
+    return {
+      accessKeyId: cfg.accessKeyId || '',
+      codeLength: cfg.codeLength ?? 6,
+      dailyLimitPerPhone: cfg.dailyLimitPerPhone ?? 10,
+      enabled: cfg.enabled ?? false,
+      hasAccessKeySecret: Boolean(cfg.accessKeySecret),
+      intervalSeconds: cfg.intervalSeconds ?? 60,
+      signName: cfg.signName || '',
+      templateCode: cfg.templateCode || '',
+    };
+  }),
+
+  updateAuthSmsConfig: adminProcedure
+    .input(
+      z.object({
+        accessKeyId: z.string().min(1, 'AccessKey ID 不能为空'),
+        accessKeySecret: z.string().optional(), // 留空 = 保留原值
+        codeLength: z.number().int().min(4).max(8).default(6),
+        dailyLimitPerPhone: z.number().int().min(1).max(50).default(10),
+        enabled: z.boolean(),
+        intervalSeconds: z.number().int().min(30).max(3600).default(60),
+        signName: z.string().min(1, '短信签名不能为空'),
+        templateCode: z.string().min(1, '模板 CODE 不能为空'),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const model = new SystemConfigModel(ctx.serverDB);
+      const existing = (await model.getAuthSmsConfig()) || ({} as Partial<AuthSmsConfig>);
+      const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
+
+      let accessKeySecret = existing.accessKeySecret;
+      if (input.accessKeySecret) {
+        accessKeySecret = await gateKeeper.encrypt(input.accessKeySecret);
+      }
+
+      const next: AuthSmsConfig = {
+        accessKeyId: input.accessKeyId,
+        accessKeySecret,
+        codeLength: input.codeLength,
+        dailyLimitPerPhone: input.dailyLimitPerPhone,
+        enabled: input.enabled,
+        intervalSeconds: input.intervalSeconds,
+        signName: input.signName,
+        templateCode: input.templateCode,
+      };
+
+      await model.setAuthSmsConfig(next, ctx.userId);
+      const { resetAuthInstance } = await import('@/auth');
+      await resetAuthInstance();
+      return { success: true as const };
+    }),
+
+  testAuthSmsConfig: adminProcedure
+    .input(z.object({ phone: z.string().regex(/^1[3-9]\d{9}$/, '请输入合法的中国大陆手机号') }))
+    .mutation(async ({ ctx, input }) => {
+      const model = new SystemConfigModel(ctx.serverDB);
+      const cfg = await model.getAuthSmsConfig();
+      if (!cfg?.accessKeyId || !cfg?.accessKeySecret || !cfg?.signName || !cfg?.templateCode) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: '短信配置不完整，请先保存' });
+      }
+      const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
+      const { plaintext, wasAuthentic } = await gateKeeper.decrypt(cfg.accessKeySecret);
+      if (!wasAuthentic) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'AccessKey Secret 解密失败，请重新保存' });
+      }
+
+      const { sendAliyunSms } = await import('@/libs/sms/aliyun');
+      try {
+        const result = await sendAliyunSms(
+          { ...cfg, accessKeySecret: plaintext },
+          input.phone,
+          { code: '123456' },
+        );
+        return { bizId: result.bizId, success: true as const };
+      } catch (error: any) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: error?.message || '测试短信发送失败，请检查配置',
+        });
+      }
+    }),
 
   updatePaymentConfig: adminProcedure
     .input(

@@ -4194,6 +4194,8 @@ const qwenVideoModels: AIVideoModelCard[] = [
       },
       duration: { default: 5, max: 30, min: 2 },
       imageUrls: { default: [] },
+      // 全能参考:支持上传参考视频(动作模仿/换人生成)
+      mediaUrl: { default: null, maxFileSize: 100 * 1024 * 1024 },
       prompt: { default: '' },
       promptExtend: { default: true },
       resolution: {
@@ -4222,6 +4224,8 @@ const qwenVideoModels: AIVideoModelCard[] = [
       },
       duration: { default: 5, max: 30, min: 2 },
       imageUrls: { default: [] },
+      // 全能参考:支持上传参考视频(动作模仿/换人生成)
+      mediaUrl: { default: null, maxFileSize: 100 * 1024 * 1024 },
       prompt: { default: '' },
       promptExtend: { default: true },
       resolution: {

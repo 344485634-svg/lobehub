@@ -19,6 +19,8 @@ export type SystemConfigItem = typeof systemConfigs.$inferSelect;
 export type NewSystemConfig = typeof systemConfigs.$inferInsert;
 
 export const SYSTEM_CONFIG_KEYS = {
+  authSms: 'auth.sms',
+  authWechat: 'auth.wechat',
   email: 'email.smtp',
   paymentShouqianba: 'payment.shouqianba',
   referral: 'referral.policy',
@@ -90,4 +92,44 @@ export type ShouqianbaConfig = {
   /** 支持的支付方式 */
   payways: Array<'alipay' | 'wechat' | 'unionpay'>;
   remark?: string;
+};
+
+/** 微信登录配置(公众号服务号网页授权 + 开放平台扫码) */
+export type AuthWechatConfig = {
+  enabled: boolean;
+  /**
+   * 应用类型:
+   * - 'mp'   公众号服务号网页授权(手机微信内 H5 授权,PC 端带参二维码引导)
+   * - 'open' 微信开放平台网站应用扫码(需要开放平台企业认证)
+   */
+  appType: 'mp' | 'open';
+  /** 公众号 AppID / 开放平台 AppID */
+  appId: string;
+  /** 公众号 AppSecret / 开放平台 AppSecret(敏感,入库加密) */
+  appSecret?: string;
+  /** 是否已配置 secret(响应字段) */
+  hasAppSecret?: boolean;
+  /** 网页授权回调域名,如 chat.xingu-ai.com(不带协议) */
+  callbackDomain?: string;
+};
+
+/** 阿里云短信登录配置 */
+export type AuthSmsConfig = {
+  enabled: boolean;
+  /** 阿里云 AccessKey ID(建议使用仅短信权限的 RAM 子账号) */
+  accessKeyId: string;
+  /** AccessKey Secret(敏感,入库加密) */
+  accessKeySecret?: string;
+  /** 是否已配置 secret(响应字段) */
+  hasAccessKeySecret?: boolean;
+  /** 短信签名,如「芯谷智能」 */
+  signName: string;
+  /** 验证码模板 CODE,如 SMS-XXXXXXXX */
+  templateCode: string;
+  /** 验证码位数(纯数字) */
+  codeLength: number;
+  /** 同一手机号每日发送上限 */
+  dailyLimitPerPhone: number;
+  /** 同一手机号两次发送最小间隔(秒) */
+  intervalSeconds: number;
 };

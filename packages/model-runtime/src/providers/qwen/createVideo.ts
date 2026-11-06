@@ -125,7 +125,7 @@ async function createVideoTask(
   baseUrl: string,
 ): Promise<string> {
   const { model, params } = payload;
-  const { prompt, imageUrl, imageUrls, endImageUrl } = params;
+  const { prompt, imageUrl, imageUrls, endImageUrl, mediaUrl } = params;
 
   // Determine the endpoint based on task type
   const url = `${baseUrl}/api/v1/services/aigc/${taskType}/video-synthesis`;
@@ -247,7 +247,7 @@ async function createVideoTask(
     }
   } else if (model.startsWith('wan2.7') || model.startsWith('wan3.0') || model.startsWith('happyhorse')) {
     // wan3.0 全能参考模式(官方文档):媒体走 input.media 数组,
-    // type 用 first_frame / reference_image / last_frame
+    // type 用 first_frame / reference_image / last_frame / reference_video
     const media = [];
     if (imageUrl) {
       media.push({
@@ -262,6 +262,14 @@ async function createVideoTask(
           url,
         }),
       );
+    }
+    // 参考视频(动作模仿/视频生视频):与参考图并存 —— 模型将参考视频的
+    // 动作迁移到参考图人物上,实现"换人不换动作"。wan3.0 官方支持 video 类型 media。
+    if (mediaUrl) {
+      media.push({
+        type: 'reference_video',
+        url: mediaUrl,
+      });
     }
     if (endImageUrl) {
       media.push({
@@ -300,7 +308,9 @@ async function createVideoTask(
   if (Array.isArray(input.media) && input.media.length > 0) {
     const resolved = await Promise.all(
       (input.media as Array<{ type: string; url: string }>).map(async (m) => {
-        const url = await resolveMediaUrl(m.url, 'image');
+        // reference_video 是视频,按 video 类型解析(不能强行内联成图)
+        const kind = m.type === 'reference_video' ? 'video' : 'image';
+        const url = await resolveMediaUrl(m.url, kind);
         return url ? { ...m, url } : null;
       }),
     );

@@ -31,6 +31,38 @@ const getBetterAuthSSOProviders = () => {
   return parseSSOProviders(authEnv.AUTH_SSO_PROVIDERS);
 };
 
+/**
+ * 合并 env 与 admin DB 动态配置的 SSO provider 列表(登录按钮显隐依据)。
+ * DB 读取失败时回退 env(相当于未配置动态微信)。
+ */
+const getMergedSSOProviders = async (): Promise<string[]> => {
+  const envProviders = getBetterAuthSSOProviders();
+  try {
+    const { getDynamicAuthConfig } = await import('@/libs/better-auth/define-config');
+    const { WECHAT_MP_PROVIDER_ID } = await import(
+      '@/libs/better-auth/sso/providers/wechat-mp'
+    );
+    const dyn = await getDynamicAuthConfig();
+    if (dyn?.wechat) {
+      return [...new Set([...envProviders, WECHAT_MP_PROVIDER_ID])];
+    }
+  } catch {
+    // DB 未就绪(构建期/早启动)
+  }
+  return envProviders;
+};
+
+/** admin 后台短信开关(DB),决定登录页是否显示手机验证码表单 */
+const getDynamicEnablePhoneLogin = async (): Promise<boolean> => {
+  try {
+    const { getDynamicAuthConfig } = await import('@/libs/better-auth/define-config');
+    const dyn = await getDynamicAuthConfig();
+    return Boolean(dyn?.sms?.enabled);
+  } catch {
+    return false;
+  }
+};
+
 export const getServerGlobalConfig = async () => {
   const { DEFAULT_AGENT_CONFIG } = getAppConfig();
 
@@ -134,7 +166,9 @@ export const getServerGlobalConfig = async () => {
     memory: {
       userMemory: cleanObject(getPublicMemoryExtractionConfig()),
     },
-    oAuthSSOProviders: getBetterAuthSSOProviders(),
+    oAuthSSOProviders: await getMergedSSOProviders(),
+    // admin DB 动态开关:手机验证码登录
+    enablePhoneLogin: await getDynamicEnablePhoneLogin(),
     systemAgent: parseSystemAgent(appEnv.SYSTEM_AGENT),
     telemetry: {
       langfuse: langfuseEnv.ENABLE_LANGFUSE,

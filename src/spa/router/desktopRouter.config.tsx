@@ -682,13 +682,20 @@ export const sharedMainAreaChildren: RouteObject[] = [
           ),
           path: 'legal',
         },
-        {
-          element: dynamicElement(
-            () => import('@/routes/(main)/admin/changelog'),
-            'Desktop > Admin > Changelog',
-          ),
-          path: 'changelog',
-        },
+      {
+        element: dynamicElement(
+          () => import('@/routes/(main)/admin/changelog'),
+          'Desktop > Admin > Changelog',
+        ),
+        path: 'changelog',
+      },
+      {
+        element: dynamicElement(
+          () => import('@/routes/(main)/admin/auth'),
+          'Desktop > Admin > Auth',
+        ),
+        path: 'auth',
+      },
       // Legacy redirects
       {
         element: redirectElement('/admin/provider'),

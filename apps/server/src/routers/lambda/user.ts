@@ -153,6 +153,7 @@ export const userRouter = router({
 
     const hasMoreThan4Messages = messageCount > 4;
     const hasAnyMessages = messageCount > 0;
+    const dbUser = await UserModel.findById(ctx.serverDB, ctx.userId);
     return {
       avatar: state.avatar,
       canEnablePWAGuide: hasMoreThan4Messages,
@@ -172,6 +173,9 @@ export const userRouter = router({
       lastName: state.lastName,
       onboarding: state.onboarding,
       preference: state.preference as UserPreference,
+      // 角色随初始化状态下发(admin 守卫/菜单入口依赖)——与 better-auth
+      // session 的 user.role 同源(users 表 role 列)
+      role: dbUser?.role ?? 'user',
       settings: state.settings,
       userId: ctx.userId,
       username: state.username,

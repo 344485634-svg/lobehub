@@ -19,6 +19,7 @@ export async function createVolcengineVideo(
     imageUrl,
     imageUrls,
     endImageUrl,
+    mediaUrl,
     aspectRatio,
     duration,
     generateAudio,
@@ -52,6 +53,12 @@ export async function createVolcengineVideo(
 
   if (endImageUrl) {
     content.push({ image_url: { url: endImageUrl }, role: 'last_frame', type: 'image_url' });
+  }
+
+  // 参考视频(全能参考/动作模仿):mediaUrl 为用户上传的参考视频,
+  // 与参考图(人物/形象)可同时携带 —— 由模型完成"动作迁移+人物替换"。
+  if (mediaUrl) {
+    content.push({ video_url: { url: mediaUrl }, role: 'reference_video', type: 'video_url' });
   }
 
   // Build request body
