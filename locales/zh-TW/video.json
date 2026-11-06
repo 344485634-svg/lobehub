@@ -11,6 +11,8 @@
   "config.prompt.placeholderWithRef": "描述您想要生成圖像的場景",
   "config.promptExtend.label": "提示延伸",
   "config.referenceImage.label": "參考圖片",
+  "config.mediaUrl.label": "影片參考",
+  "config.audioUrl.label": "音訊參考",
   "config.resolution.label": "解析度",
   "config.seed.label": "種子",
   "config.seed.random": "隨機",

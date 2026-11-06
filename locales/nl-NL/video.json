@@ -11,6 +11,8 @@
   "config.prompt.placeholderWithRef": "Beschrijf de scène die je wilt genereren met de afbeelding",
   "config.promptExtend.label": "Prompt uitbreiden",
   "config.referenceImage.label": "Referentieafbeelding",
+  "config.mediaUrl.label": "Videoreferentie",
+  "config.audioUrl.label": "Audioreferentie",
   "config.resolution.label": "Resolutie",
   "config.seed.label": "Zaadwaarde",
   "config.seed.random": "Willekeurig",

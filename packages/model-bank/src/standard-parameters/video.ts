@@ -79,6 +79,16 @@ export const VideoModelParamsMetaSchema = z.object({
     })
     .optional(),
 
+  audioUrl: z
+    .object({
+      /** 音频参考(全能参考模式):上传音频,模仿其音色/节奏生成同款配音 */
+      default: z.string().nullish(),
+      description: z.string().optional(),
+      maxFileSize: z.number().optional(),
+      type: z.tuple([z.literal('string'), z.literal('null')]).optional(),
+    })
+    .optional(),
+
   aspectRatio: z
     .object({
       default: z.string(),

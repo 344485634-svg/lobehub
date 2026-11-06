@@ -174,24 +174,29 @@ export const normalizeImageModel = async (
 export const normalizeVideoModel = async (
   model: EnabledAiModel,
 ): Promise<ProviderModelListItem> => {
-  const fallbackParametersPromise = model.parameters
-    ? Promise.resolve<ModelParamsSchema | undefined>(model.parameters)
-    : getModelPropertyWithFallback<ModelParamsSchema | undefined>(
-        model.id,
-        'parameters',
-        model.providerId,
-      );
+  // DB 里的 builtin 模型卡 parameters 是落库时的快照;当模型卡代码新增参数
+  // (如 wan3.0 的参考视频 mediaUrl)时 DB 不会被刷新,导致前端 isSupportedParam
+  // 拿不到新参数、上传槽不渲染。合并策略:以代码内模型卡为底,DB 快照覆盖
+  // 已有键;代码卡新增而 DB 未定义的键得以保留(不改变 DB 已有键的取值)。
+  const fallbackParametersPromise = getModelPropertyWithFallback<ModelParamsSchema | undefined>(
+    model.id,
+    'parameters',
+    model.providerId,
+  ).then((builtinParameters) => {
+    if (!model.parameters || !builtinParameters) return model.parameters ?? builtinParameters;
+    return { ...builtinParameters, ...model.parameters };
+  });
 
   const fallbackPricingPromise = getModelProperty<Pricing>(model, 'pricing');
   const fallbackDescriptionPromise = getModelProperty<string>(model, 'description');
 
-  const [fallbackParameters, fallbackPricing, fallbackDescription] = await Promise.all([
+  const [mergedParameters, fallbackPricing, fallbackDescription] = await Promise.all([
     fallbackParametersPromise,
     fallbackPricingPromise,
     fallbackDescriptionPromise,
   ]);
 
-  const parameters = model.parameters ?? fallbackParameters;
+  const parameters = mergedParameters;
   const pricing = fallbackPricing;
   const description = fallbackDescription;
   const { approximatePrice } = resolveVideoSinglePrice(pricing);

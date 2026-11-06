@@ -11,6 +11,8 @@
   "config.prompt.placeholderWithRef": "Oluşturmak istediğiniz sahneyi görüntü ile tanımlayın",
   "config.promptExtend.label": "İstem Genişletme",
   "config.referenceImage.label": "Referans Görsel",
+  "config.mediaUrl.label": "Video referansı",
+  "config.audioUrl.label": "Ses referansı",
   "config.resolution.label": "Çözünürlük",
   "config.seed.label": "Tohum",
   "config.seed.random": "Rastgele",

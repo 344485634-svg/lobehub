@@ -11,6 +11,8 @@
   "config.prompt.placeholderWithRef": "صحنه‌ای که می‌خواهید با تصویر ایجاد کنید را توصیف کنید",
   "config.promptExtend.label": "گسترش پرامپت",
   "config.referenceImage.label": "تصویر مرجع",
+  "config.mediaUrl.label": "مرجع ویدیو",
+  "config.audioUrl.label": "مرجع صدا",
   "config.resolution.label": "وضوح تصویر",
   "config.seed.label": "بذر (Seed)",
   "config.seed.random": "تصادفی",

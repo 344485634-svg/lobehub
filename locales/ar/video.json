@@ -11,6 +11,8 @@
   "config.prompt.placeholderWithRef": "وصف المشهد الذي تريد إنشاؤه مع الصورة",
   "config.promptExtend.label": "توسيع المطالبة",
   "config.referenceImage.label": "صورة مرجعية",
+  "config.mediaUrl.label": "مرجع الفيديو",
+  "config.audioUrl.label": "مرجع الصوت",
   "config.resolution.label": "الدقة",
   "config.seed.label": "البذرة",
   "config.seed.random": "عشوائي",

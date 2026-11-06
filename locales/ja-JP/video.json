@@ -11,6 +11,8 @@
   "config.prompt.placeholderWithRef": "生成したい画像のシーンを説明してください",
   "config.promptExtend.label": "プロンプト拡張",
   "config.referenceImage.label": "参照画像",
+  "config.mediaUrl.label": "動画リファレンス",
+  "config.audioUrl.label": "音声リファレンス",
   "config.resolution.label": "解像度",
   "config.seed.label": "シード値",
   "config.seed.random": "ランダム",

@@ -149,6 +149,8 @@ interface UploadCardProps {
    */
   onUploadFiles?: (files: File[]) => void | Promise<void>;
   style?: CSSProperties;
+  /** Render the preview with a <video> element (audio/video reference uploads). */
+  useVideoPreview?: boolean;
   variant?: 'card' | 'circle';
 }
 
@@ -166,6 +168,7 @@ const UploadCard = memo<UploadCardProps>(
     className,
     closeClassName,
     style,
+    useVideoPreview = false,
     variant = 'card',
   }) => {
     const inputRef = useRef<HTMLInputElement>(null);
@@ -266,13 +269,25 @@ const UploadCard = memo<UploadCardProps>(
             onClick={handleFileSelect}
           >
             <div className={uploadCardStyles.filledCardInner}>
-              <Image
-                fill
-                unoptimized
-                alt=""
-                src={uploadPreview || imageUrl!}
-                style={{ objectFit: 'cover' }}
-              />
+              {useVideoPreview && showPreview ? (
+                // 参考视频/音频:用 <video> 预览(录音轨也显示画面或黑屏帧),
+                // <Image> 无法渲染 video/* mime
+                <video
+                  muted
+                  playsInline
+                  preload="metadata"
+                  src={showPreview}
+                  style={{ height: '100%', objectFit: 'cover', width: '100%' }}
+                />
+              ) : (
+                <Image
+                  fill
+                  unoptimized
+                  alt=""
+                  src={uploadPreview || imageUrl!}
+                  style={{ objectFit: 'cover' }}
+                />
+              )}
               {uploading && (
                 <div className={uploadCardStyles.uploadOverlay}>
                   <Spin percent={'auto'} size="small" />

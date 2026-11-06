@@ -11,6 +11,8 @@
   "config.prompt.placeholderWithRef": "结合图片，描述你想生成的画面",
   "config.promptExtend.label": "提示词扩展",
   "config.referenceImage.label": "参考图像",
+  "config.mediaUrl.label": "视频参考",
+  "config.audioUrl.label": "音频参考",
   "config.resolution.label": "分辨率",
   "config.seed.label": "种子",
   "config.seed.random": "随机",

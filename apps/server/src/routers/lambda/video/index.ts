@@ -167,6 +167,16 @@ export const videoRouter = router({
           console.error('Error converting mediaUrl to key: %O', error);
         }
       }
+      if (typeof (params as any).audioUrl === 'string' && (params as any).audioUrl) {
+        try {
+          const key = await fileService.getKeyFromFullUrl((params as any).audioUrl);
+          if (key) {
+            configForDatabase = { ...configForDatabase, audioUrl: key };
+          }
+        } catch (error) {
+          console.error('Error converting audioUrl to key: %O', error);
+        }
+      }
 
       // Convert stored keys / proxy URLs to full URLs the model gateway can fetch.
       // Remote gateways (api.chatx.ai) require media_url to be valid HTTP(S).
@@ -210,6 +220,12 @@ export const videoRouter = router({
             (configForDatabase as any).mediaUrl ?? (params as any).mediaUrl,
           );
           if (url) updates.mediaUrl = url;
+        }
+        if (typeof (params as any).audioUrl === 'string' && (params as any).audioUrl) {
+          const url = await resolvePublic(
+            (configForDatabase as any).audioUrl ?? (params as any).audioUrl,
+          );
+          if (url) updates.audioUrl = url;
         }
 
         if (Object.keys(updates).length > 0) {

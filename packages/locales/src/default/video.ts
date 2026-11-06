@@ -1,5 +1,6 @@
 export default {
   'config.aspectRatio.label': 'Aspect Ratio',
+  'config.audioUrl.label': 'Audio Reference',
   'config.cameraFixed.label': 'Fixed Camera',
   'config.duration.label': 'Duration',
   'config.endImageUrl.label': 'End Frame',
@@ -7,6 +8,7 @@ export default {
   'config.header.title': 'Video',
   'config.imageUpload.maxCountReached': 'You can add up to {{count}} reference images',
   'config.imageUrl.label': 'Start Frame',
+  'config.mediaUrl.label': 'Video Reference',
   'config.promptExtend.label': 'Prompt Extend',
   'config.prompt.placeholder': 'Describe the video you want to generate',
   'config.prompt.placeholderWithRef': 'Describe the scene you want to generate with the image',

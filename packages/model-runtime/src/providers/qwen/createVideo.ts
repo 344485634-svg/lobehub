@@ -271,6 +271,13 @@ async function createVideoTask(
         url: mediaUrl,
       });
     }
+    // 参考音频(音色/节奏模仿):wan3.0 全能参考支持 audio 类型 media
+    if (params.audioUrl) {
+      media.push({
+        type: 'audio',
+        url: params.audioUrl,
+      });
+    }
     if (endImageUrl) {
       media.push({
         type: 'last_frame',
@@ -308,8 +315,8 @@ async function createVideoTask(
   if (Array.isArray(input.media) && input.media.length > 0) {
     const resolved = await Promise.all(
       (input.media as Array<{ type: string; url: string }>).map(async (m) => {
-        // reference_video 是视频,按 video 类型解析(不能强行内联成图)
-        const kind = m.type === 'reference_video' ? 'video' : 'image';
+        // reference_video 是视频、audio 是音频:两者都不能强行内联成图
+        const kind = m.type === 'reference_video' || m.type === 'audio' ? m.type : 'image';
         const url = await resolveMediaUrl(m.url, kind);
         return url ? { ...m, url } : null;
       }),

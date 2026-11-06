@@ -11,6 +11,8 @@
   "config.prompt.placeholderWithRef": "Опишете сцената, която искате да създадете с изображението",
   "config.promptExtend.label": "Разширяване на подканата",
   "config.referenceImage.label": "Референтно изображение",
+  "config.mediaUrl.label": "Видео референция",
+  "config.audioUrl.label": "Аудио референция",
   "config.resolution.label": "Резолюция",
   "config.seed.label": "Сийд",
   "config.seed.random": "Случаен",

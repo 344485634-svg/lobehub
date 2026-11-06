@@ -49,15 +49,16 @@ export async function fetchImageAsDataUrl(url: string): Promise<string | null> {
  */
 export async function resolveMediaUrl(
   url: string,
-  kind: 'image' | 'video',
+  kind: 'audio' | 'image' | 'video',
 ): Promise<string | null> {
   if (!url) return null;
   if (isPublicHttpUrl(url)) return url;
 
-  // 视频参考:远程上游强制 HTTP(S) URL,本地地址无法内联
-  if (kind === 'video') {
+  // 视频/音频参考:远程上游强制 HTTP(S) URL,本地地址无法内联
+  if (kind === 'video' || kind === 'audio') {
     log(
-      'Skip video reference: media_url is not a public HTTP(S) URL (got %s). Upload to public storage or use a reachable URL.',
+      'Skip %s reference: media_url is not a public HTTP(S) URL (got %s). Upload to public storage or use a reachable URL.',
+      kind,
       url.slice(0, 80),
     );
     return null;

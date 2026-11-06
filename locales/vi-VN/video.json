@@ -11,6 +11,8 @@
   "config.prompt.placeholderWithRef": "Mô tả cảnh bạn muốn tạo với hình ảnh",
   "config.promptExtend.label": "Mở rộng Prompt",
   "config.referenceImage.label": "Hình ảnh tham chiếu",
+  "config.mediaUrl.label": "Tham chiếu video",
+  "config.audioUrl.label": "Tham chiếu âm thanh",
   "config.resolution.label": "Độ phân giải",
   "config.seed.label": "Hạt giống",
   "config.seed.random": "Ngẫu nhiên",

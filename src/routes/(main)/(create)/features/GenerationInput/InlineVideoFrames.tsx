@@ -2,7 +2,7 @@
 
 import { Flexbox } from '@lobehub/ui';
 import { createStaticStyles, cssVar } from 'antd-style';
-import { ArrowLeftRight, Video } from 'lucide-react';
+import { ArrowLeftRight, AudioLines, Video } from 'lucide-react';
 import { memo, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -39,14 +39,17 @@ const styles = createStaticStyles(({ css }) => ({
 }));
 
 interface InlineVideoFramesProps {
+  audioUrl?: string | null;
   endImageUrl?: string | null;
   imageUrl?: string | null;
   imageUrls?: string[] | null;
+  isSupportAudioUrl?: boolean;
   isSupportEndImage?: boolean;
   isSupportMediaUrl?: boolean;
   maxCount?: number;
   maxFileSize?: number;
   mediaUrl?: string | null;
+  onAudioUrlChange?: (data: UploadData | null) => void;
   onEndImageChange: (data: UploadData | null) => void;
   onImageChange: (data: UploadData | null) => void;
   onImageUrlsChange?: (data: UploadData) => void;
@@ -64,14 +67,17 @@ const InlineVideoFrames = memo<InlineVideoFramesProps>(
     imageUrls,
     endImageUrl,
     mediaUrl,
+    audioUrl,
     onImageChange,
     onEndImageChange,
     onMediaUrlChange,
+    onAudioUrlChange,
     onImageUrlsChange,
     onRemoveImageUrl,
     onUploadFiles,
     isSupportEndImage = true,
     isSupportMediaUrl = false,
+    isSupportAudioUrl = false,
     maxCount = 5,
     maxFileSize,
     uploadingPreviews = [],
@@ -244,8 +250,32 @@ const InlineVideoFrames = memo<InlineVideoFramesProps>(
               accept="video/*"
               imageUrl={mediaUrl}
               label={t('config.mediaUrl.label', { defaultValue: '视频参考' })}
+              useVideoPreview
               onRemove={() => onMediaUrlChange?.(null)}
               onUpload={(data) => onMediaUrlChange?.(data)}
+            />
+          </>
+        )}
+
+        {/* Audio reference (audio_url) - 全能参考模式(音色/节奏模仿) */}
+        {isSupportAudioUrl && (
+          <>
+            <Flexbox
+              align={'center'}
+              className={styles.swapIcon}
+              justify={'center'}
+              style={{ height: UPLOAD_CARD_SIZE }}
+            >
+              <AudioLines size={14} />
+            </Flexbox>
+
+            <UploadCard
+              accept="audio/*"
+              imageUrl={audioUrl}
+              label={t('config.audioUrl.label', { defaultValue: '音频参考' })}
+              useVideoPreview
+              onRemove={() => onAudioUrlChange?.(null)}
+              onUpload={(data) => onAudioUrlChange?.(data)}
             />
           </>
         )}

@@ -11,6 +11,8 @@
   "config.prompt.placeholderWithRef": "Опишите сцену, которую вы хотите создать с изображением",
   "config.promptExtend.label": "Расширение запроса",
   "config.referenceImage.label": "Референсное изображение",
+  "config.mediaUrl.label": "Видеореференс",
+  "config.audioUrl.label": "Аудиореференс",
   "config.resolution.label": "Разрешение",
   "config.seed.label": "Сид",
   "config.seed.random": "Случайный",

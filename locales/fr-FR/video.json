@@ -11,6 +11,8 @@
   "config.prompt.placeholderWithRef": "Décrivez la scène que vous souhaitez générer avec l'image",
   "config.promptExtend.label": "Extension de l’invite",
   "config.referenceImage.label": "Image de référence",
+  "config.mediaUrl.label": "Référence vidéo",
+  "config.audioUrl.label": "Référence audio",
   "config.resolution.label": "Résolution",
   "config.seed.label": "Graine",
   "config.seed.random": "Aléatoire",

@@ -303,6 +303,8 @@ const PromptInput = ({ showTitle = false }: PromptInputProps) => {
     useVideoGenerationConfigParam('endImageUrl');
   const { value: mediaUrl, setValue: setMediaUrl } =
     useVideoGenerationConfigParam('mediaUrl');
+  const { value: audioUrl, setValue: setAudioUrl } =
+    useVideoGenerationConfigParam('audioUrl');
   const isCreating = useVideoStore(createVideoSelectors.isCreating);
   const createVideo = useVideoStore((s) => s.createVideo);
   const setModelAndProviderOnSelect = useVideoStore((s) => s.setModelAndProviderOnSelect);
@@ -326,6 +328,7 @@ const PromptInput = ({ showTitle = false }: PromptInputProps) => {
   const isSupportImageUrls = useVideoStore(isSupportedParamSelector('imageUrls'));
   const isSupportEndImageUrl = useVideoStore(isSupportedParamSelector('endImageUrl'));
   const isSupportMediaUrl = useVideoStore(isSupportedParamSelector('mediaUrl'));
+  const isSupportAudioUrl = useVideoStore(isSupportedParamSelector('audioUrl'));
   const isSupportAspectRatio = useVideoStore(isSupportedParamSelector('aspectRatio'));
   const isSupportResolution = useVideoStore(isSupportedParamSelector('resolution'));
   const isSupportSize = useVideoStore(isSupportedParamSelector('size'));
@@ -396,7 +399,7 @@ const PromptInput = ({ showTitle = false }: PromptInputProps) => {
     }
   }, [promptParam, isLogin, canCreate, setValue, setPromptParam, createVideo]);
 
-  const showInlineFrames = isSupportImageUrl || isSupportImageUrls || isSupportEndImageUrl || isSupportMediaUrl;
+  const showInlineFrames = isSupportImageUrl || isSupportImageUrls || isSupportEndImageUrl || isSupportMediaUrl || isSupportAudioUrl;
   const framePreviewUrls = useMemo(
     () => [imageUrl, ...(imageUrls ?? [])].filter(Boolean) as string[],
     [imageUrl, imageUrls],
@@ -486,6 +489,19 @@ const PromptInput = ({ showTitle = false }: PromptInputProps) => {
     [canCreate, setMediaUrl],
   );
 
+  const handleAudioUrlChange = useCallback(
+    (data: string | { dimensions?: { height: number; width: number }; url: string } | null) => {
+      if (!canCreate) return;
+      if (data === null) {
+        setAudioUrl(null as any);
+        return;
+      }
+      const url = typeof data === 'string' ? data : data?.url;
+      setAudioUrl((url ?? null) as any);
+    },
+    [canCreate, setAudioUrl],
+  );
+
   return (
     <Flexbox gap={32} width={'100%'}>
       {showTitle && <PromptTitle />}
@@ -501,15 +517,18 @@ const PromptInput = ({ showTitle = false }: PromptInputProps) => {
           inlineContent={
             showInlineFrames ? (
               <InlineVideoFrames
+                audioUrl={audioUrl}
                 endImageUrl={endImageUrl}
                 imageUrl={imageUrl}
                 imageUrls={imageUrls}
+                isSupportAudioUrl={isSupportAudioUrl}
                 isSupportEndImage={isSupportEndImageUrl}
                 isSupportMediaUrl={isSupportMediaUrl}
                 maxCount={maxCount}
                 maxFileSize={imageUrlsMaxFileSize ?? imageUrlMaxFileSize}
                 mediaUrl={mediaUrl}
                 uploadingPreviews={uploadingPreviews}
+                onAudioUrlChange={handleAudioUrlChange}
                 onEndImageChange={handleEndImageChange}
                 onImageUrlsChange={handleAddImage}
                 onMediaUrlChange={handleMediaUrlChange}

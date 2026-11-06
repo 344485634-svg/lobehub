@@ -65,6 +65,8 @@ function preserveVideoInputParams(
     'imageUrl',
     'imageUrls',
     'endImageUrl',
+    'mediaUrl',
+    'audioUrl',
   ]);
 
   return normalizeImageInputOnSchemaSwitch(previousParameters, nextSchema, result);
