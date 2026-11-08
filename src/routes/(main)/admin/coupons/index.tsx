@@ -1,8 +1,8 @@
 'use client';
 
 import { Flexbox } from '@lobehub/ui';
-import { Button } from '@lobehub/ui/base-ui';
-import { App, Form, Input, InputNumber, Modal, Select, Switch, Table, Tag } from 'antd';
+import { Button, Modal, Select } from '@lobehub/ui/base-ui';
+import { App, Form, Input, InputNumber, Switch, Table, Tag } from 'antd';
 import dayjs from 'dayjs';
 import { type FC, useMemo, useState } from 'react';
 import useSWR from 'swr';
@@ -154,15 +154,14 @@ const AdminCouponsPage: FC = () => {
       {
         dataIndex: 'active',
         key: 'active',
-        render: (a: boolean) =>
-          a ? <Tag color="success">启用</Tag> : <Tag>停用</Tag>,
+        render: (a: boolean) => (a ? <Tag color="success">启用</Tag> : <Tag>停用</Tag>),
         title: '状态',
         width: 80,
       },
       {
         key: 'actions',
         render: (_: unknown, r: any) => (
-          <Flexbox gap={8} horizontal>
+          <Flexbox horizontal gap={8}>
             <Button size="small" onClick={() => openEdit(r)}>
               编辑
             </Button>
@@ -204,7 +203,6 @@ const AdminCouponsPage: FC = () => {
 
       <Modal
         confirmLoading={saving}
-        destroyOnClose
         open={open}
         title={editing ? '编辑优惠券' : '新建优惠券'}
         width={560}
@@ -228,13 +226,8 @@ const AdminCouponsPage: FC = () => {
           <Form.Item label="说明" name="description">
             <Input.TextArea rows={2} />
           </Form.Item>
-          <Flexbox gap={12} horizontal>
-            <Form.Item
-              label="类型"
-              name="type"
-              rules={[{ required: true }]}
-              style={{ flex: 1 }}
-            >
+          <Flexbox horizontal gap={12}>
+            <Form.Item label="类型" name="type" rules={[{ required: true }]} style={{ flex: 1 }}>
               <Select
                 options={[
                   { label: '折扣 %', value: 'percent' },
@@ -242,16 +235,11 @@ const AdminCouponsPage: FC = () => {
                 ]}
               />
             </Form.Item>
-            <Form.Item
-              label="优惠值"
-              name="value"
-              rules={[{ required: true }]}
-              style={{ flex: 1 }}
-            >
+            <Form.Item label="优惠值" name="value" rules={[{ required: true }]} style={{ flex: 1 }}>
               <InputNumber min={0.01} style={{ width: '100%' }} />
             </Form.Item>
           </Flexbox>
-          <Flexbox gap={12} horizontal>
+          <Flexbox horizontal gap={12}>
             <Form.Item label="最低消费 ¥" name="minAmount" style={{ flex: 1 }}>
               <InputNumber min={0} style={{ width: '100%' }} />
             </Form.Item>
@@ -273,7 +261,7 @@ const AdminCouponsPage: FC = () => {
               ]}
             />
           </Form.Item>
-          <Flexbox gap={12} horizontal>
+          <Flexbox horizontal gap={12}>
             <Form.Item label="发放总量" name="totalLimit" style={{ flex: 1 }}>
               <InputNumber min={0} placeholder="不限" style={{ width: '100%' }} />
             </Form.Item>
@@ -281,7 +269,7 @@ const AdminCouponsPage: FC = () => {
               <InputNumber min={0} style={{ width: '100%' }} />
             </Form.Item>
           </Flexbox>
-          <Flexbox gap={12} horizontal>
+          <Flexbox horizontal gap={12}>
             <Form.Item label="生效时间" name="startsAt" style={{ flex: 1 }}>
               <Input type="datetime-local" />
             </Form.Item>

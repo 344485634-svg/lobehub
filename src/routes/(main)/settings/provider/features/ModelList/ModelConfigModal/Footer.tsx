@@ -4,10 +4,11 @@ import { Button } from '@lobehub/ui';
 import { ModalFooter, useModalContext } from '@lobehub/ui/base-ui';
 import { type FormInstance } from 'antd';
 import { App } from 'antd';
+import isEqual from 'fast-deep-equal';
 import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { useAiInfraStore } from '@/store/aiInfra';
+import { aiModelSelectors, useAiInfraStore } from '@/store/aiInfra';
 
 interface ModelConfigFooterProps {
   formRef: { current?: FormInstance };
@@ -29,6 +30,7 @@ const ModelConfigFooter = memo<ModelConfigFooterProps>(({ formRef, id }) => {
     s.activeAiProvider!,
     s.updateAiModelsConfig,
   ]);
+  const existingModel = useAiInfraStore(aiModelSelectors.getAiModelById(id), isEqual);
 
   return (
     <ModalFooter>
@@ -48,9 +50,8 @@ const ModelConfigFooter = memo<ModelConfigFooterProps>(({ formRef, id }) => {
               creditsPerMillionInputTokens,
               creditsPerMillionOutputTokens,
               videoCreditsPerSecond,
-              videoRate480p,
-              videoRate720p,
-              videoRate1080p,
+              supportedResolutions,
+              videoRateByRes,
               // strip form-only / non-updatable fields
               id: _id,
               providerId: _providerId,
@@ -60,15 +61,20 @@ const ModelConfigFooter = memo<ModelConfigFooterProps>(({ formRef, id }) => {
               ...rest
             } = data;
 
-            const byRes: Record<string, number> = {
-              ...((prevPricing as any)?.videoCreditsPerSecondByResolution || {}),
-            };
-            if (videoRate480p != null && videoRate480p !== '')
-              byRes['480p'] = toNonNegNumber(videoRate480p);
-            if (videoRate720p != null && videoRate720p !== '')
-              byRes['720p'] = toNonNegNumber(videoRate720p);
-            if (videoRate1080p != null && videoRate1080p !== '')
-              byRes['1080p'] = toNonNegNumber(videoRate1080p);
+            // Rates keyed by the ticked resolutions (lowercased to match the
+            // billing lookup's normalizeVideoResolution). Built fresh — a
+            // resolution left unticked can't be selected by users, so its
+            // stale entry is dropped rather than seeded from the old table.
+            const rateResolutions: string[] =
+              Array.isArray(supportedResolutions) && supportedResolutions.length > 0
+                ? (supportedResolutions as string[])
+                : ['480p', '720p', '1080p'];
+            const rates = (videoRateByRes || {}) as Record<string, unknown>;
+            const byRes: Record<string, number> = {};
+            for (const res of rateResolutions) {
+              const v = rates[res];
+              if (v != null && v !== '') byRes[res.toLowerCase()] = toNonNegNumber(v);
+            }
 
             // Merge credit fields into existing pricing (keep units / upstream fields)
             const pricing: Record<string, unknown> = {
@@ -82,8 +88,28 @@ const ModelConfigFooter = memo<ModelConfigFooterProps>(({ formRef, id }) => {
               pricing.videoCreditsPerSecondByResolution = byRes;
             }
 
+            // Per-model resolution config → parameters.resolution { default, enum }.
+            // Deep-merges over the model-bank schema downstream and drives the
+            // frontend resolution tabs.
+            const parameters: Record<string, unknown> = {
+              ...(((existingModel as any)?.parameters || {}) as object),
+            };
+            if (Array.isArray(supportedResolutions) && supportedResolutions.length > 0) {
+              parameters.resolution = {
+                default: (supportedResolutions as string[])[0],
+                enum: supportedResolutions,
+              };
+              // `prompt` is the only mandatory key in the video schema parser —
+              // gateway models start from empty parameters and need it seeded.
+              if (!parameters.prompt) {
+                parameters.prompt = { default: '' };
+              }
+            } else {
+              delete parameters.resolution;
+            }
+
             // Only send schema-allowed keys
-            const payload: Record<string, unknown> = { pricing };
+            const payload: Record<string, unknown> = { parameters, pricing };
             if (rest.abilities && typeof rest.abilities === 'object') {
               const ab = rest.abilities as Record<string, unknown>;
               payload.abilities = {
@@ -101,7 +127,8 @@ const ModelConfigFooter = memo<ModelConfigFooterProps>(({ formRef, id }) => {
               payload.contextWindowTokens = toNonNegNumber(rest.contextWindowTokens, 0);
             }
             if (rest.displayName != null) payload.displayName = rest.displayName;
-            if (rest.settings && typeof rest.settings === 'object') payload.settings = rest.settings;
+            if (rest.settings && typeof rest.settings === 'object')
+              payload.settings = rest.settings;
             if (
               rest.type &&
               [

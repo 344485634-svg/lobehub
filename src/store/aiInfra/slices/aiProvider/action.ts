@@ -576,10 +576,6 @@ export class AiProviderActionImpl {
               VISIBLE_BUILTIN_MODEL_PROVIDERS.includes(model.providerId),
           );
 
-<<<<<<< HEAD
-
-=======
->>>>>>> origin/feature/phase1-auth-admin
           const userChatProviders = data.enabledChatAiProviders.filter((p) =>
             userConfiguredAiModels.some((m) => m.providerId === p.id && m.type === 'chat'),
           );

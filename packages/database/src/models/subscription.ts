@@ -1,12 +1,11 @@
-import { and, count, desc, eq, gt, isNotNull, isNull, lt, or } from 'drizzle-orm';
-
-import type { LobeChatDatabase } from '@/core/db/client';
+import { and, count, desc, eq, gt, isNotNull, isNull, lt, or, sql } from 'drizzle-orm';
 
 import type { SubscriptionPlanItem } from '../schemas/subscriptionPlan';
 import { subscriptionPlans } from '../schemas/subscriptionPlan';
 import { users } from '../schemas/user';
 import type { UserSubscriptionItem } from '../schemas/userSubscription';
 import { userSubscriptions } from '../schemas/userSubscription';
+import type { LobeChatDatabase } from '../type';
 
 export interface SubscriptionWithDetails extends UserSubscriptionItem {
   plan: SubscriptionPlanItem;
@@ -134,18 +133,27 @@ export class SubscriptionModel {
           // Plan fields
           plan: {
             active: subscriptionPlans.active,
+            badge: subscriptionPlans.badge,
+            benefits: subscriptionPlans.benefits,
             billingCycle: subscriptionPlans.billingCycle,
             createdAt: subscriptionPlans.createdAt,
+            credits: subscriptionPlans.credits,
             description: subscriptionPlans.description,
             displayName: subscriptionPlans.displayName,
             features: subscriptionPlans.features,
+            highlight: subscriptionPlans.highlight,
             id: subscriptionPlans.id,
+            monthlyOriginalPrice: subscriptionPlans.monthlyOriginalPrice,
+            monthlyPrice: subscriptionPlans.monthlyPrice,
             name: subscriptionPlans.name,
             price: subscriptionPlans.price,
             quotas: subscriptionPlans.quotas,
             sortOrder: subscriptionPlans.sortOrder,
             updatedAt: subscriptionPlans.updatedAt,
             accessedAt: subscriptionPlans.accessedAt,
+            allowedModels: subscriptionPlans.allowedModels,
+            yearlyOriginalPrice: subscriptionPlans.yearlyOriginalPrice,
+            yearlyPrice: subscriptionPlans.yearlyPrice,
           },
           // User fields
           user: {

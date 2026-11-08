@@ -1,6 +1,7 @@
 'use client';
 
 import { AlipayCircleFilled, LoadingOutlined, WechatFilled } from '@ant-design/icons';
+import { PLAN_ALLOWED_MODELS_ENABLED } from '@lobechat/business-const';
 import { Flexbox } from '@lobehub/ui';
 import { Button, Modal, Segmented } from '@lobehub/ui/base-ui';
 import { App, Card, Col, Empty, Input, QRCode, Row, Spin, Tag } from 'antd';
@@ -273,7 +274,13 @@ const PlansPage: FC = () => {
                 return <Tag color={color}>{label}</Tag>;
               })()}
             </div>
-            <div>积分：{(mine.plan as any).credits ?? mine.plan.quotas?.credits ?? '-'} 点</div>
+            <div>
+              积分：
+              {(mine.plan as { credits?: number }).credits ??
+                (mine.plan as { quotas?: { credits?: number } }).quotas?.credits ??
+                '-'}{' '}
+              点
+            </div>
             <div>开始：{dayjs(mine.subscription.startedAt).format('YYYY-MM-DD')}</div>
             <div>
               到期：

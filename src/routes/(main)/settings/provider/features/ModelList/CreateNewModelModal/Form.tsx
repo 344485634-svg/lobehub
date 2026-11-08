@@ -13,6 +13,8 @@ import { type ChatModelCard } from '@/types/llm';
 import ExtendParamsSelect from './ExtendParamsSelect';
 import { hasDuplicateModelId } from './utils';
 
+const DEFAULT_VIDEO_RATES = ['480p', '720p', '1080p'];
+
 interface ModelConfigFormProps {
   disabled?: boolean;
   existingModelIds?: string[];
@@ -31,6 +33,7 @@ const ModelConfigForm = memo<ModelConfigFormProps>(
     initialValues,
     disabled,
     existingModelIds = [],
+    type,
   }) => {
     const { t } = useTranslation('modelProvider');
 
@@ -66,8 +69,30 @@ const ModelConfigForm = memo<ModelConfigFormProps>(
       onFormInstanceReady(formInstance);
     }, []);
 
-    const modelType =
-      Form.useWatch('type', formInstance) || initialValues?.type || type || 'chat';
+    const modelType = Form.useWatch('type', formInstance) || initialValues?.type || type || 'chat';
+
+    // Per-model video resolution config: which resolutions users can pick,
+    // and the rate inputs follow the ticked list (generic tiers when unset).
+    const resolutionOptions = useMemo(() => {
+      const existing: string[] = (initialValues as any)?.parameters?.resolution?.enum ?? [];
+      return Array.from(new Set(['480p', '768p', '720p', '1080p', '2k', '4k', ...existing]));
+    }, [initialValues]);
+
+    const supportedResolutions = Form.useWatch('supportedResolutions', formInstance) as
+      string[] | undefined;
+    const rateResolutions = supportedResolutions?.length
+      ? supportedResolutions
+      : ['480p', '720p', '1080p'];
+
+    const initResolutions: string[] = (initialValues as any)?.parameters?.resolution?.enum ?? [];
+    const initByRes = (initialValues as any)?.pricing?.videoCreditsPerSecondByResolution || {};
+    const initRateResolutions = initResolutions.length ? initResolutions : DEFAULT_VIDEO_RATES;
+    const initVideoRateByRes: Record<string, number | undefined> = {};
+    for (const res of initRateResolutions) {
+      const lower = res.toLowerCase();
+      const bare = lower.replace(/p$/, '');
+      initVideoRateByRes[res] = initByRes[lower] ?? initByRes[res] ?? initByRes[bare] ?? undefined;
+    }
 
     return (
       <div
@@ -93,15 +118,8 @@ const ModelConfigForm = memo<ModelConfigFormProps>(
               (initialValues as any)?.pricing?.creditsPerMillionOutputTokens ?? 0,
             creditsPerRequest: (initialValues as any)?.pricing?.creditsPerRequest ?? 0,
             videoCreditsPerSecond: (initialValues as any)?.pricing?.videoCreditsPerSecond ?? 0,
-            videoRate480p:
-              (initialValues as any)?.pricing?.videoCreditsPerSecondByResolution?.['480p'] ??
-              undefined,
-            videoRate720p:
-              (initialValues as any)?.pricing?.videoCreditsPerSecondByResolution?.['720p'] ??
-              undefined,
-            videoRate1080p:
-              (initialValues as any)?.pricing?.videoCreditsPerSecondByResolution?.['1080p'] ??
-              undefined,
+            supportedResolutions: initResolutions,
+            videoRateByRes: initVideoRateByRes,
             type: initialValues?.type || type || 'chat',
           }}
         >
@@ -245,15 +263,26 @@ const ModelConfigForm = memo<ModelConfigFormProps>(
 
           {modelType === 'video' && (
             <>
-              <Form.Item extra="480p 每秒扣除积分" label="480p 积分/秒" name="videoRate480p">
-                <InputNumber min={0} placeholder="可选" style={{ width: '100%' }} />
+              <Form.Item
+                extra="勾选后，用户前端该模型只显示这些分辨率（第一个为默认）；留空使用通用 480p/720p/1080p"
+                label="支持的分辨率"
+                name="supportedResolutions"
+              >
+                <Checkbox.Group
+                  options={resolutionOptions}
+                  style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}
+                />
               </Form.Item>
-              <Form.Item extra="720p 每秒扣除积分，例如 10" label="720p 积分/秒" name="videoRate720p">
-                <InputNumber min={0} placeholder="10" style={{ width: '100%' }} />
-              </Form.Item>
-              <Form.Item extra="1080p 每秒扣除积分" label="1080p 积分/秒" name="videoRate1080p">
-                <InputNumber min={0} placeholder="可选" style={{ width: '100%' }} />
-              </Form.Item>
+              {rateResolutions.map((res) => (
+                <Form.Item
+                  extra={`${res} 每秒扣除积分`}
+                  key={res}
+                  label={`${res} 积分/秒`}
+                  name={['videoRateByRes', res]}
+                >
+                  <InputNumber min={0} placeholder="可选" style={{ width: '100%' }} />
+                </Form.Item>
+              ))}
               <Form.Item
                 extra="分辨率未命中时的默认每秒积分"
                 label="默认积分/秒"

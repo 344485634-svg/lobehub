@@ -94,9 +94,8 @@ export const useCategory = (): CategoryGroup[] => {
         ]
       : [];
 
-    const agent: CategoryItem[] = [
-      // Closed product: agent config is managed in Admin only
-    ].filter((item): item is CategoryItem => Boolean(item));
+    // Closed product: agent config is managed in Admin only
+    const agent: CategoryItem[] = [];
 
     const system: CategoryItem[] = [
       makeItem({ icon: Database, key: SettingsTabs.Storage, label: t('setting:tab.storage') }),

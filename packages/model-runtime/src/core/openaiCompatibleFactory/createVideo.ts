@@ -153,8 +153,17 @@ export async function createOpenAICompatibleVideo(
 ): Promise<CreateVideoResponse> {
   const { model, params } = payload;
   const requestModel = resolveMappedModelId(model, options);
-  const { prompt, imageUrl, imageUrls, endImageUrl, mediaUrl, size, duration, aspectRatio } =
-    params;
+  const {
+    prompt,
+    imageUrl,
+    imageUrls,
+    endImageUrl,
+    mediaUrl,
+    size,
+    duration,
+    aspectRatio,
+    resolution,
+  } = params;
 
   log('Creating video with OpenAI-compatible API - model: %s, params: %O', requestModel, params);
 
@@ -211,12 +220,17 @@ export async function createOpenAICompatibleVideo(
       seen.add(url);
       const media = await resolveMediaUrl(url, type);
       if (!media) return;
-      // 图片:公网 URL 原样传;本地图(localhost/内网)远程网关拉不到,
-      // 由 resolveMediaUrl 转 Base64 内联——万相 3.0 官方明说支持
-      // `data:{MIME};base64,{data}`。若个别网关不接受,会显式报错,
-      // 好过静默丢图、让"参考生视频"退化为纯文生视频。
-      if (type === 'image' && media.startsWith('data:')) {
-        log('Inlining local image reference as base64 data URL: %s', url.slice(0, 80));
+      // liuma 等网关的 reference_contents[].media_url 只接受公网 HTTP(S) URL
+      // (已实测拒绝 base64 data:)。本地/内网存储的图片无法被网关拉取,曾经
+      // 被静默跳过(参考图无声消失)或发出去被网关 400(晦涩难懂)。这里改为
+      // 快速失败并给出可操作的原因。
+      if (media.startsWith('data:')) {
+        throw new Error(
+          '参考图无法被视频网关获取：图片存储在非公开的本地/内网地址。' +
+            '请联系管理员在「管理后台 → 存储配置」启用图床转存（国内网络建议选择 S.EE），' +
+            '或将 S3_PUBLIC_DOMAIN 配置为公网可达的地址（参考图会以公网 URL 提交给网关），' +
+            '或先使用公网图片 URL 进行测试。',
+        );
       }
       referenceContents.push({ media_url: media, name, type });
     };
@@ -228,7 +242,12 @@ export async function createOpenAICompatibleVideo(
     await pushRef(endImageUrl, '尾帧', 'image');
     await pushRef(mediaUrl, '动作', 'video');
 
-    if (referenceContents.length > 0) body['reference_contents'] = referenceContents;
+    if (referenceContents.length > 0) {
+      body['reference_contents'] = referenceContents;
+      // liuma 网关的 minimax-h3 等参考生视频模型要求显式声明参考模式,
+      // 否则网关会忽略 reference_contents(文档:mode=reference2video)。
+      body['mode'] = 'reference2video';
+    }
 
     // 网关(实测 api.xinguhub.com 等阿里系通道)的图生视频要求 input.media,
     // 其 OpenAI 风格入口实际认的传图字段是 input_reference(字符串:公网 URL 或
@@ -238,9 +257,10 @@ export async function createOpenAICompatibleVideo(
     const firstImageRef = referenceContents.find((r) => r.type === 'image');
     if (firstImageRef) body['input_reference'] = firstImageRef.media_url;
 
-    // 网关用 aspect_ratio(非 size)和 duration(数字,非 seconds 字符串)
+    // 网关用 aspect_ratio(非 size)、duration(数字,非 seconds 字符串)、resolution
     if (aspectRatio) body['aspect_ratio'] = aspectRatio;
     if (duration !== undefined && duration !== null) body['duration'] = duration;
+    if (resolution) body['resolution'] = resolution;
   }
 
   log('OpenAI-compatible video API request body: %O', body);

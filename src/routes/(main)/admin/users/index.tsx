@@ -1,8 +1,21 @@
 'use client';
 
 import { Flexbox } from '@lobehub/ui';
-import { Button, Modal } from '@lobehub/ui/base-ui';
-import { App, Card, Col, DatePicker, Form, Input, InputNumber, Row, Select, Switch, Table, Tag, Tooltip } from 'antd';
+import { Button, Modal, Select } from '@lobehub/ui/base-ui';
+import {
+  App,
+  Card,
+  Col,
+  DatePicker,
+  Form,
+  Input,
+  InputNumber,
+  Row,
+  Switch,
+  Table,
+  Tag,
+  Tooltip,
+} from 'antd';
 import dayjs from 'dayjs';
 import { type FC, useState } from 'react';
 import { Link } from 'react-router';
@@ -170,7 +183,9 @@ const AdminUsersPage: FC = () => {
       key: 'role',
       render: (_: unknown, row: any) => (
         <Flexbox gap={4}>
-          <Tag color={row.role === 'admin' ? 'gold' : 'default'}>{row.role === 'admin' ? '管理员' : '普通用户'}</Tag>
+          <Tag color={row.role === 'admin' ? 'gold' : 'default'}>
+            {row.role === 'admin' ? '管理员' : '普通用户'}
+          </Tag>
           {row.banned && <Tag color="red">已封禁</Tag>}
         </Flexbox>
       ),
@@ -182,7 +197,11 @@ const AdminUsersPage: FC = () => {
       render: (_: unknown, row: any) => {
         if (!row.planDisplayName) return <span style={{ opacity: 0.4 }}>无订阅</span>;
         return (
-          <Tooltip title={row.subExpiresAt ? `到期：${dayjs(row.subExpiresAt).format('YYYY-MM-DD')}` : '长期'}>
+          <Tooltip
+            title={
+              row.subExpiresAt ? `到期：${dayjs(row.subExpiresAt).format('YYYY-MM-DD')}` : '长期'
+            }
+          >
             <Flexbox gap={4}>
               <Tag color={STATUS_COLOR[row.subStatus] || 'default'}>
                 {STATUS_LABEL[row.subStatus] || row.subStatus}
@@ -217,7 +236,8 @@ const AdminUsersPage: FC = () => {
           >
             <span style={{ color: '#1677ff', fontWeight: 700 }}>{total.toLocaleString()}</span>
             <div style={{ fontSize: 11, opacity: 0.65, lineHeight: 1.4 }}>
-              套餐 {plan.toLocaleString()} · 充值 {topup.toLocaleString()} · 赠送 {reward.toLocaleString()}
+              套餐 {plan.toLocaleString()} · 充值 {topup.toLocaleString()} · 赠送{' '}
+              {reward.toLocaleString()}
             </div>
           </Tooltip>
         );
@@ -272,12 +292,18 @@ const AdminUsersPage: FC = () => {
       fixed: 'right' as const,
       key: 'actions',
       render: (_: unknown, row: any) => (
-        <Flexbox gap={6} horizontal>
-          <Button size="small" onClick={() => openCreditEditor(row)}>调整积分</Button>
+        <Flexbox horizontal gap={6}>
+          <Button size="small" onClick={() => openCreditEditor(row)}>
+            调整积分
+          </Button>
           {row.banned ? (
-            <Button size="small" onClick={() => unban(row.id)}>解除封禁</Button>
+            <Button size="small" onClick={() => unban(row.id)}>
+              解除封禁
+            </Button>
           ) : (
-            <Button danger size="small" onClick={() => ban(row.id)}>封禁</Button>
+            <Button danger size="small" onClick={() => ban(row.id)}>
+              封禁
+            </Button>
           )}
           <Button size="small" onClick={() => toggleRole(row.id, row.role)}>
             {row.role === 'admin' ? '降权' : '升为管理员'}
@@ -294,9 +320,9 @@ const AdminUsersPage: FC = () => {
 
   return (
     <Flexbox gap={16} padding={24}>
-      <Flexbox gap={8} horizontal style={{ alignItems: 'center', justifyContent: 'space-between' }}>
+      <Flexbox horizontal gap={8} style={{ alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ fontSize: 20, fontWeight: 700 }}>用户管理</div>
-        <Flexbox gap={8} horizontal>
+        <Flexbox horizontal gap={8}>
           <Input
             allowClear
             placeholder="快捷搜索邮箱 / 用户名"
@@ -305,7 +331,11 @@ const AdminUsersPage: FC = () => {
             onChange={(e) => {
               setQuickSearch(e.target.value);
               if (!e.target.value) {
-                setActiveFilter((prev) => { const n = { ...prev }; delete n.search; return n; });
+                setActiveFilter((prev) => {
+                  const n = { ...prev };
+                  delete n.search;
+                  return n;
+                });
                 setPage(1);
               }
             }}
@@ -339,10 +369,14 @@ const AdminUsersPage: FC = () => {
               </Col>
               <Col lg={6} md={8} xs={12}>
                 <Form.Item label="订阅状态" name="hasSubscription">
-                  <Select allowClear placeholder="全部">
-                    <Select.Option value="yes">已订阅</Select.Option>
-                    <Select.Option value="no">未订阅</Select.Option>
-                  </Select>
+                  <Select
+                    allowClear
+                    placeholder="全部"
+                    options={[
+                      { label: '已订阅', value: 'yes' },
+                      { label: '未订阅', value: 'no' },
+                    ]}
+                  />
                 </Form.Item>
               </Col>
               <Col lg={6} md={8} xs={12}>
@@ -356,8 +390,10 @@ const AdminUsersPage: FC = () => {
                 </Form.Item>
               </Col>
             </Row>
-            <Flexbox gap={8} horizontal>
-              <Button htmlType="submit" type="primary">应用筛选</Button>
+            <Flexbox horizontal gap={8}>
+              <Button htmlType="submit" type="primary">
+                应用筛选
+              </Button>
               <Button onClick={resetFilter}>重置</Button>
             </Flexbox>
           </Form>
@@ -384,7 +420,6 @@ const AdminUsersPage: FC = () => {
       {/* 积分调整 Modal */}
       <Modal
         confirmLoading={creditSaving}
-        destroyOnClose
         open={!!creditEditUser}
         title={`调整积分：${creditEditUser?.email || creditEditUser?.username || creditEditUser?.id || ''}`}
         width={480}
@@ -400,7 +435,7 @@ const AdminUsersPage: FC = () => {
             name="amount"
             rules={[{ message: '请输入积分数量', required: true }]}
           >
-            <InputNumber style={{ width: '100%' }} placeholder="例如 100 或 -50" />
+            <InputNumber placeholder="例如 100 或 -50" style={{ width: '100%' }} />
           </Form.Item>
           <Form.Item label="备注（可选）" name="note">
             <Input placeholder="例如：手动补偿 / 违规扣除" />

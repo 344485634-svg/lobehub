@@ -123,43 +123,80 @@ describe('createOpenAICompatibleVideo', () => {
     });
 
     it('should send reference_contents with structured refs for non-OpenAI compatible providers', async () => {
-      // 非OpenAI网关:用 reference_contents 数组,type=image/video,name=人物/动作
-      // 本地 S3 图(localhost)远程网关拉不到,会被内联为 base64 data URL 再发送
-      const imgBuf = new Uint8Array([1, 2, 3]);
-      global.fetch = vi
-        .fn()
-        .mockResolvedValueOnce({
-          // 1st call: fetchImageAsDataUrl 取回图片
-          arrayBuffer: async () => imgBuf.buffer,
-          headers: { get: () => 'image/jpeg' },
-          ok: true,
-        })
-        .mockResolvedValueOnce({
-          // 2nd call: video POST
-          json: async () => ({ id: 'video-task-vllm-img' }),
-          ok: true,
-        });
+      // 非OpenAI网关:用 reference_contents 数组,type=image/video,name=人物/动作;
+      // xinguhub 等阿里系通道还需要 input_reference(字符串)补发首图,两者并存。
+      // 公网 URL 原样传递,不触发服务端下载,直接 mock POST 响应
+      global.fetch = vi.fn().mockResolvedValueOnce({
+        json: async () => ({ id: 'video-task-vllm-img' }),
+        ok: true,
+      });
 
       const payload: CreateVideoPayload = {
         model: 'vllm-omni',
         params: {
-          imageUrl: 'http://localhost:9000/chatx/refs/image.jpg',
+          imageUrl: 'https://example.com/image.jpg',
           prompt: 'Continue this scene',
         },
       };
 
       await createOpenAICompatibleVideo(payload, mockVllmOptions);
 
-      const body = JSON.parse((global.fetch as any).mock.calls[1][1].body);
-      expect(body.first_frame).toBeUndefined();
-      expect(body.images).toBeUndefined();
+      const body = JSON.parse((global.fetch as any).mock.calls[0][1].body);
       expect(body.reference_contents).toBeInstanceOf(Array);
       expect(body.reference_contents[0].type).toBe('image');
       expect(body.reference_contents[0].name).toBe('人物');
-      expect(body.reference_contents[0].media_url).toMatch(/^data:image\/jpeg;base64,/);
-      // 网关的图生视频通道认 input_reference(字符串):首图以解析后的 media_url
-      // (公网 URL 或 base64 data URL)补发,否则报 "Field required: input.media"
-      expect(body.input_reference).toMatch(/^data:image\/jpeg;base64,/);
+      // 公网 URL 原样传递,网关可直接拉取
+      expect(body.reference_contents[0].media_url).toBe('https://example.com/image.jpg');
+      // 有参考内容时显式声明参考模式(liuma minimax-h3 要求)
+      expect(body.mode).toBe('reference2video');
+      // xinguhub 等网关的图生视频只认 input_reference 字符串,补发首图
+      expect(body.input_reference).toBe('https://example.com/image.jpg');
+    });
+
+    it('should fail fast with an actionable message for local image references', async () => {
+      // 本地图(localhost RustFS 等)无法被远程网关拉取;曾先后被静默跳过或
+      // 发送 base64 被网关 400,现在应快速失败并告诉用户原因
+      const imgBuf = new Uint8Array([1, 2, 3]);
+      global.fetch = vi.fn().mockResolvedValueOnce({
+        // 服务端能取到本地图(内联为 data:),但网关拉不到
+        arrayBuffer: async () => imgBuf.buffer,
+        headers: { get: () => 'image/jpeg' },
+        ok: true,
+      });
+
+      const payload: CreateVideoPayload = {
+        model: 'minimax-h3',
+        params: {
+          imageUrl: 'http://localhost:9000/lobe/ref.png',
+          prompt: 'dance',
+        },
+      };
+
+      await expect(createOpenAICompatibleVideo(payload, mockVllmOptions)).rejects.toThrow(
+        /参考图无法被视频网关获取/,
+      );
+      // 未向网关发出请求(只有取图那一次调用)
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('should pass resolution to the gateway body', async () => {
+      global.fetch = vi.fn().mockResolvedValueOnce({
+        json: async () => ({ id: 'video-task-res' }),
+        ok: true,
+      });
+
+      const payload: CreateVideoPayload = {
+        model: 'minimax-h3',
+        params: {
+          prompt: 'dance',
+          resolution: '768p',
+        },
+      };
+
+      await createOpenAICompatibleVideo(payload, mockVllmOptions);
+
+      const body = JSON.parse((global.fetch as any).mock.calls[0][1].body);
+      expect(body.resolution).toBe('768p');
     });
   });
 

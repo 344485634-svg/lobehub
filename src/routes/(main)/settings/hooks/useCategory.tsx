@@ -3,6 +3,7 @@ import { Avatar } from '@lobehub/ui';
 import { SkillsIcon } from '@lobehub/ui/icons';
 import {
   BellIcon,
+  Brain,
   ChartColumnBigIcon,
   Coins,
   CreditCard,
@@ -57,7 +58,7 @@ export const useCategory = () => {
   const { t: tAuth } = useTranslation('auth');
   const { t: tSubscription } = useTranslation('subscription');
   const mobile = useServerConfigStore((s) => s.isMobile);
-  const { hideDocs } = useServerConfigStore(featureFlagsSelectors);
+  const { hideDocs, showProvider } = useServerConfigStore(featureFlagsSelectors);
   const [avatar, username] = useUserStore((s) => [
     userProfileSelectors.userAvatar(s),
     userProfileSelectors.nickName(s),
@@ -192,6 +193,7 @@ export const useCategory = () => {
     tSubscription,
     enableBusinessFeatures,
     hideDocs,
+    showProvider,
     mobile,
     isDevMode,
     avatarUrl,

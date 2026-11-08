@@ -1,8 +1,8 @@
 'use client';
 
 import { Flexbox } from '@lobehub/ui';
-import { Button } from '@lobehub/ui/base-ui';
-import { App, Card, Tabs } from 'antd';
+import { Button, Tabs } from '@lobehub/ui/base-ui';
+import { App, Card } from 'antd';
 import { type FC, useEffect, useState } from 'react';
 import useSWR from 'swr';
 
@@ -18,6 +18,7 @@ const MarkdownEditor: FC<{
     <Flexbox horizontal gap={12} style={{ minHeight: 360 }}>
       <textarea
         placeholder={placeholder}
+        value={value}
         style={{
           background: 'var(--lobe-color-bg-container)',
           border: '1px solid var(--lobe-color-border)',
@@ -31,10 +32,10 @@ const MarkdownEditor: FC<{
           padding: 12,
           resize: 'vertical',
         }}
-        value={value}
         onChange={(e) => onChange(e.target.value)}
       />
       <div
+        dangerouslySetInnerHTML={{ __html: renderMarkdown(value) }}
         style={{
           border: '1px solid var(--lobe-color-border)',
           borderRadius: 8,
@@ -45,7 +46,6 @@ const MarkdownEditor: FC<{
           overflow: 'auto',
           padding: 12,
         }}
-        dangerouslySetInnerHTML={{ __html: renderMarkdown(value) }}
       />
     </Flexbox>
     <div style={{ color: 'var(--lobe-color-text-secondary)', fontSize: 12 }}>
@@ -57,19 +57,19 @@ const MarkdownEditor: FC<{
 function renderMarkdown(md: string): string {
   if (!md) return '<p style="opacity:0.4">预览区（空）</p>';
   return md
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/`(.+?)`/g, '<code>$1</code>')
-    .replace(/\[(.+?)]\((.+?)\)/g, '<a href="$2" target="_blank">$1</a>')
-    .replace(/^---$/gm, '<hr/>')
-    .replace(/\n\n/g, '</p><p>')
-    .replace(/^(?!<[h|p|h|u|o|l|b])/gm, '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replaceAll(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replaceAll(/^# (.+)$/gm, '<h1>$1</h1>')
+    .replaceAll(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replaceAll(/\*(.+?)\*/g, '<em>$1</em>')
+    .replaceAll(/`(.+?)`/g, '<code>$1</code>')
+    .replaceAll(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank">$1</a>')
+    .replaceAll(/^---$/gm, '<hr/>')
+    .replaceAll('\n\n', '</p><p>')
+    .replaceAll(/^(?!<[h|puolb])/gm, '')
     .trim()
     .replace(/^/, '<p>')
     .replace(/$/, '</p>');
@@ -106,18 +106,18 @@ const AdminLegalPage: FC = () => {
 
   return (
     <Flexbox gap={24} padding={24}>
-      <Flexbox horizontal gap={16} style={{ alignItems: 'center', justifyContent: 'space-between' }}>
+      <Flexbox
+        horizontal
+        gap={16}
+        style={{ alignItems: 'center', justifyContent: 'space-between' }}
+      >
         <div style={{ fontSize: 22, fontWeight: 700 }}>服务条款 & 隐私政策</div>
         <Button loading={saving} type="primary" onClick={handleSave}>
           保存
         </Button>
       </Flexbox>
 
-      <Card
-        loading={isLoading}
-        size="small"
-        style={{ minHeight: 480 }}
-      >
+      <Card loading={isLoading} size="small" style={{ minHeight: 480 }}>
         <Tabs
           defaultActiveKey="terms"
           items={[

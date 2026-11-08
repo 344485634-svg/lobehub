@@ -19,9 +19,8 @@ const AdminNotificationPage: FC = () => {
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
-  const { data, isLoading, mutate } = useSWR(
-    ['admin-notifications', page],
-    () => lambdaClient.admin.adminListNotifications.query({ page, pageSize }),
+  const { data, isLoading, mutate } = useSWR(['admin-notifications', page], () =>
+    lambdaClient.admin.adminListNotifications.query({ page, pageSize }),
   );
 
   const handleSend = async (values: any) => {
@@ -100,7 +99,7 @@ const AdminNotificationPage: FC = () => {
           >
             <TextArea placeholder="详细说明…" rows={4} />
           </Form.Item>
-          <Flexbox gap={16} horizontal style={{ flexWrap: 'wrap' }}>
+          <Flexbox horizontal gap={16} style={{ flexWrap: 'wrap' }}>
             <Form.Item label="跳转链接（可选）" name="actionUrl" style={{ flex: 1, minWidth: 200 }}>
               <Input placeholder="https://…" />
             </Form.Item>

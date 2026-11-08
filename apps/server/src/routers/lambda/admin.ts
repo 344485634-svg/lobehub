@@ -1,6 +1,7 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 
+import { loadReferralPolicy } from '@/business/server/payment/fulfillPaidOrder';
 import { wsCompatProcedure } from '@/business/server/trpc-middlewares/workspaceAuth';
 import { CouponModel } from '@/database/models/coupon';
 import {
@@ -11,6 +12,7 @@ import { AgentSkillModel } from '@/database/models/agentSkill';
 import { AiModelModel } from '@/database/models/aiModel';
 import { AiProviderModel } from '@/database/models/aiProvider';
 import { ApiKeyModel } from '@/database/models/apiKey';
+import { CouponModel } from '@/database/models/coupon';
 import { PlanModel } from '@/database/models/plan';
 import { SubscriptionModel } from '@/database/models/subscription';
 import { SystemConfigModel } from '@/database/models/systemConfig';
@@ -22,6 +24,7 @@ import type {
   EmailSmtpConfig,
   ReferralPolicyConfig,
   ShouqianbaConfig,
+  StorageImageHostConfig,
 } from '@/database/schemas/systemConfig';
 import { SYSTEM_CONFIG_KEYS } from '@/database/schemas/systemConfig';
 import { router } from '@/libs/trpc/lambda';
@@ -31,6 +34,9 @@ import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
 import { ShouqianbaClient } from '../../services/payment/shouqianba';
 import { EmailService } from '@/server/services/email';
 import { SkillImporter } from '@/server/services/skill';
+import { uploadImageToImageHost } from '@/server/services/storage/imageHost';
+
+import { ShouqianbaClient } from '../../services/payment/shouqianba';
 
 const adminProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
@@ -97,7 +103,18 @@ export const adminRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const { and: dbAnd, count: dbCount, desc: dbDesc, eq: dbEq, gte, ilike: dbIlike, inArray: dbInArray, lte, or: dbOr, sql: dbSql } = await import('drizzle-orm');
+      const {
+        and: dbAnd,
+        count: dbCount,
+        desc: dbDesc,
+        eq: dbEq,
+        gte,
+        ilike: dbIlike,
+        inArray: dbInArray,
+        lte,
+        or: dbOr,
+        sql: dbSql,
+      } = await import('drizzle-orm');
       const {
         users: usersT,
         userSubscriptions: userSubsT,
@@ -108,11 +125,23 @@ export const adminRouter = router({
       } = await import('@/database/schemas');
 
       const db = ctx.serverDB;
-      const { page, pageSize, search, bannedOnly, email, hasSubscription, planId, registeredFrom, registeredTo } = input;
+      const {
+        page,
+        pageSize,
+        search,
+        bannedOnly,
+        email,
+        hasSubscription,
+        planId,
+        registeredFrom,
+        registeredTo,
+      } = input;
 
       const conditions: any[] = [];
       if (search) {
-        conditions.push(dbOr(dbIlike(usersT.email, `%${search}%`), dbIlike(usersT.username, `%${search}%`)));
+        conditions.push(
+          dbOr(dbIlike(usersT.email, `%${search}%`), dbIlike(usersT.username, `%${search}%`)),
+        );
       }
       if (email) {
         conditions.push(dbIlike(usersT.email, `%${email}%`));
@@ -150,7 +179,10 @@ export const adminRouter = router({
           username: usersT.username,
         })
         .from(usersT)
-        .leftJoin(userSubsT, dbAnd(dbEq(userSubsT.userId, usersT.id), dbEq(userSubsT.status, 'active')))
+        .leftJoin(
+          userSubsT,
+          dbAnd(dbEq(userSubsT.userId, usersT.id), dbEq(userSubsT.status, 'active')),
+        )
         .leftJoin(subPlansT, dbEq(subPlansT.id, userSubsT.planId))
         .where(where)
         .orderBy(dbDesc(usersT.createdAt))
@@ -283,9 +315,8 @@ export const adminRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       // amount > 0 增加积分；amount < 0 减少积分（按套餐→充值→奖励顺序扣）
-      const { adjustCredits, getCreditBalance } = await import(
-        '@/business/server/credits/deductCredits'
-      );
+      const { adjustCredits, getCreditBalance } =
+        await import('@/business/server/credits/deductCredits');
       await adjustCredits(ctx.serverDB, input.userId, input.amount, {
         note: input.note,
         reason: 'adjust',
@@ -765,6 +796,47 @@ export const adminRouter = router({
       return { pricing, success: true as const };
     }),
 
+  // Per-model supported resolutions for video generation. Saved into the
+  // model's parameters jsonb as { resolution: { default, enum } }, which
+  // deep-merges over the model-bank schema (mergeArrayById) and flows to the
+  // frontend video page, whose resolution tabs render exactly this enum.
+  // Empty list resets to the default schema behaviour.
+  updateModelResolution: adminProcedure
+    .input(
+      z.object({
+        modelId: z.string(),
+        providerId: z.string(),
+        resolutions: z.array(z.string().min(1).max(24)).max(12),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const aiModelModel = new AiModelModel(ctx.serverDB, ctx.userId);
+      const existing = await aiModelModel.findByIdAndProvider(input.modelId, input.providerId);
+      if (!existing) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: '模型不存在' });
+      }
+
+      const parameters = { ...(existing.parameters as Record<string, unknown>) };
+      if (input.resolutions.length === 0) {
+        delete parameters.resolution;
+      } else {
+        parameters.resolution = {
+          default: input.resolutions[0],
+          enum: input.resolutions,
+        };
+        // The video page's schema parser requires the `prompt` key (the only
+        // mandatory one in VideoModelParamsMetaSchema) — gateway models start
+        // from an empty parameters object, and without it the whole schema
+        // fails to parse and falls back to the generic resolutions.
+        if (!parameters.prompt) {
+          parameters.prompt = { default: '' };
+        }
+      }
+
+      await aiModelModel.update(input.modelId, input.providerId, { parameters } as any);
+      return { parameters, success: true as const };
+    }),
+
   // ===== Platform Skills (admin upload, users can consume) =====
   createSkill: adminProcedure
     .input(
@@ -881,6 +953,70 @@ export const adminRouter = router({
       await model.setEmailConfig(next, ctx.userId);
       return { success: true as const };
     }),
+
+  // ===== Storage (image host) Configuration =====
+  getStorageConfig: adminProcedure.query(async ({ ctx }) => {
+    const model = new SystemConfigModel(ctx.serverDB);
+    const cfg = (await model.getImageHostConfig()) || ({} as Partial<StorageImageHostConfig>);
+    return {
+      enabled: cfg.enabled ?? false,
+      expiration: cfg.expiration ?? 0,
+      hasApiKey: Boolean(cfg.apiKey),
+      provider: cfg.provider === 'scdn' ? ('scdn' as const) : ('imgbb' as const),
+    };
+  }),
+
+  updateStorageConfig: adminProcedure
+    .input(
+      z.object({
+        apiKey: z.string().optional(), // empty = keep existing
+        enabled: z.boolean(),
+        expiration: z.number().int().min(0).max(15_552_000).optional(),
+        provider: z.enum(['imgbb', 'scdn']).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const model = new SystemConfigModel(ctx.serverDB);
+      const existing =
+        (await model.getImageHostConfig()) || ({} as Partial<StorageImageHostConfig>);
+      const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
+
+      let apiKey = existing.apiKey;
+      // 服务商切换后旧 Key 不再适用,要求重新填写
+      const provider = input.provider ?? existing.provider ?? 'imgbb';
+      if (provider !== (existing.provider ?? 'imgbb')) apiKey = undefined;
+      if (input.apiKey) {
+        apiKey = await gateKeeper.encrypt(input.apiKey);
+      }
+
+      const next: StorageImageHostConfig = {
+        apiKey,
+        enabled: input.enabled,
+        expiration: input.expiration ?? existing.expiration ?? 0,
+        hasApiKey: Boolean(apiKey),
+        provider,
+      };
+
+      await model.setImageHostConfig(next, ctx.userId);
+      return { success: true as const };
+    }),
+
+  testStorageConfig: adminProcedure.mutation(async ({ ctx }) => {
+    // 1x1 transparent PNG; verifies the configured key end-to-end
+    const PNG_1PX = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+      'base64',
+    );
+    try {
+      const url = await uploadImageToImageHost(ctx.serverDB, {
+        buffer: PNG_1PX,
+        mime: 'image/png',
+      });
+      return { message: `图床配置校验通过：${url}`, success: true as const };
+    } catch (error: any) {
+      throw new TRPCError({ code: 'BAD_REQUEST', message: error?.message || '校验失败' });
+    }
+  }),
 
   testEmailConfig: adminProcedure
     .input(z.object({ to: z.string().email() }))
@@ -1265,7 +1401,6 @@ export const adminRouter = router({
       return { success: true as const };
     }),
 
-
   // ===== Dashboard Stats =====
   getDashboardStats: adminProcedure
     .input(
@@ -1275,14 +1410,17 @@ export const adminRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const { and: a, count: cnt, desc: d, eq: e, gte, lte, sql: s, sum } = await import(
-        'drizzle-orm'
-      );
       const {
-        users: usersT,
-        paymentOrders,
-        creditLedgers,
-      } = await import('@/database/schemas');
+        and: a,
+        count: cnt,
+        desc: d,
+        eq: e,
+        gte,
+        lte,
+        sql: s,
+        sum,
+      } = await import('drizzle-orm');
+      const { users: usersT, paymentOrders, creditLedgers } = await import('@/database/schemas');
 
       const db = ctx.serverDB;
       const now = new Date();
@@ -1291,9 +1429,7 @@ export const adminRouter = router({
       const toDate = input.to ? new Date(new Date(input.to).setHours(23, 59, 59, 999)) : undefined;
 
       // total users
-      const [{ totalUsers }] = await db
-        .select({ totalUsers: cnt() })
-        .from(usersT);
+      const [{ totalUsers }] = await db.select({ totalUsers: cnt() }).from(usersT);
 
       // new users today
       const [{ newUsersToday }] = await db
@@ -1373,7 +1509,7 @@ export const adminRouter = router({
 
       // enrich with email
       const userIds = ranking.map((r) => r.userId);
-      let userMap: Record<string, string> = {};
+      const userMap: Record<string, string> = {};
       if (userIds.length > 0) {
         const { inArray } = await import('drizzle-orm');
         const rows = await db
@@ -1392,8 +1528,14 @@ export const adminRouter = router({
           userId: r.userId,
         })),
         subOrdersToday: { count: Number(subToday?.count ?? 0), total: subToday?.total ?? '0' },
-        topupOrdersToday: { count: Number(topupToday?.count ?? 0), total: topupToday?.total ?? '0' },
-        totalOrdersInRange: { count: Number(totalOrders?.count ?? 0), total: totalOrders?.total ?? '0' },
+        topupOrdersToday: {
+          count: Number(topupToday?.count ?? 0),
+          total: topupToday?.total ?? '0',
+        },
+        totalOrdersInRange: {
+          count: Number(totalOrders?.count ?? 0),
+          total: totalOrders?.total ?? '0',
+        },
         totalUsers: Number(totalUsers),
       };
     }),
@@ -1419,7 +1561,10 @@ export const adminRouter = router({
       if (!targetIds.length) {
         const cutoff = new Date();
         cutoff.setFullYear(cutoff.getFullYear() - 2);
-        const rows = await db.select({ id: usersT.id }).from(usersT).where(gte(usersT.createdAt, cutoff));
+        const rows = await db
+          .select({ id: usersT.id })
+          .from(usersT)
+          .where(gte(usersT.createdAt, cutoff));
         targetIds = rows.map((r) => r.id);
       }
 
@@ -1459,7 +1604,9 @@ export const adminRouter = router({
             })
             .onConflictDoNothing();
           sent++;
-        } catch { /* skip */ }
+        } catch {
+          /* skip */
+        }
       }
 
       // Update the sent count on the history record
@@ -1472,7 +1619,12 @@ export const adminRouter = router({
     }),
 
   adminListNotifications: adminProcedure
-    .input(z.object({ page: z.number().min(1).default(1), pageSize: z.number().min(1).max(100).default(20) }))
+    .input(
+      z.object({
+        page: z.number().min(1).default(1),
+        pageSize: z.number().min(1).max(100).default(20),
+      }),
+    )
     .query(async ({ ctx, input }) => {
       const { like, desc: dDesc } = await import('drizzle-orm');
       const { systemConfigs } = await import('@/database/schemas');
@@ -1493,7 +1645,11 @@ export const adminRouter = router({
         .offset((page - 1) * pageSize);
 
       return {
-        notifications: rows.map((r) => ({ ...(r.value as any), id: r.key, createdAt: (r.value as any).createdAt ?? r.createdAt })),
+        notifications: rows.map((r) => ({
+          ...(r.value as any),
+          id: r.key,
+          createdAt: (r.value as any).createdAt ?? r.createdAt,
+        })),
         total: Number(total),
       };
     }),
@@ -1597,7 +1753,7 @@ export const adminRouter = router({
         .offset((page - 1) * pageSize);
       // get inviter emails
       const inviterIds = [...new Set(rows.map((r) => r.inviterId))];
-      let inviterMap: Record<string, string> = {};
+      const inviterMap: Record<string, string> = {};
       if (inviterIds.length > 0) {
         const inv = await db
           .select({ email: usersT.email, id: usersT.id })
@@ -1645,5 +1801,4 @@ export const adminRouter = router({
       });
       return value;
     }),
-
 });

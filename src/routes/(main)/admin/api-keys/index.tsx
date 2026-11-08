@@ -2,21 +2,32 @@
 
 import { Flexbox, Input } from '@lobehub/ui';
 import { Button, Modal, Switch } from '@lobehub/ui/base-ui';
-import { App, Form, InputNumber, Table, Tag } from 'antd';
-import { type FC, useEffect, useState } from 'react';
+import { App, Checkbox, Form, InputNumber, Table, Tag } from 'antd';
+import { type FC, useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 
 import { lambdaClient } from '@/libs/trpc/client';
 
 const AdminProvidersPage: FC = () => {
   const { message } = App.useApp();
+  // Fallback rate tiers when a model has no per-model resolution config.
+  const DEFAULT_VIDEO_RATES = ['480p', '720p', '1080p'];
   const [editId, setEditId] = useState<string | null>(null);
   const [modelsProviderId, setModelsProviderId] = useState<string | null>(null);
+  const [pricingEdit, setPricingEdit] = useState<any | null>(null);
+  const [pricingForm] = Form.useForm();
+  const [pricingSaving, setPricingSaving] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [form] = Form.useForm();
   const [pricingEdit, setPricingEdit] = useState<any | null>(null);
   const [pricingForm] = Form.useForm();
   const [pricingSaving, setPricingSaving] = useState(false);
+
+  // Rate inputs follow the ticked resolutions; fall back to the three
+  // generic tiers when the model has no per-model resolution config.
+  const watchedResolutions = Form.useWatch('supportedResolutions', pricingForm) as
+    string[] | undefined;
+  const rateKeys = watchedResolutions?.length ? watchedResolutions : DEFAULT_VIDEO_RATES;
 
   const { data, isLoading, mutate } = useSWR('admin-providers', () =>
     lambdaClient.admin.listProviders.query(),
@@ -176,14 +187,25 @@ const AdminProvidersPage: FC = () => {
     setPricingEdit(row);
     const p = row?.pricing || {};
     const byRes = p.videoCreditsPerSecondByResolution || {};
+    const schemaResolutions: string[] = row?.parameters?.resolution?.enum ?? [];
+    const rateResolutions = schemaResolutions.length ? schemaResolutions : DEFAULT_VIDEO_RATES;
+
+    // Surface stored rates per configured resolution; legacy tables may use
+    // bare numeric keys ('480' instead of '480p').
+    const videoRateByRes: Record<string, number | undefined> = {};
+    for (const res of rateResolutions) {
+      const lower = res.toLowerCase();
+      const bare = lower.replace(/p$/, '');
+      videoRateByRes[res] = byRes[lower] ?? byRes[res] ?? byRes[bare] ?? undefined;
+    }
+
     pricingForm.setFieldsValue({
       creditsPerMillionInputTokens: p.creditsPerMillionInputTokens ?? 0,
       creditsPerMillionOutputTokens: p.creditsPerMillionOutputTokens ?? 0,
       creditsPerRequest: p.creditsPerRequest ?? 0,
+      supportedResolutions: schemaResolutions,
       videoCreditsPerSecond: p.videoCreditsPerSecond ?? 0,
-      videoRate480p: byRes['480p'] ?? byRes['480'] ?? undefined,
-      videoRate720p: byRes['720p'] ?? byRes['720'] ?? undefined,
-      videoRate1080p: byRes['1080p'] ?? byRes['1080'] ?? undefined,
+      videoRateByRes,
     });
   };
 
@@ -206,13 +228,14 @@ const AdminProvidersPage: FC = () => {
       } else if (type === 'image') {
         payload.creditsPerRequest = Number(values.creditsPerRequest) || 0;
       } else if (type === 'video') {
+        // Rates keyed by the ticked resolutions (lowercased to match the
+        // billing lookup's normalizeVideoResolution), e.g. 768p / 2k.
         const byRes: Record<string, number> = {};
-        if (values.videoRate480p != null && values.videoRate480p !== '')
-          byRes['480p'] = Number(values.videoRate480p) || 0;
-        if (values.videoRate720p != null && values.videoRate720p !== '')
-          byRes['720p'] = Number(values.videoRate720p) || 0;
-        if (values.videoRate1080p != null && values.videoRate1080p !== '')
-          byRes['1080p'] = Number(values.videoRate1080p) || 0;
+        const rates = (values.videoRateByRes || {}) as Record<string, unknown>;
+        for (const res of rateKeys) {
+          const v = rates[res];
+          if (v != null && v !== '') byRes[res.toLowerCase()] = Number(v) || 0;
+        }
         payload.videoCreditsPerSecondByResolution = byRes;
         payload.videoCreditsPerSecond = Number(values.videoCreditsPerSecond) || 0;
         // optional legacy
@@ -222,6 +245,17 @@ const AdminProvidersPage: FC = () => {
       }
 
       await lambdaClient.admin.updateModelCredits.mutate(payload);
+
+      // Video models: persist the per-model supported resolutions so the
+      // frontend resolution tabs show exactly these options for this model.
+      if (type === 'video') {
+        await (lambdaClient.admin.updateModelResolution as any).mutate({
+          modelId: pricingEdit.id,
+          providerId: modelsProviderId,
+          resolutions: (values.supportedResolutions ?? []) as string[],
+        });
+      }
+
       message.success('计费配置已更新');
       setPricingEdit(null);
       mutateModels();
@@ -255,6 +289,14 @@ const AdminProvidersPage: FC = () => {
     if (p.creditsPerRequest > 0) return `${p.creditsPerRequest}/次`;
     return '未配置';
   };
+
+  // Resolution choices: common presets plus whatever the model already
+  // declares (model-bank enums use uppercase '768P'), so existing values stay
+  // visible as checked and are never silently dropped on save.
+  const resolutionCheckboxOptions = useMemo(() => {
+    const existing: string[] = pricingEdit?.parameters?.resolution?.enum ?? [];
+    return Array.from(new Set(['480p', '768p', '720p', '1080p', '2k', '4k', ...existing]));
+  }, [pricingEdit]);
 
   const modelColumns = [
     {
@@ -299,7 +341,7 @@ const AdminProvidersPage: FC = () => {
     {
       key: 'credits',
       render: (_: unknown, row: any) => (
-        <Flexbox gap={4} horizontal style={{ alignItems: 'center' }}>
+        <Flexbox horizontal gap={4} style={{ alignItems: 'center' }}>
           <span style={{ fontSize: 12, maxWidth: 160 }} title={formatPricingSummary(row)}>
             {formatPricingSummary(row)}
           </span>
@@ -345,7 +387,6 @@ const AdminProvidersPage: FC = () => {
 
       {/* Provider config modal */}
       <Modal
-        destroyOnClose
         confirmLoading={detailLoading}
         open={!!editId}
         title={`配置服务商：${editId || ''}`}
@@ -391,7 +432,6 @@ const AdminProvidersPage: FC = () => {
 
       {/* Models management modal */}
       <Modal
-        destroyOnClose
         footer={null}
         open={!!modelsProviderId}
         title={`模型列表：${modelsProviderId || ''}`}
@@ -435,7 +475,6 @@ const AdminProvidersPage: FC = () => {
       {/* Model credit pricing editor */}
       <Modal
         confirmLoading={pricingSaving}
-        destroyOnClose
         open={!!pricingEdit}
         title={`积分计费：${pricingEdit?.displayName || pricingEdit?.id || ''}`}
         width={520}
@@ -447,7 +486,9 @@ const AdminProvidersPage: FC = () => {
             pricingEdit?.type === 'embedding' ||
             !pricingEdit?.type) && (
             <>
-              <div style={{ color: 'var(--lobe-color-text-secondary)', fontSize: 12, marginBottom: 8 }}>
+              <div
+                style={{ color: 'var(--lobe-color-text-secondary)', fontSize: 12, marginBottom: 8 }}
+              >
                 文本/对话模型按 Token 计费（每百万 tokens 扣多少积分）
               </div>
               <Form.Item
@@ -476,7 +517,9 @@ const AdminProvidersPage: FC = () => {
 
           {pricingEdit?.type === 'image' && (
             <>
-              <div style={{ color: 'var(--lobe-color-text-secondary)', fontSize: 12, marginBottom: 8 }}>
+              <div
+                style={{ color: 'var(--lobe-color-text-secondary)', fontSize: 12, marginBottom: 8 }}
+              >
                 图片模型按每次生成请求扣费（多图 = 单价 × 张数）
               </div>
               <Form.Item label="积分 / 次（每张）" name="creditsPerRequest">
@@ -487,18 +530,26 @@ const AdminProvidersPage: FC = () => {
 
           {pricingEdit?.type === 'video' && (
             <>
-              <div style={{ color: 'var(--lobe-color-text-secondary)', fontSize: 12, marginBottom: 8 }}>
+              <div
+                style={{ color: 'var(--lobe-color-text-secondary)', fontSize: 12, marginBottom: 8 }}
+              >
                 视频模型按「分辨率 × 秒」扣费。例：720p 每秒 10 积分，生成 5 秒 = 50 积分
               </div>
-              <Form.Item label="480p 积分/秒" name="videoRate480p">
-                <InputNumber min={0} style={{ width: '100%' }} placeholder="可选" />
+              <Form.Item
+                extra="勾选后，用户前端切换到该模型时只显示这些分辨率（第一个为默认）。留空则使用通用 480p/720p/1080p。"
+                label="支持的分辨率（按模型单独配置）"
+                name="supportedResolutions"
+              >
+                <Checkbox.Group
+                  options={resolutionCheckboxOptions}
+                  style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}
+                />
               </Form.Item>
-              <Form.Item label="720p 积分/秒" name="videoRate720p">
-                <InputNumber min={0} style={{ width: '100%' }} placeholder="例如 10" />
-              </Form.Item>
-              <Form.Item label="1080p 积分/秒" name="videoRate1080p">
-                <InputNumber min={0} style={{ width: '100%' }} placeholder="可选" />
-              </Form.Item>
+              {rateKeys.map((res) => (
+                <Form.Item key={res} label={`${res} 积分/秒`} name={['videoRateByRes', res]}>
+                  <InputNumber min={0} placeholder="可选" style={{ width: '100%' }} />
+                </Form.Item>
+              ))}
               <Form.Item
                 extra="当分辨率未命中上表时使用的默认每秒积分"
                 label="默认积分/秒（兜底）"

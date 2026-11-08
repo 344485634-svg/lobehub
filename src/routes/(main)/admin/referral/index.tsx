@@ -1,8 +1,8 @@
 'use client';
 
 import { Flexbox } from '@lobehub/ui';
-import { Button } from '@lobehub/ui/base-ui';
-import { App, Card, Form, Input, InputNumber, Space, Switch, Table, Tabs, Tag } from 'antd';
+import { Button, Tabs } from '@lobehub/ui/base-ui';
+import { App, Card, Input, InputNumber, Space, Switch, Table, Tag } from 'antd';
 import dayjs from 'dayjs';
 import { type FC, useEffect, useState } from 'react';
 import useSWR from 'swr';
@@ -41,9 +41,15 @@ const AdminReferralPage: FC = () => {
   }, [data]);
 
   const handleSave = async () => {
-    if (!tiers.length) { message.warning('至少配置一档返利'); return; }
+    if (!tiers.length) {
+      message.warning('至少配置一档返利');
+      return;
+    }
     for (const t of tiers) {
-      if (t.rate < 0 || t.rate > 1) { message.error('返利比例需在 0–100% 之间'); return; }
+      if (t.rate < 0 || t.rate > 1) {
+        message.error('返利比例需在 0–100% 之间');
+        return;
+      }
     }
     setSaving(true);
     try {
@@ -72,7 +78,11 @@ const AdminReferralPage: FC = () => {
   const rewardPageSize = 20;
   const { data: rewards, isLoading: rewardsLoading } = useSWR(
     ['admin-referral-rewards', rewardPage],
-    () => lambdaClient.admin.adminListReferralRewards.query({ page: rewardPage, pageSize: rewardPageSize }),
+    () =>
+      lambdaClient.admin.adminListReferralRewards.query({
+        page: rewardPage,
+        pageSize: rewardPageSize,
+      }),
   );
 
   // ── 档位表格列 ─────────────────────────────────────────────────────────────
@@ -84,7 +94,11 @@ const AdminReferralPage: FC = () => {
           min={0}
           style={{ width: 140 }}
           value={tiers[index]?.minAmount}
-          onChange={(v) => { const n = [...tiers]; n[index] = { ...n[index], minAmount: Number(v) || 0 }; setTiers(n); }}
+          onChange={(v) => {
+            const n = [...tiers];
+            n[index] = { ...n[index], minAmount: Number(v) || 0 };
+            setTiers(n);
+          }}
         />
       ),
       title: '最低消费（元）',
@@ -99,7 +113,11 @@ const AdminReferralPage: FC = () => {
           min={0}
           style={{ width: 140 }}
           value={Math.round((tiers[index]?.rate || 0) * 1000) / 10}
-          onChange={(v) => { const n = [...tiers]; n[index] = { ...n[index], rate: (Number(v) || 0) / 100 }; setTiers(n); }}
+          onChange={(v) => {
+            const n = [...tiers];
+            n[index] = { ...n[index], rate: (Number(v) || 0) / 100 };
+            setTiers(n);
+          }}
         />
       ),
       title: '返利比例',
@@ -111,7 +129,11 @@ const AdminReferralPage: FC = () => {
         <Input
           placeholder="档位名称（可选）"
           value={tiers[index]?.label}
-          onChange={(e) => { const n = [...tiers]; n[index] = { ...n[index], label: e.target.value }; setTiers(n); }}
+          onChange={(e) => {
+            const n = [...tiers];
+            n[index] = { ...n[index], label: e.target.value };
+            setTiers(n);
+          }}
         />
       ),
       title: '名称',
@@ -128,8 +150,14 @@ const AdminReferralPage: FC = () => {
     {
       key: 'actions',
       render: (_: unknown, __: Tier, index: number) => (
-        <Button danger disabled={tiers.length <= 1} size="small"
-          onClick={() => setTiers(tiers.filter((_, i) => i !== index))}>删除</Button>
+        <Button
+          danger
+          disabled={tiers.length <= 1}
+          size="small"
+          onClick={() => setTiers(tiers.filter((_, i) => i !== index))}
+        >
+          删除
+        </Button>
       ),
       title: '操作',
       width: 90,
@@ -149,14 +177,14 @@ const AdminReferralPage: FC = () => {
     {
       dataIndex: 'spendAmount',
       key: 'spendAmount',
-      render: (v: string) => v ? `¥${Number(v).toFixed(2)}` : '-',
+      render: (v: string) => (v ? `¥${Number(v).toFixed(2)}` : '-'),
       title: '触发消费金额',
       width: 130,
     },
     {
       dataIndex: 'rate',
       key: 'rate',
-      render: (v: string) => v ? `${(Number(v) * 100).toFixed(1)}%` : '-',
+      render: (v: string) => (v ? `${(Number(v) * 100).toFixed(1)}%` : '-'),
       title: '返利比例',
       width: 100,
     },
@@ -170,14 +198,17 @@ const AdminReferralPage: FC = () => {
     {
       dataIndex: 'status',
       key: 'status',
-      render: (v: string) => <Tag color={v === 'granted' ? 'green' : 'default'}>{v === 'granted' ? '已发放' : v}</Tag>,
+      render: (v: string) => (
+        <Tag color={v === 'granted' ? 'green' : 'default'}>{v === 'granted' ? '已发放' : v}</Tag>
+      ),
       title: '状态',
       width: 90,
     },
     {
       dataIndex: 'orderId',
       key: 'orderId',
-      render: (v: string) => v ? <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{v}</span> : '-',
+      render: (v: string) =>
+        v ? <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{v}</span> : '-',
       title: '关联订单',
     },
   ];
@@ -198,7 +229,7 @@ const AdminReferralPage: FC = () => {
             children: (
               <Flexbox gap={16}>
                 <Card loading={isLoading} size="small" title="总开关">
-                  <Flexbox gap={12} horizontal style={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                  <Flexbox horizontal gap={12} style={{ alignItems: 'center', flexWrap: 'wrap' }}>
                     <span>启用推荐奖励</span>
                     <Switch checked={enabled} onChange={setEnabled} />
                     <span style={{ marginLeft: 24 }}>默认返利比例</span>
@@ -215,13 +246,13 @@ const AdminReferralPage: FC = () => {
                 </Card>
 
                 <Card
+                  extra={<span style={{ fontSize: 12, opacity: 0.65 }}>好友注册时一次性发放</span>}
                   loading={isLoading}
                   size="small"
                   title="注册奖励"
-                  extra={<span style={{ fontSize: 12, opacity: 0.65 }}>好友注册时一次性发放</span>}
                 >
-                  <Flexbox gap={16} horizontal style={{ alignItems: 'center', flexWrap: 'wrap' }}>
-                    <Flexbox gap={8} horizontal style={{ alignItems: 'center' }}>
+                  <Flexbox horizontal gap={16} style={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                    <Flexbox horizontal gap={8} style={{ alignItems: 'center' }}>
                       <span>邀请人注册奖励</span>
                       <InputNumber
                         addonAfter="积分"
@@ -230,9 +261,11 @@ const AdminReferralPage: FC = () => {
                         value={registrationCredits}
                         onChange={(v) => setRegistrationCredits(Number(v) || 0)}
                       />
-                      <span style={{ fontSize: 12, opacity: 0.65 }}>好友完成注册后，邀请人获得</span>
+                      <span style={{ fontSize: 12, opacity: 0.65 }}>
+                        好友完成注册后，邀请人获得
+                      </span>
                     </Flexbox>
-                    <Flexbox gap={8} horizontal style={{ alignItems: 'center' }}>
+                    <Flexbox horizontal gap={8} style={{ alignItems: 'center' }}>
                       <span>新用户注册奖励</span>
                       <InputNumber
                         addonAfter="积分"
@@ -241,15 +274,21 @@ const AdminReferralPage: FC = () => {
                         value={inviteeRegistrationCredits}
                         onChange={(v) => setInviteeRegistrationCredits(Number(v) || 0)}
                       />
-                      <span style={{ fontSize: 12, opacity: 0.65 }}>被邀请新用户完成注册后获得</span>
+                      <span style={{ fontSize: 12, opacity: 0.65 }}>
+                        被邀请新用户完成注册后获得
+                      </span>
                     </Flexbox>
                   </Flexbox>
                 </Card>
 
                 <Card
+                  size="small"
+                  title="消费返利档位"
                   extra={
                     <Space>
-                      <Button onClick={() => setTiers([...tiers, { label: '', minAmount: 0, rate: 0.1 }])}>
+                      <Button
+                        onClick={() => setTiers([...tiers, { label: '', minAmount: 0, rate: 0.1 }])}
+                      >
                         添加档位
                       </Button>
                       <Button loading={saving} type="primary" onClick={handleSave}>
@@ -257,8 +296,6 @@ const AdminReferralPage: FC = () => {
                       </Button>
                     </Space>
                   }
-                  size="small"
-                  title="消费返利档位"
                 >
                   <Table
                     columns={tierColumns as any}
@@ -267,7 +304,8 @@ const AdminReferralPage: FC = () => {
                     size="middle"
                   />
                   <div style={{ fontSize: 12, marginTop: 12, opacity: 0.65 }}>
-                    匹配规则：按「最低消费」从高到低匹配，命中第一档即用该比例。奖励积分 = floor(消费金额 × 比例 × 100)。
+                    匹配规则：按「最低消费」从高到低匹配，命中第一档即用该比例。奖励积分 =
+                    floor(消费金额 × 比例 × 100)。
                   </div>
                 </Card>
               </Flexbox>

@@ -268,7 +268,8 @@ describe('AsyncTaskModel', () => {
 
   describe('checkTimeoutTasks', () => {
     it('should mark tasks as error if they timeout', async () => {
-      // Create a task with old timestamp (beyond timeout)
+      // Create a task with old timestamp (beyond timeout). The check runs on
+      // `updatedAt`, so backdate both columns.
       const timeoutDate = new Date(Date.now() - ASYNC_TASK_TIMEOUT - 1000);
 
       const { id } = await serverDB
@@ -278,6 +279,7 @@ describe('AsyncTaskModel', () => {
           status: AsyncTaskStatus.Processing,
           userId,
           createdAt: timeoutDate,
+          updatedAt: timeoutDate,
         })
         .returning()
         .then((res) => res[0]);
@@ -302,6 +304,33 @@ describe('AsyncTaskModel', () => {
           status: AsyncTaskStatus.Processing,
           userId,
           createdAt: recentDate,
+          updatedAt: recentDate,
+        })
+        .returning()
+        .then((res) => res[0]);
+
+      await asyncTaskModel.checkTimeoutTasks([id]);
+
+      const updatedTask = await serverDB.query.asyncTasks.findFirst({
+        where: eq(asyncTasks.id, id),
+      });
+      expect(updatedTask?.status).toBe(AsyncTaskStatus.Processing);
+      expect(updatedTask?.error).toBeNull();
+    });
+
+    it('should give video tasks a longer window than the generic timeout', async () => {
+      // 11 minutes old: beyond the generic 10-min window (a real minimax-h3
+      // generation runs this long) but well inside the 30-min video window.
+      const videoTaskDate = new Date(Date.now() - 11 * 60 * 1000);
+
+      const { id } = await serverDB
+        .insert(asyncTasks)
+        .values({
+          type: AsyncTaskType.VideoGeneration,
+          status: AsyncTaskStatus.Processing,
+          userId,
+          createdAt: videoTaskDate,
+          updatedAt: videoTaskDate,
         })
         .returning()
         .then((res) => res[0]);

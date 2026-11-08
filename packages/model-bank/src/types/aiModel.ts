@@ -493,6 +493,11 @@ export interface LobeDefaultAiModelListItem extends AiFullModelCard {
 // create
 export const CreateAiModelSchema = z.object({
   abilities: AiModelAbilitiesSchema.optional(),
+  config: z
+    .object({
+      deploymentName: z.string().optional(),
+    })
+    .optional(),
   contextWindowTokens: z.number().optional(),
   displayName: z.string().optional(),
   id: z.string(),
@@ -545,6 +550,9 @@ export const UpdateAiModelSchema = z.object({
     .optional(),
   contextWindowTokens: z.number().nullish(),
   displayName: z.string().nullish(),
+  // free-form JSON on ai_models.parameters (e.g. per-model video resolution
+  // config: { resolution: { default, enum } }). Loose like pricing.
+  parameters: z.record(z.string(), z.any()).optional(),
   pricing: z.record(z.string(), z.any()).optional(),
   settings: AiModelSettingsSchema.optional(),
   type: AiModelTypeSchema.optional(),

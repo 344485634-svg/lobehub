@@ -5,6 +5,7 @@ import {
   type AuthWechatConfig,
   type EmailSmtpConfig,
   type ShouqianbaConfig,
+  type StorageImageHostConfig,
   SYSTEM_CONFIG_KEYS,
   systemConfigs,
 } from '../schemas/systemConfig';
@@ -103,5 +104,16 @@ export class SystemConfigModel {
         updatedBy,
       },
     );
+  }
+
+  async getImageHostConfig(): Promise<StorageImageHostConfig | undefined> {
+    return this.get<StorageImageHostConfig>(SYSTEM_CONFIG_KEYS.storageImgbb);
+  }
+
+  async setImageHostConfig(value: StorageImageHostConfig, updatedBy?: string) {
+    return this.set(SYSTEM_CONFIG_KEYS.storageImgbb, value as unknown as Record<string, unknown>, {
+      description: 'image-host configuration for public reference media',
+      updatedBy,
+    });
   }
 }

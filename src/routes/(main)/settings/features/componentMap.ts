@@ -1,4 +1,4 @@
-import { createElement } from 'react';
+import { type ComponentType, createElement } from 'react';
 
 import Loading from '@/components/Loading/BrandTextLoading';
 import dynamic from '@/libs/next/dynamic';
@@ -13,9 +13,16 @@ export const componentMap = {
   [SettingsTabs.Appearance]: dynamic(() => import('../appearance'), {
     loading: loading('Settings > Appearance'),
   }),
-  [SettingsTabs.Provider]: dynamic(() => import('../provider'), {
-    loading: loading('Settings > Provider'),
-  }),
+  [SettingsTabs.Provider]: dynamic(
+    () =>
+      import('../provider').then((m) => ({
+        // Provider route module exports a layout, not a default component
+        default: m.ProviderLayout as unknown as ComponentType,
+      })),
+    {
+      loading: loading('Settings > Provider'),
+    },
+  ),
   [SettingsTabs.ServiceModel]: dynamic(() => import('../service-model'), {
     loading: loading('Settings > ServiceModel'),
   }),

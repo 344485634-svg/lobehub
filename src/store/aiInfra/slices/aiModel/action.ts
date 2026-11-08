@@ -167,7 +167,8 @@ export class AiModelActionImpl {
     providerId: string,
     data: Partial<AiProviderModelListItem>,
   ): Promise<void> => {
-    await aiModelService.updateAiModel(id, providerId, data);
+    // list-item shape ⊃ trpc input schema (settings passthrough etc.)
+    await aiModelService.updateAiModel(id, providerId, data as any);
     await this.#get().refreshAiModelList();
   };
 

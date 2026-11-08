@@ -118,10 +118,12 @@ const getFormattedUnitPrice = (
 };
 
 const getPrice = (pricing: Pricing, isCreditPricing: boolean): TextPriceSummary => {
+  // Pricing lacks an index signature, so widen for the credit-field lookups
+  const widePricing = pricing as Pricing & Record<string, unknown>;
   return {
-    cachedInput: getFormattedUnitPrice(pricing, 'textInput_cacheRead', isCreditPricing),
-    input: getFormattedUnitPrice(pricing, 'textInput', isCreditPricing),
-    output: getFormattedUnitPrice(pricing, 'textOutput', isCreditPricing),
+    cachedInput: getFormattedUnitPrice(widePricing, 'textInput_cacheRead', isCreditPricing),
+    input: getFormattedUnitPrice(widePricing, 'textInput', isCreditPricing),
+    output: getFormattedUnitPrice(widePricing, 'textOutput', isCreditPricing),
   };
 };
 
@@ -343,15 +345,19 @@ export const useModelDetailPanel = ({
   // Closed-product: show credits (admin-configured creditsPerMillion*) for any
   // provider whose pricing carries those fields — not just the branding provider.
   const creditPricing = displayPricing as (Pricing & Record<string, unknown>) | undefined;
-  const isCreditPricing =
-    provider === BRANDING_PROVIDER ||
-    (!!creditPricing &&
-      (typeof creditPricing.creditsPerMillionInputTokens === 'number' ||
-        typeof creditPricing.creditsPerMillionOutputTokens === 'number'));
+  const isFieldCreditPricing =
+    !!creditPricing &&
+    (typeof creditPricing.creditsPerMillionInputTokens === 'number' ||
+      typeof creditPricing.creditsPerMillionOutputTokens === 'number');
+  const isBrandingProvider = provider === BRANDING_PROVIDER;
+  const isCreditPricing = isBrandingProvider || isFieldCreditPricing;
   const hasPricing = !!displayPricing;
   const formatPrice = displayPricing ? getPrice(displayPricing, isCreditPricing) : null;
+  // Field-credit providers have no admin field for cached input, so a USD unit
+  // rate would be misleading next to credit rates — hide it there. Branding
+  // provider prices units in credits already, so keep showing it.
   const hasCachedInputPricing = displayPricing
-    ? !isCreditPricing && !!getCachedTextInputUnitRate(displayPricing)
+    ? (isBrandingProvider || !isFieldCreditPricing) && !!getCachedTextInputUnitRate(displayPricing)
     : false;
   const pricingGroups = useMemo(
     () => (displayPricing ? groupPricingUnits(displayPricing.units || []) : []),
@@ -422,7 +428,8 @@ export const useModelDetailPanel = ({
         unit,
         displayPricing?.currency as ModelPriceCurrency,
         isCreditPricing,
-        displayPricing,
+        // Pricing lacks an index signature; widen for credit-field lookups
+        displayPricing as (Pricing & Record<string, unknown>) | undefined,
       ),
     [displayPricing, isCreditPricing],
   );
