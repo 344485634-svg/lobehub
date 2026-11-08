@@ -96,6 +96,7 @@
   "response.PluginServerError": "Fehler bei der Anfrage an den Fähigkeitsserver. Bitte Manifest und Konfiguration prüfen.",
   "response.PluginSettingsInvalid": "Diese Fähigkeit muss korrekt konfiguriert werden, bevor sie verwendet werden kann.",
   "response.ProviderContentModeration": "Die Inhaltsrichtlinienprüfung ist fehlgeschlagen. Überarbeiten Sie Ihre Eingabe und versuchen Sie es erneut.",
+  "response.ProviderContentModerationRealPerson": "The input image was rejected: it may contain a real person. Enable real-person content authorization for your provider account (e.g. Volcengine Ark approval) or use an image without real people.",
   "response.ProviderContentModerationWarning": "Wiederholte Verstöße gegen die Richtlinien wurden erkannt. Weitere Missbräuche können zur Einschränkung Ihres Kontos führen.",
   "response.ProviderImageContentModerationWarning": "Wiederholte Sicherheitsablehnungen von Bildern festgestellt. Ähnliche Eingaben können die Bildgenerierung vorübergehend pausieren.",
   "response.QuotaLimitReachedCloud": "Der Modelldienst ist derzeit stark ausgelastet. Bitte versuchen Sie es später erneut.",

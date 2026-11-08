@@ -47,6 +47,15 @@ const VideoErrorItem = memo<VideoErrorItemProps>(
 
     const isProviderContentModerationError =
       generation.task.error?.name === AsyncTaskErrorType.ProviderContentModeration;
+    // 真人肖像拦截:审核类错误里,若详情含服务商原文特征,前端转成专门的本地化提示。
+    const isRealPersonModerationError =
+      isProviderContentModerationError &&
+      /real person|InputImageSensitiveContentDetected/i.test(errorMessage);
+    const headline = isProviderContentModerationError
+      ? isRealPersonModerationError
+        ? tError('response.ProviderContentModerationRealPerson')
+        : tError('response.ProviderContentModeration')
+      : t('generation.status.failed');
 
     return (
       <Block
@@ -66,11 +75,9 @@ const VideoErrorItem = memo<VideoErrorItemProps>(
         <Center gap={8}>
           <Icon color={cssVar.colorTextDescription} icon={VideoOffIcon} size={24} />
           <Text strong type={'secondary'}>
-            {isProviderContentModerationError
-              ? tError('response.ProviderContentModeration')
-              : t('generation.status.failed')}
+            {headline}
           </Text>
-          {generation.task.error && !isProviderContentModerationError && (
+          {generation.task.error && (
             <Text
               code
               ellipsis={{ rows: 2 }}

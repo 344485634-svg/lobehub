@@ -96,6 +96,7 @@
   "response.PluginServerError": "技能服务端返回错误，请根据下方信息检查技能描述、配置或服务端实现",
   "response.PluginSettingsInvalid": "该技能需要完成配置后才能使用，请检查技能配置",
   "response.ProviderContentModeration": "内容政策检查失败。请修改您的提示后重试。",
+  "response.ProviderContentModerationRealPerson": "输入图片疑似包含真人，被服务商肖像保护策略拒绝。需在服务商账号开通真人内容授权（如火山方舟真人审核通过）后重试，或更换不含真人的图片。",
   "response.ProviderContentModerationWarning": "检测到多次内容政策拦截。请修改提示词后重试。",
   "response.ProviderImageContentModerationWarning": "检测到多次生图安全拦截。继续使用相似提示词可能会暂时暂停生图能力。",
   "response.QuotaLimitReachedCloud": "当前模型服务负载较高，请稍后重试或切换其他模型。",

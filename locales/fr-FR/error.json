@@ -96,6 +96,7 @@
   "response.PluginServerError": "Erreur lors de la requête au serveur de la compétence. Veuillez vérifier le manifeste, la configuration ou l'implémentation.",
   "response.PluginSettingsInvalid": "Cette compétence doit être correctement configurée avant utilisation. Veuillez vérifier la configuration.",
   "response.ProviderContentModeration": "Échec de la vérification de la politique de contenu. Révisez votre demande et réessayez.",
+  "response.ProviderContentModerationRealPerson": "The input image was rejected: it may contain a real person. Enable real-person content authorization for your provider account (e.g. Volcengine Ark approval) or use an image without real people.",
   "response.ProviderContentModerationWarning": "Violations répétées des règles détectées. Une mauvaise utilisation supplémentaire pourrait restreindre votre compte.",
   "response.ProviderImageContentModerationWarning": "Détections répétées de rejet de sécurité d'image. Des invites similaires peuvent temporairement suspendre la génération d'images.",
   "response.QuotaLimitReachedCloud": "Le service du modèle est actuellement très sollicité. Veuillez réessayer plus tard.",

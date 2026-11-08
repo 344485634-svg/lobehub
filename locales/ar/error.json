@@ -96,6 +96,7 @@
   "response.PluginServerError": "أعاد خادم المهارة خطأ. يرجى التحقق من ملف تعريف المهارة أو إعدادات الخادم.",
   "response.PluginSettingsInvalid": "تتطلب هذه المهارة إعدادًا صحيحًا قبل الاستخدام. يرجى التحقق من الإعدادات.",
   "response.ProviderContentModeration": "فشل التحقق من سياسة المحتوى. عدّل طلبك وحاول مرة أخرى.",
+  "response.ProviderContentModerationRealPerson": "The input image was rejected: it may contain a real person. Enable real-person content authorization for your provider account (e.g. Volcengine Ark approval) or use an image without real people.",
   "response.ProviderContentModerationWarning": "تم رصد انتهاكات متكررة لسياسة الاستخدام. قد يؤدي أي سوء استخدام إضافي إلى تقييد حسابك.",
   "response.ProviderImageContentModerationWarning": "تم اكتشاف رفضات متكررة لسلامة الصور. قد تؤدي الطلبات المشابهة إلى إيقاف مؤقت لتوليد الصور.",
   "response.QuotaLimitReachedCloud": "خدمة النموذج تحت ضغط كبير حاليًا. يرجى المحاولة مرة أخرى لاحقًا.",

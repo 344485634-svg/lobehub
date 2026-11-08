@@ -96,6 +96,7 @@
   "response.PluginServerError": "Ошибка при запросе к серверу навыка. Проверьте манифест, конфигурацию или реализацию сервера.",
   "response.PluginSettingsInvalid": "Навык необходимо правильно настроить перед использованием. Проверьте конфигурацию.",
   "response.ProviderContentModeration": "Проверка соответствия контент‑политике не пройдена. Измените запрос и попробуйте снова.",
+  "response.ProviderContentModerationRealPerson": "The input image was rejected: it may contain a real person. Enable real-person content authorization for your provider account (e.g. Volcengine Ark approval) or use an image without real people.",
   "response.ProviderContentModerationWarning": "Обнаружены повторяющиеся нарушения политики. Дальнейшее неправильное использование может привести к ограничению вашего аккаунта.",
   "response.ProviderImageContentModerationWarning": "Обнаружены повторные отклонения изображений по соображениям безопасности. Похожие запросы могут временно приостановить генерацию изображений.",
   "response.QuotaLimitReachedCloud": "Сервис модели в настоящее время перегружен. Пожалуйста, попробуйте позже.",

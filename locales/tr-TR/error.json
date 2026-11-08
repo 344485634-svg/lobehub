@@ -96,6 +96,7 @@
   "response.PluginServerError": "Yetenek sunucusu isteği hata ile döndü. Lütfen aşağıdaki hata bilgilerine göre manifest dosyasını, yapılandırmayı veya sunucu uygulamasını kontrol edin.",
   "response.PluginSettingsInvalid": "Bu yeteneği kullanmadan önce doğru şekilde yapılandırılmalıdır. Lütfen ayarlarınızı kontrol edin.",
   "response.ProviderContentModeration": "İçerik politikası kontrolü başarısız oldu. Lütfen isteminizi gözden geçirip yeniden deneyin.",
+  "response.ProviderContentModerationRealPerson": "The input image was rejected: it may contain a real person. Enable real-person content authorization for your provider account (e.g. Volcengine Ark approval) or use an image without real people.",
   "response.ProviderContentModerationWarning": "Tekrarlanan politika ihlalleri tespit edildi. Daha fazla yanlış kullanım hesabınızın kısıtlanmasına neden olabilir.",
   "response.ProviderImageContentModerationWarning": "Tekrarlanan görsel güvenliği reddi tespit edildi. Benzer istemler, görsel oluşturmayı geçici olarak duraklatabilir.",
   "response.QuotaLimitReachedCloud": "Model hizmeti şu anda yoğun bir yük altında. Lütfen daha sonra tekrar deneyin.",

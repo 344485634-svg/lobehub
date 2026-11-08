@@ -96,6 +96,7 @@
   "response.PluginServerError": "Erro na solicitação ao servidor da habilidade. Verifique o manifesto, configuração ou implementação.",
   "response.PluginSettingsInvalid": "Esta habilidade precisa ser configurada corretamente antes de ser usada. Verifique a configuração.",
   "response.ProviderContentModeration": "A verificação da política de conteúdo falhou. Revise seu prompt e tente novamente.",
+  "response.ProviderContentModerationRealPerson": "The input image was rejected: it may contain a real person. Enable real-person content authorization for your provider account (e.g. Volcengine Ark approval) or use an image without real people.",
   "response.ProviderContentModerationWarning": "Violações repetidas da política foram detectadas. Uso indevido adicional pode resultar em restrições à sua conta.",
   "response.ProviderImageContentModerationWarning": "Rejeições repetidas de segurança de imagem detectadas. Prompts semelhantes podem pausar temporariamente a geração de imagens.",
   "response.QuotaLimitReachedCloud": "O serviço do modelo está atualmente sob alta demanda. Por favor, tente novamente mais tarde.",

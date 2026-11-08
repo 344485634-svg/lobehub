@@ -96,6 +96,7 @@
   "response.PluginServerError": "外掛伺服器請求回傳錯誤。請根據下面的錯誤資訊檢查您的外掛描述檔案、外掛設定或伺服器實作",
   "response.PluginSettingsInvalid": "該外掛需要正確設定後才可以使用。請檢查您的設定是否正確",
   "response.ProviderContentModeration": "內容政策檢查未通過。請修改您的提示內容後再試一次。",
+  "response.ProviderContentModerationRealPerson": "输入图片疑似包含真人，被服务商肖像保护策略拒绝。需在服务商账号开通真人内容授权（如火山方舟真人审核通过）后重试，或更换不含真人的图片。",
   "response.ProviderContentModerationWarning": "偵測到多次違反政策的行為。若持續濫用，您的帳號可能會受到限制。",
   "response.ProviderImageContentModerationWarning": "檢測到多次影像安全審核拒絕。類似的提示可能會暫時停止影像生成。",
   "response.QuotaLimitReachedCloud": "模型服務目前負載過重。請稍後再試。",

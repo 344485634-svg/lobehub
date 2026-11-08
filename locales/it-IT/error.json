@@ -96,6 +96,7 @@
   "response.PluginServerError": "Errore nella richiesta al server della skill. Verifica il manifest, la configurazione o l'implementazione del server.",
   "response.PluginSettingsInvalid": "Questa skill deve essere configurata correttamente prima dell'uso. Verifica la configurazione.",
   "response.ProviderContentModeration": "Controllo delle politiche sui contenuti non riuscito. Modifica il tuo prompt e riprova.",
+  "response.ProviderContentModerationRealPerson": "The input image was rejected: it may contain a real person. Enable real-person content authorization for your provider account (e.g. Volcengine Ark approval) or use an image without real people.",
   "response.ProviderContentModerationWarning": "Violazioni ripetute delle politiche rilevate. Ulteriori abusi potrebbero limitare il tuo account.",
   "response.ProviderImageContentModerationWarning": "Rilevati ripetuti rifiuti di sicurezza delle immagini. Promemoria simili potrebbero temporaneamente sospendere la generazione di immagini.",
   "response.QuotaLimitReachedCloud": "Il servizio del modello è attualmente sotto carico elevato. Per favore, riprova più tardi.",

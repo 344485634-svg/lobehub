@@ -96,6 +96,7 @@
   "response.PluginServerError": "درخواست به سرور مهارت با خطا مواجه شد. لطفاً فایل manifest، پیکربندی یا پیاده‌سازی سرور را بررسی کنید.",
   "response.PluginSettingsInvalid": "برای استفاده از این مهارت، باید به‌درستی پیکربندی شود. لطفاً تنظیمات را بررسی کنید.",
   "response.ProviderContentModeration": "بررسی خط‌مشی محتوا ناموفق بود. درخواست خود را بازبینی کرده و دوباره تلاش کنید.",
+  "response.ProviderContentModerationRealPerson": "The input image was rejected: it may contain a real person. Enable real-person content authorization for your provider account (e.g. Volcengine Ark approval) or use an image without real people.",
   "response.ProviderContentModerationWarning": "تخطی‌های مکرر از خط‌مشی شناسایی شد. ادامهٔ استفادهٔ نادرست ممکن است منجر به محدودیت حساب شما شود.",
   "response.ProviderImageContentModerationWarning": "رد مکرر ایمنی تصاویر شناسایی شد. درخواست‌های مشابه ممکن است به طور موقت تولید تصویر را متوقف کنند.",
   "response.QuotaLimitReachedCloud": "خدمات مدل در حال حاضر تحت بار سنگین قرار دارد. لطفاً بعداً دوباره تلاش کنید.",
