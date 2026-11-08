@@ -4,7 +4,7 @@ import { Flexbox } from '@lobehub/ui';
 import { InputNumber } from '@lobehub/ui/base-ui';
 import { Button, Modal } from 'antd';
 import { createStaticStyles, cssVar } from 'antd-style';
-import { ScissorsLine } from 'lucide-react';
+import { Scissors } from 'lucide-react';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -166,7 +166,7 @@ const ReferenceVideoTrimmer = memo<ReferenceVideoTrimmerProps>(
         open
         title={
           <Flexbox align="center" gap={4} horizontal>
-            <ScissorsLine size={16} />
+            <Scissors size={16} />
             {t('trimmer.title', { defaultValue: '参考视频切割' })}
           </Flexbox>
         }
