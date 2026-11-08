@@ -628,6 +628,26 @@ export const sharedMainAreaChildren: RouteObject[] = [
         path: 'changelog',
       },
       {
+        element: <AdminCouponsPage />,
+        path: 'coupons',
+      },
+      {
+        element: <AdminReferralPage />,
+        path: 'referral',
+      },
+      {
+        element: <AdminNotificationPage />,
+        path: 'notification',
+      },
+      {
+        element: <AdminLegalPage />,
+        path: 'legal',
+      },
+      {
+        element: <AdminChangelogPage />,
+        path: 'changelog',
+      },
+      {
         element: redirectElement('/admin/provider'),
         path: 'api-keys',
       },

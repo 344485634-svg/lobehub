@@ -29,6 +29,12 @@ const AdminProvidersPage: FC = () => {
     string[] | undefined;
   const rateKeys = watchedResolutions?.length ? watchedResolutions : DEFAULT_VIDEO_RATES;
 
+  // Rate inputs follow the ticked resolutions; fall back to the three
+  // generic tiers when the model has no per-model resolution config.
+  const watchedResolutions = Form.useWatch('supportedResolutions', pricingForm) as
+    string[] | undefined;
+  const rateKeys = watchedResolutions?.length ? watchedResolutions : DEFAULT_VIDEO_RATES;
+
   const { data, isLoading, mutate } = useSWR('admin-providers', () =>
     lambdaClient.admin.listProviders.query(),
   );
