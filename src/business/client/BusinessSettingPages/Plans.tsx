@@ -10,7 +10,6 @@ import { type CSSProperties, type FC, useEffect, useMemo, useState } from 'react
 import { useSearchParams } from 'react-router';
 import useSWR from 'swr';
 
-import { PLAN_ALLOWED_MODELS_ENABLED } from '@lobechat/business-const';
 import { lambdaClient } from '@/libs/trpc/client';
 
 const ALIPAY_BLUE = '#1677FF';
