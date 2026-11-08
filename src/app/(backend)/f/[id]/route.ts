@@ -45,6 +45,49 @@ export const GET = async (_req: Request, segmentData: { params: Params }) => {
     // Create file service with file owner's userId
     const fileService = new FileService(db, file.userId);
 
+    // 视频/音频:直接流式代理而不是 302 跳 presigned URL。
+    // 原因:浏览器 <video> 预览会先发 HEAD/Range 请求,部分 S3 兼容存储
+    // (如 RustFS)对 HEAD 签名校验失败返回 403;且 302 跳到存储域名是跨域
+    // 响应,在 Strict-Origin 策略下会丢 Referer。流式代理同源返回,支持
+    // Range 分段,视频可拖动进度条。
+    if (file.fileType?.startsWith('video/') || file.fileType?.startsWith('audio/')) {
+      // HEAD 请求:返回与 GET 相同的头(不含 body),预览组件探测元数据用
+      if (_req.method === 'HEAD') {
+        const meta = await fileService.getFileMetadataSafe(file.url);
+        return new Response(null, {
+          headers: {
+            'Accept-Ranges': 'bytes',
+            'Content-Length': String(meta.contentLength ?? 0),
+            'Content-Type': file.fileType,
+          },
+        });
+      }
+
+      const range = _req.headers.get('range');
+      const upstream = await fileService.getFileStream(file.url);
+
+      if (!upstream) {
+        return new Response('File content not found', { status: 404 });
+      }
+
+      const headers = new Headers({
+        'Accept-Ranges': 'bytes',
+        'Cache-Control': 'private, max-age=3600',
+        'Content-Type': file.fileType,
+      });
+      if (upstream.contentLength) {
+        headers.set('Content-Length', String(upstream.contentLength));
+      }
+      if (upstream.contentRange) {
+        headers.set('Content-Range', upstream.contentRange);
+      }
+
+      return new Response(upstream.body as ReadableStream, {
+        headers,
+        status: upstream.contentRange ? 206 : 200,
+      });
+    }
+
     // Web: Generate a cached S3 presigned URL, normalizing legacy full S3 URLs.
     const redirectUrl = await fileService.createCachedPreSignedUrlForPreview(file.url);
     log('Web S3 presigned URL generated');

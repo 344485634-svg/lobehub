@@ -170,6 +170,45 @@ export class S3 {
   }
 
   /**
+   * Stream an object with optional HTTP Range passthrough.
+   * Used by the /f/:id file proxy for video/audio previews: browsers send
+   * Range/HEAD requests when seeking, and some S3-compatible stores (RustFS)
+   * reject signed HEAD requests — streaming the bytes through the app avoids
+   * both the 302 cross-origin hop and the HEAD signature issue.
+   */
+  public async getObjectStream(
+    key: string,
+    range?: string,
+  ): Promise<{
+    body: unknown;
+    contentLength?: number;
+    contentRange?: string;
+    contentType?: string;
+  } | null> {
+    const command = new GetObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+      ...(range ? { Range: range } : {}),
+    });
+
+    try {
+      const response = await this.client.send(command);
+      if (!response.Body) return null;
+
+      return {
+        body: response.Body,
+        contentLength: response.ContentLength ?? undefined,
+        contentRange: response.ContentRange ?? undefined,
+        contentType: response.ContentType ?? undefined,
+      };
+    } catch (error) {
+      const status = (error as { name?: string; $metadata?: { httpStatusCode?: number } });
+      if (status?.$metadata?.httpStatusCode === 404 || status?.name === 'NoSuchKey') return null;
+      throw error;
+    }
+  }
+
+  /**
    * Upload buffer with specified content type
    */
   public async uploadBuffer(

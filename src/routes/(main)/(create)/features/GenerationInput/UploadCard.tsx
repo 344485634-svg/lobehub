@@ -148,6 +148,11 @@ interface UploadCardProps {
    * internal single-file upload, enabling multi-select.
    */
   onUploadFiles?: (files: File[]) => void | Promise<void>;
+  /**
+   * 视频文件选中回调:在上传前把原始 File 交给父级(用于弹出参考视频切割)。
+   * 提供此回调时,视频选择不再自动上传,而是由父级裁剪完成后走 onUpload 闭环。
+   */
+  onVideoFileSelected?: (file: File) => void;
   style?: CSSProperties;
   /** Render the preview with a <video> element (audio/video reference uploads). */
   useVideoPreview?: boolean;
@@ -169,6 +174,7 @@ const UploadCard = memo<UploadCardProps>(
     closeClassName,
     style,
     useVideoPreview = false,
+    onVideoFileSelected,
     variant = 'card',
   }) => {
     const inputRef = useRef<HTMLInputElement>(null);
@@ -200,6 +206,12 @@ const UploadCard = memo<UploadCardProps>(
 
         if (maxFileSize && file.size > maxFileSize) return;
 
+        // 视频裁剪模式:把原始 File 交给父级弹切割器,裁剪产物再回来走上传
+        if (onVideoFileSelected && file.type.startsWith('video/')) {
+          onVideoFileSelected(file);
+          return;
+        }
+
         const previewUrl = URL.createObjectURL(file);
         setUploadPreview(previewUrl);
         setIsUploading(true);
@@ -223,7 +235,7 @@ const UploadCard = memo<UploadCardProps>(
           setIsUploading(false);
         }
       },
-      [maxFileSize, uploadWithProgress, onUpload, onUploadFiles],
+      [maxFileSize, uploadWithProgress, onUpload, onUploadFiles, onVideoFileSelected],
     );
 
     const showPreview = uploadPreview || imageUrl;

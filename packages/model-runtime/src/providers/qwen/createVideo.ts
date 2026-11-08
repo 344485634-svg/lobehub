@@ -249,14 +249,20 @@ async function createVideoTask(
     // wan3.0 全能参考模式(官方文档):媒体走 input.media 数组,
     // type 用 first_frame / reference_image / last_frame / reference_video
     const media = [];
-    if (imageUrl) {
+    // 换人(人物替换)场景:参考图必须走 reference_image——
+    // first_frame 只约束"首帧长相",模型会按参考视频人物出镜,导致人物不一致;
+    // reference_image 才是"人物/形象参考",配合 reference_video 实现动作迁移+换人。
+    const personSwap = Boolean(mediaUrl);
+    if (imageUrl && !personSwap) {
       media.push({
         type: 'first_frame',
         url: imageUrl,
       });
     }
-    if (imageUrls && imageUrls.length > 0) {
-      imageUrls.forEach((url) =>
+    const refImageUrls = [...(imageUrls ?? [])];
+    if (imageUrl && personSwap) refImageUrls.unshift(imageUrl);
+    if (refImageUrls.length > 0) {
+      refImageUrls.forEach((url) =>
         media.push({
           type: 'reference_image',
           url,

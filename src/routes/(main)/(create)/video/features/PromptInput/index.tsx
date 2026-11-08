@@ -5,7 +5,7 @@ import { ActionIcon, Flexbox, InputNumber, SliderWithInput, Text } from '@lobehu
 import { Tabs } from '@lobehub/ui/base-ui';
 import { Divider, Switch } from 'antd';
 import { Clock3, Dices } from 'lucide-react';
-import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import VideoFreeQuotaInfo from '@/business/client/features/VideoFreeQuotaInfo';
@@ -24,6 +24,7 @@ import {
   GenerationVisibilitySelector,
   InlineVideoFrames,
 } from '@/routes/(main)/(create)/features/GenerationInput';
+import ReferenceVideoTrimmer from '@/routes/(main)/(create)/features/GenerationInput/ReferenceVideoTrimmer';
 import { AspectRatioSelect } from '@/routes/(main)/(create)/image/features/ConfigPanel';
 import Select from '@/routes/(main)/(create)/image/features/ConfigPanel/components/Select';
 import VideoModelItem from '@/routes/(main)/(create)/video/features/ConfigPanel/components/ModelSelect/VideoModelItem';
@@ -333,6 +334,9 @@ const PromptInput = ({ showTitle = false }: PromptInputProps) => {
   const isSupportResolution = useVideoStore(isSupportedParamSelector('resolution'));
   const isSupportSize = useVideoStore(isSupportedParamSelector('size'));
   const isSupportDuration = useVideoStore(isSupportedParamSelector('duration'));
+  // 参考视频切割:窗口不超过模型最大生成时长(duration.max)
+  const { max: durationMax } = useVideoGenerationConfigParam('duration');
+  const [trimmerFile, setTrimmerFile] = useState<File | null>(null);
   const isSupportSeed = useVideoStore(isSupportedParamSelector('seed'));
   const isSupportGenerateAudio = useVideoStore(isSupportedParamSelector('generateAudio'));
   const isSupportPromptExtend = useVideoStore(isSupportedParamSelector('promptExtend'));
@@ -534,6 +538,11 @@ const PromptInput = ({ showTitle = false }: PromptInputProps) => {
                 onMediaUrlChange={handleMediaUrlChange}
                 onRemoveImageUrl={handleRemoveImage}
                 onUploadFiles={handleUploadFiles}
+                onVideoFileSelected={
+                  isSupportDuration && durationMax
+                    ? (file) => setTrimmerFile(file)
+                    : undefined
+                }
                 onImageChange={(data) => {
                   if (data === null) {
                     handleRemoveImage(imageUrl || '');
@@ -666,6 +675,19 @@ const PromptInput = ({ showTitle = false }: PromptInputProps) => {
         />
         <VideoFreeQuotaInfo />
       </Flexbox>
+      {trimmerFile && durationMax ? (
+        <ReferenceVideoTrimmer
+          maxDuration={Math.max(1, Math.floor(durationMax))}
+          sourceFile={trimmerFile}
+          sourceUrl={URL.createObjectURL(trimmerFile)}
+          onCancel={() => setTrimmerFile(null)}
+          onConfirm={(file) => {
+            setTrimmerFile(null);
+            // 裁剪产物走与原图相同的上传链路,落库后写入 mediaUrl
+            handleUploadFiles([file]);
+          }}
+        />
+      ) : null}
     </Flexbox>
   );
 };

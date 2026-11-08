@@ -90,6 +90,22 @@ export class FileService {
   }
 
   /**
+   * Stream an object with optional HTTP Range passthrough (video/audio previews)
+   */
+  public async getFileStream(
+    url: string,
+    range?: string,
+  ): Promise<{
+    body: unknown;
+    contentLength?: number;
+    contentRange?: string;
+    contentType?: string;
+  } | null> {
+    if (!this.impl.getFileStream) throw new Error('getFileStream not supported');
+    return this.impl.getFileStream(url, range);
+  }
+
+  /**
    * Create pre-signed preview URL
    */
   public async createPreSignedUrlForPreview(key: string, expiresIn?: number): Promise<string> {

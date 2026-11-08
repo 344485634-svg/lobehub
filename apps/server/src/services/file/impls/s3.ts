@@ -172,6 +172,23 @@ export class S3StaticFileImpl implements FileServiceImpl {
     return urlJoin(publicUrlBase, key);
   }
 
+  /**
+   * Stream an object for video/audio previews with Range passthrough.
+   * Accepts a stored key or a legacy full URL.
+   */
+  async getFileStream(
+    url: string,
+    range?: string,
+  ): Promise<{
+    body: unknown;
+    contentLength?: number;
+    contentRange?: string;
+    contentType?: string;
+  } | null> {
+    const key = await this.getStorageKeyFromUrl(url);
+    return this.s3.getObjectStream(key, range);
+  }
+
   async getKeyFromFullUrl(url: string): Promise<string | null> {
     try {
       const urlObject = new URL(url);

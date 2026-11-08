@@ -53,6 +53,19 @@ export interface FileServiceImpl {
   getFileMetadata: (key: string) => Promise<{ contentLength: number; contentType?: string }>;
 
   /**
+   * Stream an object with optional HTTP Range passthrough (video/audio previews)
+   */
+  getFileStream?: (
+    url: string,
+    range?: string,
+  ) => Promise<{
+    body: unknown;
+    contentLength?: number;
+    contentRange?: string;
+    contentType?: string;
+  } | null>;
+
+  /**
    * Get full file URL
    */
   getFullFileUrl: (url?: string | null, expiresIn?: number) => Promise<string>;

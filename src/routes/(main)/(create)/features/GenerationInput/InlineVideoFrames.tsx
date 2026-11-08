@@ -57,6 +57,8 @@ interface InlineVideoFramesProps {
   onRemoveImageUrl?: (url: string) => void;
   /** Optional batch upload handler to enable multi-select on the add card. */
   onUploadFiles?: (files: File[]) => void | Promise<void>;
+  /** 参考视频文件选中后回调(用于弹出按模型时长裁剪) */
+  onVideoFileSelected?: (file: File) => void;
   /** In-flight upload previews (object URLs) rendered with a spinner. */
   uploadingPreviews?: string[];
 }
@@ -75,6 +77,7 @@ const InlineVideoFrames = memo<InlineVideoFramesProps>(
     onImageUrlsChange,
     onRemoveImageUrl,
     onUploadFiles,
+    onVideoFileSelected,
     isSupportEndImage = true,
     isSupportMediaUrl = false,
     isSupportAudioUrl = false,
@@ -253,6 +256,7 @@ const InlineVideoFrames = memo<InlineVideoFramesProps>(
               useVideoPreview
               onRemove={() => onMediaUrlChange?.(null)}
               onUpload={(data) => onMediaUrlChange?.(data)}
+              onVideoFileSelected={onVideoFileSelected}
             />
           </>
         )}
