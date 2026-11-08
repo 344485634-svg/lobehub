@@ -26,7 +26,7 @@
   "generation.freeQuota.exhausted": "🎁 Ücretsiz kota tükendi, krediler kullanılacak",
   "generation.freeQuota.remaining": "🎁 Bugün {{remaining}} ücretsiz video kaldı",
   "generation.status.failed": "Oluşturma Başarısız",
-  "generation.status.generating": "Oluşturuluyor...",
+  "generation.status.generating": "Oluşturuluyor (3-8 min)",
   "generation.validation.endFrameRequiresStartFrame": "Bitiş karesi, başlangıç karesi olmadan kullanılamaz. Lütfen önce bir başlangıç karesi ayarlayın.",
   "topic.createNew": "Yeni Konu Oluştur",
   "topic.createdBy": "{{name}} tarafından oluşturuldu",

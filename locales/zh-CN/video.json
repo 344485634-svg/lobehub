@@ -26,7 +26,7 @@
   "generation.freeQuota.exhausted": "🎁 免费额度已用完，将开始消耗积分",
   "generation.freeQuota.remaining": "🎁 今日剩余 {{remaining}} 个免费视频",
   "generation.status.failed": "生成失败",
-  "generation.status.generating": "生成中...",
+  "generation.status.generating": "生成中... 参考视频/全能参考生成约需 3-8 分钟,请耐心等待",
   "generation.validation.endFrameRequiresStartFrame": "使用结束画面前需先设置起始画面。请先设置起始画面。",
   "topic.createNew": "创作新主题",
   "topic.createdBy": "由 {{name}} 创建",

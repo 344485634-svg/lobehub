@@ -48,6 +48,8 @@ export type ProviderModelListItem = {
   pricePerVideo?: number;
   pricing?: Pricing;
   releasedAt?: string;
+  /** builtin = model-bank curated schema; remote/custom = gateway model */
+  source?: 'builtin' | 'custom' | 'remote';
 };
 
 type ModelNormalizer = (model: EnabledAiModel) => Promise<ProviderModelListItem>;
@@ -163,6 +165,7 @@ export const normalizeImageModel = async (
     displayName: model.displayName ?? '',
     id: model.id,
     releasedAt: model.releasedAt,
+    source: model.source,
     ...(parameters && { parameters }),
     ...(description && { description }),
     ...(pricing && { pricing }),
@@ -207,6 +210,7 @@ export const normalizeVideoModel = async (
     displayName: model.displayName ?? '',
     id: model.id,
     releasedAt: model.releasedAt,
+    source: model.source,
     ...(parameters && { parameters }),
     ...(description && { description }),
     ...(pricing && { pricing }),
@@ -572,7 +576,10 @@ export class AiProviderActionImpl {
               VISIBLE_BUILTIN_MODEL_PROVIDERS.includes(model.providerId),
           );
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/feature/phase1-auth-admin
           const userChatProviders = data.enabledChatAiProviders.filter((p) =>
             userConfiguredAiModels.some((m) => m.providerId === p.id && m.type === 'chat'),
           );

@@ -26,7 +26,7 @@
   "generation.freeQuota.exhausted": "🎁 Free quota used up, credits will be consumed",
   "generation.freeQuota.remaining": "🎁 {{remaining}} free videos today",
   "generation.status.failed": "Generation Failed",
-  "generation.status.generating": "Generating...",
+  "generation.status.generating": "Generating... reference-video generation takes ~3-8 min, please wait",
   "generation.validation.endFrameRequiresStartFrame": "End frame cannot be used without a start frame. Please set a start frame first.",
   "topic.createNew": "Create New Topic",
   "topic.createdBy": "Created by {{name}}",

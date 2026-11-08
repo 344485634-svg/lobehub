@@ -26,7 +26,7 @@
   "generation.freeQuota.exhausted": "🎁 免費額度已用完，將開始扣除點數",
   "generation.freeQuota.remaining": "🎁 今日剩餘 {{remaining}} 部免費影片",
   "generation.status.failed": "產生失敗",
-  "generation.status.generating": "產生中...",
+  "generation.status.generating": "生成中... 參考影片/全能參考生成約需 3-8 分鐘,請耐心等待",
   "generation.validation.endFrameRequiresStartFrame": "未設定起始畫面時無法使用結束畫面。請先設定起始畫面。",
   "topic.createNew": "建立新主題",
   "topic.createdBy": "由 {{name}} 建立",

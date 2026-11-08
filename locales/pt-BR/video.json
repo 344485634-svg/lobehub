@@ -26,7 +26,7 @@
   "generation.freeQuota.exhausted": "🎁 Cota gratuita esgotada, créditos serão consumidos",
   "generation.freeQuota.remaining": "🎁 {{remaining}} vídeos gratuitos hoje",
   "generation.status.failed": "Falha na Geração",
-  "generation.status.generating": "Gerando...",
+  "generation.status.generating": "Gerando (3-8 min)",
   "generation.validation.endFrameRequiresStartFrame": "O quadro final não pode ser usado sem um quadro inicial. Por favor, defina primeiro um quadro inicial.",
   "topic.createNew": "Criar Novo Tópico",
   "topic.createdBy": "Criado por {{name}}",

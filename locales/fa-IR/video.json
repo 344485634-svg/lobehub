@@ -26,7 +26,7 @@
   "generation.freeQuota.exhausted": "🎁 سهمیه رایگان تمام شده است، از اعتبار استفاده خواهد شد",
   "generation.freeQuota.remaining": "🎁 {{remaining}} ویدیوی رایگان باقی‌مانده برای امروز",
   "generation.status.failed": "تولید ناموفق بود",
-  "generation.status.generating": "در حال تولید...",
+  "generation.status.generating": "در حال تولید (3-8 min)",
   "generation.validation.endFrameRequiresStartFrame": "استفاده از فریم پایانی بدون فریم آغازین امکان‌پذیر نیست. لطفاً ابتدا فریم آغازین را تنظیم کنید.",
   "topic.createNew": "ایجاد موضوع جدید",
   "topic.createdBy": "ایجاد شده توسط {{name}}",

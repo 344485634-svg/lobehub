@@ -26,7 +26,7 @@
   "generation.freeQuota.exhausted": "🎁 Използвахте безплатната квота, ще се използват кредити",
   "generation.freeQuota.remaining": "🎁 {{remaining}} безплатни видеа днес",
   "generation.status.failed": "Генерирането неуспешно",
-  "generation.status.generating": "Генериране...",
+  "generation.status.generating": "Генериране (3-8 min)",
   "generation.validation.endFrameRequiresStartFrame": "Крайната рамка не може да се използва без начална рамка. Моля, задайте първо начална рамка.",
   "topic.createNew": "Създаване на нова тема",
   "topic.createdBy": "Създадено от {{name}}",

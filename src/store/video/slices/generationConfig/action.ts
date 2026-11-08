@@ -42,10 +42,23 @@ export function getVideoModelAndDefaults(model: string, provider: string) {
   // 模型可能缺少有效视频参数 schema(如从网关拉取、DB parameters 为空 {} 的 sora-2),
   // 此时 extractVideoDefaultValues 会因 VideoModelParamsMetaSchema 必填 prompt 而抛错,
   // 导致选模型/生成都失败。回退到默认视频 schema,使选择与生成可用(封闭产品只走自有网关模型)。
+  //
+  // 网关模型(非 model-bank 内置)的管理员配置可能是稀疏的 —— 例如只配了支持的
+  // 分辨率。此时把配置叠加在通用视频 schema 之上(只覆盖配置过的键),让
+  // 比例/时长等标准控件保持可用;model-bank 内置模型保持整份使用其精调 schema。
   let parametersSchema: VideoModelParamsSchema;
   let defaultValues: RuntimeVideoGenParams;
   try {
-    parametersSchema = (activeModel.parameters ?? undefined) as VideoModelParamsSchema;
+    const modelParams = (activeModel.parameters ?? undefined) as VideoModelParamsSchema;
+    const hasOwnSchema = !!modelParams && Object.keys(modelParams).length > 0;
+    // 只有明确来自网关的模型(remote/custom)才做叠加;无 source 的模型保持
+    // 旧行为(整份使用 schema),内置模型(builtin)沿用其精调 schema。
+    const modelSource = (activeModel as any).source as string | undefined;
+    const isGatewayModel = modelSource === 'remote' || modelSource === 'custom';
+    parametersSchema =
+      hasOwnSchema && isGatewayModel
+        ? { ...initialGenerationConfigState.parametersSchema, ...modelParams }
+        : (modelParams ?? initialGenerationConfigState.parametersSchema);
     defaultValues = extractVideoDefaultValues(parametersSchema);
   } catch {
     parametersSchema = initialGenerationConfigState.parametersSchema;

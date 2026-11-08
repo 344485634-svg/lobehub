@@ -28,7 +28,8 @@ export default {
   'generation.validation.endFrameRequiresStartFrame':
     'End frame cannot be used without a start frame. Please set a start frame first.',
   'generation.status.failed': 'Generation Failed',
-  'generation.status.generating': 'Generating...',
+  'generation.status.generating':
+    'Generating... reference-video generation takes ~3-8 min, please wait',
   'topic.createNew': 'Create New Topic',
   'topic.createdBy': 'Created by {{name}}',
   'topic.deleteConfirm': 'Delete Video Topic',

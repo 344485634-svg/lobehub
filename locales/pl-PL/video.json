@@ -26,7 +26,7 @@
   "generation.freeQuota.exhausted": "🎁 Wykorzystano darmowy limit, zostaną użyte kredyty",
   "generation.freeQuota.remaining": "🎁 {{remaining}} darmowych wideo dzisiaj",
   "generation.status.failed": "Generowanie nie powiodło się",
-  "generation.status.generating": "Generowanie...",
+  "generation.status.generating": "Generowanie (3-8 min)",
   "generation.validation.endFrameRequiresStartFrame": "Klatka końcowa wymaga ustawienia klatki początkowej. Najpierw ustaw klatkę początkową.",
   "topic.createNew": "Utwórz nowy temat",
   "topic.createdBy": "Utworzony przez {{name}}",

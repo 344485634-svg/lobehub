@@ -26,7 +26,7 @@
   "generation.freeQuota.exhausted": "🎁 Quota gratuit épuisé, des crédits seront utilisés",
   "generation.freeQuota.remaining": "🎁 {{remaining}} vidéos gratuites aujourd'hui",
   "generation.status.failed": "Échec de la génération",
-  "generation.status.generating": "Génération en cours...",
+  "generation.status.generating": "Génération en cours (3-8 min)",
   "generation.validation.endFrameRequiresStartFrame": "L'image de fin ne peut pas être utilisée sans image de début. Veuillez d'abord définir une image de début.",
   "topic.createNew": "Créer un nouveau sujet",
   "topic.createdBy": "Créé par {{name}}",

@@ -26,7 +26,7 @@
   "generation.freeQuota.exhausted": "🎁 Quota gratuita esaurita, verranno utilizzati i crediti",
   "generation.freeQuota.remaining": "🎁 {{remaining}} video gratuiti disponibili oggi",
   "generation.status.failed": "Generazione Fallita",
-  "generation.status.generating": "Generazione in corso...",
+  "generation.status.generating": "Generazione in corso (3-8 min)",
   "generation.validation.endFrameRequiresStartFrame": "Il fotogramma finale non può essere utilizzato senza un fotogramma iniziale. Imposta prima un fotogramma iniziale.",
   "topic.createNew": "Crea Nuovo Argomento",
   "topic.createdBy": "Creato da {{name}}",

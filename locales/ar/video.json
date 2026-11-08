@@ -26,7 +26,7 @@
   "generation.freeQuota.exhausted": "🎁 تم استهلاك الحصة المجانية، سيتم استخدام الرصيد",
   "generation.freeQuota.remaining": "🎁 {{remaining}} فيديو مجاني متبقٍ اليوم",
   "generation.status.failed": "فشل في الإنشاء",
-  "generation.status.generating": "جارٍ الإنشاء...",
+  "generation.status.generating": "جارٍ الإنشاء (3-8 min)",
   "generation.validation.endFrameRequiresStartFrame": "لا يمكن استخدام الإطار النهائي بدون إطار ابتدائي. يرجى تعيين إطار ابتدائي أولاً.",
   "topic.createNew": "إنشاء موضوع جديد",
   "topic.createdBy": "تم الإنشاء بواسطة {{name}}",

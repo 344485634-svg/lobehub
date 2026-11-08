@@ -26,7 +26,7 @@
   "generation.freeQuota.exhausted": "🎁 Đã sử dụng hết lượt miễn phí, sẽ trừ vào số tín dụng",
   "generation.freeQuota.remaining": "🎁 Còn {{remaining}} video miễn phí hôm nay",
   "generation.status.failed": "Tạo thất bại",
-  "generation.status.generating": "Đang tạo...",
+  "generation.status.generating": "Đang tạo (3-8 min)",
   "generation.validation.endFrameRequiresStartFrame": "Không thể sử dụng khung hình kết thúc nếu chưa có khung hình bắt đầu. Vui lòng thiết lập khung hình bắt đầu trước.",
   "topic.createNew": "Tạo Chủ Đề Mới",
   "topic.createdBy": "Được tạo bởi {{name}}",

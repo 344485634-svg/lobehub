@@ -26,7 +26,7 @@
   "generation.freeQuota.exhausted": "🎁 Gratis tegoed opgebruikt, er worden nu credits verbruikt",
   "generation.freeQuota.remaining": "🎁 {{remaining}} gratis video's vandaag",
   "generation.status.failed": "Generatie Mislukt",
-  "generation.status.generating": "Bezig met genereren...",
+  "generation.status.generating": "Bezig met genereren (3-8 min)",
   "generation.validation.endFrameRequiresStartFrame": "Eindframe kan niet worden gebruikt zonder een startframe. Stel eerst een startframe in.",
   "topic.createNew": "Nieuw Onderwerp Maken",
   "topic.createdBy": "Gemaakt door {{name}}",
